@@ -16,16 +16,6 @@ var GitCommit string
 // Version is the tag version from the environment
 var Version string
 
-var Output string
-
-func init() {
-	// _ = awsv1alpha1.AddToScheme(scheme.Scheme)
-	// _ = routev1.AddToScheme(scheme.Scheme)
-	// _ = hivev1.AddToScheme(scheme.Scheme)
-	// _ = gcpv1alpha1.AddToScheme(scheme.Scheme)
-
-}
-
 // NewCmdRoot represents the base command when called without any subcommands
 func NewCmdRoot(streams genericclioptions.IOStreams) *cobra.Command {
 	rootCmd := &cobra.Command{
