@@ -2,6 +2,7 @@ package gcp
 
 import (
 	"context"
+	"fmt"
 
 	configv1 "github.com/openshift/api/config/v1"
 	"golang.org/x/oauth2/google"
@@ -19,16 +20,25 @@ type Client struct {
 }
 
 func (c *Client) ByoVPCValidator(context.Context) error {
+	fmt.Println("interface executed: " + ClientIdentifier)
 	return nil
 }
 
 // assumes serviceAccountJSON is being used. Feel free to change as needed
 func NewClient() (*Client, error) {
 	ctx := context.Background()
-	var tempServiceAccountJSON []byte // to be implemented.
+	dummySA := `{
+		"type": "service_account",
+		"private_key_id": "abc",
+		"private_key": "-----BEGIN PRIVATE KEY-----\nFAKE\n-----END PRIVATE KEY-----\n",
+		"client_email": "123-abc@developer.gserviceaccount.com",
+		"client_id": "123-abc.apps.googleusercontent.com",
+		"auth_uri": "https://accounts.google.com/o/oauth2/auth",
+		"token_uri": "http://localhost:8080/token"
+	  }`
 
 	// initialize actual client
-	return newClient(ctx, tempServiceAccountJSON)
+	return newClient(ctx, []byte(dummySA))
 }
 
 func newClient(ctx context.Context, serviceAccountJSON []byte) (*Client, error) {

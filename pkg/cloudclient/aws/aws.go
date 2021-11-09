@@ -21,6 +21,7 @@ type Client struct {
 }
 
 func (c *Client) ByoVPCValidator(context.Context) error {
+	fmt.Println("interface executed: " + ClientIdentifier)
 	return nil
 }
 
