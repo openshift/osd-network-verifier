@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/aws/aws-sdk-go v1.41.19
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/openshift/api v3.9.1-0.20190924102528-32369d4db2ad+incompatible
+	github.com/openshift/api v0.0.0-20211108165917-be1be0e89115
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/oauth2 v0.0.0-20210402161424-2e8d93401602

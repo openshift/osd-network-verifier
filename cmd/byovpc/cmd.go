@@ -5,7 +5,7 @@ import (
 	"os"
 
 	configv1 "github.com/openshift/api/config/v1"
-	cloudclient "github.com/openshift/osd-network-verifier/pkg"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
