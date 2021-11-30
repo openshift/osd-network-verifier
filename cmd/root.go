@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	byovpc "github.com/openshift/osd-network-verifier/cmd/byovpc"
+	"github.com/openshift/osd-network-verifier/cmd/egress"
 	"github.com/spf13/cobra"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -31,6 +32,7 @@ func NewCmdRoot(streams genericclioptions.IOStreams) *cobra.Command {
 
 	// add sub commands
 	rootCmd.AddCommand(byovpc.NewCmdByovpc(streams))
+	rootCmd.AddCommand(egress.NewCmdValidateEgress(streams))
 
 	return rootCmd
 }

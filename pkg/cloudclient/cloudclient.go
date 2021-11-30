@@ -12,7 +12,11 @@ import (
 type CloudClient interface {
 
 	// ByoVPCValidator validates the configuration given by the customer
-	ByoVPCValidator(context.Context) error
+	ByoVPCValidator(ctx context.Context) error
+
+	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
+	// required target are defined in https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
+	ValidateEgress(ctx context.Context, vpcsubnetid string) error
 }
 
 var controllerMapping = map[configv1.PlatformType]Factory{}
