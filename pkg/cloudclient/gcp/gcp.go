@@ -24,6 +24,10 @@ func (c *Client) ByoVPCValidator(context.Context) error {
 	return nil
 }
 
+func (c *Client) ValidateEgress(ctx context.Context, VPCSubnetID string) error {
+	return nil
+}
+
 // assumes serviceAccountJSON is being used. Feel free to change as needed
 func NewClient() (*Client, error) {
 	ctx := context.Background()
