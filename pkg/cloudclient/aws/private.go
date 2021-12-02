@@ -131,7 +131,7 @@ func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) erro
 			break
 		} else if code == 401 { // 401 represents an UnauthorizedOperation error
 			// Missing permission to perform operations, account needs to fail
-			return fmt.Errorf("Missing required permissions for account: %s", descError)
+			return fmt.Errorf("missing required permissions for account: %s", descError)
 		}
 
 		if descError != nil {
@@ -209,13 +209,15 @@ func (c *Client) validateEgress(ctx context.Context, VPCSubnetID string) error {
 	// Generate the userData file
 	userData, err := generateUserData()
 	if err != nil {
-		panic(fmt.Sprintf("Unable to generate UserData file: %s\n", err.Error()))
+		fmt.Printf("Unable to generate UserData file: %s\n", err.Error())
+		return err
 	}
 
 	// Create an ec2 instance
 	instance, err := createEC2Instance(c.ec2Client, AMIID, InstanceType, InstanceCount, VPCSubnetID, userData)
 	if err != nil {
-		panic(fmt.Sprintf("Unable to create EC2 Instance: %s\n", err.Error()))
+		fmt.Printf("Unable to create EC2 Instance: %s\n", err.Error())
+		return err
 	}
 	instanceID := *instance.Instances[0].InstanceId
 
@@ -223,20 +225,23 @@ func (c *Client) validateEgress(ctx context.Context, VPCSubnetID string) error {
 	fmt.Printf("Waiting for EC2 instance %s to be running\n", instanceID)
 	err = waitForEC2InstanceCompletion(c.ec2Client, instanceID)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error while waiting for EC2 instnace to start: %s\n", err.Error())
+		return err
 	}
 	fmt.Println("Gather and parse console log output")
 	unreachableEndpoints, err := findUnreachableEndpoints(c.ec2Client, instanceID)
 	if err != nil {
-		panic(err)
+		fmt.Printf("Error parsing output from console log: %s\n", err.Error())
+		return err
 	}
 
 	fmt.Println("Terminating instance")
 	if err := terminateEC2Instance(c.ec2Client, instanceID); err != nil {
-		panic(err)
+		fmt.Printf("Error terminating instances: %s\n", err.Error())
+		return err
 	}
 	if len(unreachableEndpoints) > 0 {
-		return errors.New(fmt.Sprintf("multiple target unreachable %q", unreachableEndpoints))
+		return fmt.Errorf("multiple targets unreachable %q", unreachableEndpoints)
 	}
 	return nil
 }
