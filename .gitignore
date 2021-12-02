@@ -3,3 +3,6 @@ osd-network-verifier
 
 # ide
 .vscode/
+
+# Ignore temporary *.swp files
+*.swp

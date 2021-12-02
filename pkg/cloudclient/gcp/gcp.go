@@ -24,7 +24,7 @@ func (c *Client) ByoVPCValidator(context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, VPCSubnetID string) error {
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
 	return nil
 }
 

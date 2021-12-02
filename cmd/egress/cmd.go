@@ -11,6 +11,9 @@ import (
 )
 
 func NewCmdValidateEgress(streams genericclioptions.IOStreams) *cobra.Command {
+	var vpcSubnetID string
+	var cloudImageID string
+
 	validateEgressCmd := &cobra.Command{
 		Use: "egress",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -24,9 +27,8 @@ func NewCmdValidateEgress(streams genericclioptions.IOStreams) *cobra.Command {
 			case caller == configv1.GCPPlatformType:
 				cli = cloudclient.GetClientFor(configv1.GCPPlatformType)
 			}
-			subnetid, _ := cmd.Flags().GetString("subnet-id")
 
-			err := cli.ValidateEgress(context.TODO(), subnetid)
+			err := cli.ValidateEgress(context.TODO(), vpcSubnetID, cloudImageID)
 
 			if err != nil {
 				streams.ErrOut.Write([]byte(err.Error()))
@@ -38,8 +40,10 @@ func NewCmdValidateEgress(streams genericclioptions.IOStreams) *cobra.Command {
 		},
 	}
 
-	validateEgressCmd.Flags().StringP("subnet-id", "", "", "ID of the source subnet")
+	validateEgressCmd.Flags().StringVar(&vpcSubnetID, "subnet-id", "", "ID of the source subnet")
+	validateEgressCmd.Flags().StringVar(&cloudImageID, "image-id", "", "ID of cloud image")
 	validateEgressCmd.MarkFlagRequired("subnet-id")
+	validateEgressCmd.MarkFlagRequired("image-id")
 
 	return validateEgressCmd
 
