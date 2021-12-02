@@ -16,7 +16,7 @@ type CloudClient interface {
 
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// required target are defined in https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
-	ValidateEgress(ctx context.Context, vpcsubnetid string) error
+	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error
 }
 
 var controllerMapping = map[configv1.PlatformType]Factory{}

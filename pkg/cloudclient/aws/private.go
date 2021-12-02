@@ -19,9 +19,8 @@ import (
 )
 
 var (
-	AMIID         string = "ami-04902260ca3d33422" // should we hardcode this ??
-	InstanceType  string = "t2.micro"
-	InstanceCount int    = 1
+	instanceType  string = "t2.micro"
+	instanceCount int    = 1
 )
 
 func newClient(accessID, accessSecret, sessiontoken, region string) (*Client, error) {
@@ -205,7 +204,7 @@ func terminateEC2Instance(ec2Client *ec2.Client, instanceID string) error {
 	return nil
 }
 
-func (c *Client) validateEgress(ctx context.Context, VPCSubnetID string) error {
+func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
 	// Generate the userData file
 	userData, err := generateUserData()
 	if err != nil {
@@ -213,7 +212,7 @@ func (c *Client) validateEgress(ctx context.Context, VPCSubnetID string) error {
 	}
 
 	// Create an ec2 instance
-	instance, err := createEC2Instance(c.ec2Client, AMIID, InstanceType, InstanceCount, VPCSubnetID, userData)
+	instance, err := createEC2Instance(c.ec2Client, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData)
 	if err != nil {
 		panic(fmt.Sprintf("Unable to create EC2 Instance: %s\n", err.Error()))
 	}

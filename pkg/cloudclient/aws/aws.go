@@ -38,6 +38,6 @@ func NewClient() (*Client, error) {
 	return c, nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, VPCSubnetID string) error {
-	return c.validateEgress(ctx, VPCSubnetID)
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
+	return c.validateEgress(ctx, vpcSubnetID, cloudImageID)
 }
