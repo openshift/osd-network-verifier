@@ -1,8 +1,28 @@
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS builder
+
+WORKDIR /golang
+
+RUN microdnf install -y \ 
+curl \
+make \ 
+gcc \ 
+git \ 
+tar \ 
+gcc-c++ 
+
+RUN curl -fsSLo /tmp/go.tgz https://golang.org/dl/go1.16.6.linux-amd64.tar.gz; \ 
+mkdir -p bin; \ 
+tar -C /golang -xzf /tmp/go.tgz; \ 
+rm /tmp/go.tgz; \ 
+export PATH="/golang/go/bin:${PATH}"; \ 
+go version 
+
+
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
-ENV NETWORK_VALIDATOR_BIN=network-validator
+WORKDIR /app
+COPY --from=builder /golang/go /usr/local
+ENV GOPATH=/go
+COPY . .
+RUN pushd bin; go build network-validator.go; popd;
 
-WORKDIR /root/
-COPY /config.yaml /root/
-COPY /network-validator /usr/local/bin/
-
-ENTRYPOINT /usr/local/bin/network-validator --config=/root/config.yaml
+ENTRYPOINT /app/bin/network-validator --config=/app/config/config.yaml

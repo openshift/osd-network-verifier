@@ -1,56 +1,27 @@
 package main
 
 // Usage
-// $ network-validator --timeout=1s
+// $ network-validator --config=config/config.yaml
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	rootCmd = &cobra.Command{
-		Use:   "network-validator",
-		Short: "Validate network endpoints required for OSD",
-		Run:   TestEndpoints,
-	}
-
-	endpointList   map[string][]int
 	timeout        time.Duration = 500 * time.Millisecond
 	config         reachabilityConfig
-	configFilePath string = "config.yaml"
+	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
 )
 
 type reachabilityConfig struct {
 	Endpoints []endpoint `yaml:"endpoints"`
-}
-
-type endpoint struct {
-	Host  string `yaml:"host"`
-	Ports []int  `yaml:"ports"`
-}
-
-func init() {
-	rootCmd.PersistentFlags().StringVar(&configFilePath, "config", configFilePath, "Path to configuration file")
-	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", timeout, "Timeout for each dial request made")
-}
-
-func main() {
-	config = reachabilityConfig{}
-	err := config.LoadFromYaml(configFilePath)
-	if err != nil {
-		err = fmt.Errorf("Unable to reach config file %s: %s", configFilePath, err)
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	rootCmd.Execute()
 }
 
 func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
@@ -65,7 +36,25 @@ func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
 	return nil
 }
 
-func TestEndpoints(cmd *cobra.Command, args []string) {
+type endpoint struct {
+	Host  string `yaml:"host"`
+	Ports []int  `yaml:"ports"`
+}
+
+func main() {
+	flag.Parse()
+	config = reachabilityConfig{}
+	err := config.LoadFromYaml(*configFilePath)
+	if err != nil {
+		err = fmt.Errorf("unable to reach config file %v: %v", configFilePath, err)
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	TestEndpoints(config)
+}
+
+func TestEndpoints(config reachabilityConfig) {
 	// TODO how would we check for wildcard entries like the `.quay.io` entry, where we
 	// need to validate any CDN such as `cdn01.quay.io` should be available?
 	//  We don't need to. We just best-effort check what we can.
