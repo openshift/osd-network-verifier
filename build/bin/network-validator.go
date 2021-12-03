@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	retry          int           = 3
 	timeout        time.Duration = 500 * time.Millisecond
 	config         reachabilityConfig
 	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
@@ -89,8 +90,13 @@ func ValidateReachability(host string, port int) error {
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 	fmt.Printf("Validating %s\n", endpoint)
 	_, err := net.DialTimeout("tcp", endpoint, timeout)
-	if err != nil {
-		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)
+	failCount := 0
+	for err != nil && failCount <= retry {
+		_, err = net.DialTimeout("tcp", endpoint, timeout)
+		failCount++
 	}
-	return nil
+	if failCount <= retry {
+		return nil
+	}
+	return fmt.Errorf("unable to reach %s within specified timeout: %v", endpoint, err)
 }
