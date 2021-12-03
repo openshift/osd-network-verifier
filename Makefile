@@ -1,5 +1,7 @@
 SHELL := /usr/bin/env bash
 
+default: build containerbuild
+
 # Include shared Makefiles
 include project.mk
 include standard.mk

@@ -21,8 +21,6 @@ IMAGE_URI_LATEST=$(IMAGE_URI):latest
 
 CONTAINER_ENGINE=$(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
 
-default: containerbuild
-
 .PHONY: isclean
 isclean:
 	@(test "$(ALLOW_DIRTY_CHECKOUT)" != "false" || test 0 -eq $$(git status --porcelain | wc -l)) || (echo "Local git checkout is not clean, commit changes and try again." >&2 && exit 1)
