@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS builder
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS golang
 
 WORKDIR /golang
 
@@ -18,11 +18,17 @@ export PATH="/golang/go/bin:${PATH}"; \
 go version 
 
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS builder
 WORKDIR /app
-COPY --from=builder /golang/go /usr/local
+COPY --from=golang /golang/go /usr/local
 ENV GOPATH=/go
 COPY . .
 RUN pushd bin; go build network-validator.go; popd;
 
-ENTRYPOINT /app/bin/network-validator --config=/app/config/config.yaml
+
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+WORKDIR /app
+COPY --from=builder /app/bin/network-validator /usr/bin/network-validator
+COPY --from=builder /app/config/ /app/config/
+
+ENTRYPOINT network-validator --config=/app/config/config.yaml
