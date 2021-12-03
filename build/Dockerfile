@@ -21,9 +21,8 @@ go version
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS builder
 WORKDIR /app
 COPY --from=golang /golang/go /usr/local
-ENV GOPATH=/go
 COPY . .
-RUN pushd bin; go build network-validator.go; popd;
+RUN pushd bin; go mod init validator; go get ./...; go build network-validator.go; popd;
 
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
