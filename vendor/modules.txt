@@ -7,7 +7,7 @@ github.com/PuerkitoBio/urlesc
 # github.com/aws/aws-sdk-go v1.41.19
 ## explicit
 github.com/aws/aws-sdk-go/aws/awserr
-# github.com/aws/aws-sdk-go-v2 v1.11.1
+# github.com/aws/aws-sdk-go-v2 v1.11.2
 ## explicit
 github.com/aws/aws-sdk-go-v2
 github.com/aws/aws-sdk-go-v2/aws
@@ -30,7 +30,7 @@ github.com/aws/aws-sdk-go-v2/internal/timeconv
 # github.com/aws/aws-sdk-go-v2/config v1.10.3
 ## explicit
 github.com/aws/aws-sdk-go-v2/config
-# github.com/aws/aws-sdk-go-v2/credentials v1.6.3
+# github.com/aws/aws-sdk-go-v2/credentials v1.6.4
 ## explicit
 github.com/aws/aws-sdk-go-v2/credentials
 github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds
@@ -39,12 +39,12 @@ github.com/aws/aws-sdk-go-v2/credentials/endpointcreds/internal/client
 github.com/aws/aws-sdk-go-v2/credentials/processcreds
 github.com/aws/aws-sdk-go-v2/credentials/ssocreds
 github.com/aws/aws-sdk-go-v2/credentials/stscreds
-# github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.8.1
+# github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.8.2
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
-# github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.1
+# github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.2
 github.com/aws/aws-sdk-go-v2/internal/configsources
-# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.0.1
+# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.0.2
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
 # github.com/aws/aws-sdk-go-v2/internal/ini v1.3.1
 github.com/aws/aws-sdk-go-v2/internal/ini
@@ -53,13 +53,13 @@ github.com/aws/aws-sdk-go-v2/internal/ini
 github.com/aws/aws-sdk-go-v2/service/ec2
 github.com/aws/aws-sdk-go-v2/service/ec2/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ec2/types
-# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.5.1
+# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.5.2
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-# github.com/aws/aws-sdk-go-v2/service/sso v1.6.1
+# github.com/aws/aws-sdk-go-v2/service/sso v1.6.2
 github.com/aws/aws-sdk-go-v2/service/sso
 github.com/aws/aws-sdk-go-v2/service/sso/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sso/types
-# github.com/aws/aws-sdk-go-v2/service/sts v1.11.0
+# github.com/aws/aws-sdk-go-v2/service/sts v1.11.1
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
