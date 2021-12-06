@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	configv1 "github.com/openshift/api/config/v1"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -17,18 +17,15 @@ func NewCmdValidateEgress(streams genericclioptions.IOStreams) *cobra.Command {
 	validateEgressCmd := &cobra.Command{
 		Use: "egress",
 		Run: func(cmd *cobra.Command, args []string) {
+			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+			region := os.Getenv("AWS_DEFAULT_REGION")
+			cli, err := cloudclient.NewClient(creds, region)
 
-			caller := configv1.AWSPlatformType // testing only, assuming it's aws, check what was provided actually.
-			var cli cloudclient.CloudClient
-
-			switch {
-			case caller == configv1.AWSPlatformType:
-				cli = cloudclient.GetClientFor(configv1.AWSPlatformType)
-			case caller == configv1.GCPPlatformType:
-				cli = cloudclient.GetClientFor(configv1.GCPPlatformType)
+			if err != nil {
+				streams.ErrOut.Write([]byte(err.Error()))
+				os.Exit(1)
 			}
-
-			err := cli.ValidateEgress(context.TODO(), vpcSubnetID, cloudImageID)
+			err = cli.ValidateEgress(context.TODO(), vpcSubnetID, cloudImageID)
 
 			if err != nil {
 				streams.ErrOut.Write([]byte(err.Error()))

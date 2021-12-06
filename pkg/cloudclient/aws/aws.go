@@ -3,8 +3,8 @@ package aws
 import (
 	"context"
 	"fmt"
-	"os"
 
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	configv1 "github.com/openshift/api/config/v1"
 )
@@ -23,12 +23,12 @@ func (c *Client) ByoVPCValidator(context.Context) error {
 }
 
 // NewClient creates a new CloudClient for use with AWS.
-func NewClient() (*Client, error) {
+func NewClient(creds credentials.StaticCredentialsProvider, region string) (*Client, error) {
 	c, err := newClient(
-		os.Getenv("AWS_ACCESS_KEY_ID"),
-		os.Getenv("AWS_SECRET_ACCESS_KEY"),
-		os.Getenv("AWS_SESSION_TOKEN"),
-		os.Getenv("AWS_DEFAULT_REGION"),
+		creds.Value.AccessKeyID,
+		creds.Value.SecretAccessKey,
+		creds.Value.SessionToken,
+		region,
 	)
 
 	if err != nil {

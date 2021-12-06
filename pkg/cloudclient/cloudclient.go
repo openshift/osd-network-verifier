@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	configv1 "github.com/openshift/api/config/v1"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
+	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
+
+	"golang.org/x/oauth2/google"
 )
 
 // CloudClient defines the interface for a cloud agnostic implementation
@@ -19,21 +23,14 @@ type CloudClient interface {
 	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error
 }
 
-var controllerMapping = map[configv1.PlatformType]Factory{}
-
-type Factory func() CloudClient
-
-func Register(name configv1.PlatformType, factoryFunc Factory) {
-	controllerMapping[name] = factoryFunc
-}
-
-// GetClientFor returns the CloudClient for the given cloud provider, identified
-// by the provider's ID, eg aws for AWS's cloud client, gcp for GCP's cloud
-// client.
-func GetClientFor(cloudID configv1.PlatformType) CloudClient {
-	if _, ok := controllerMapping[cloudID]; ok {
-		return controllerMapping[cloudID]()
+func NewClient(creds interface{}, region string) (CloudClient, error) {
+	switch c := creds.(type) {
+	case credentials.StaticCredentialsProvider:
+		return awsCloudClient.NewClient(c, region)
+	case *google.Credentials:
+		return gcpCloudClient.NewClient(c, region)
+	default:
+		return nil, fmt.Errorf("unsupported credentials type %T", c)
 	}
-	// TODO: Return a minimal interface?
-	panic(fmt.Sprintf("Couldn't find a client matching %s", cloudID))
+
 }

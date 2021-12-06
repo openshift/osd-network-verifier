@@ -16,6 +16,7 @@ const ClientIdentifier configv1.PlatformType = configv1.GCPPlatformType
 // Client represents a GCP Client
 type Client struct {
 	projectID      string
+	region         string
 	computeService *computev1.Service
 }
 
@@ -28,31 +29,13 @@ func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	return nil
 }
 
-// assumes serviceAccountJSON is being used. Feel free to change as needed
-func NewClient() (*Client, error) {
+func NewClient(credentials *google.Credentials, region string) (*Client, error) {
 	ctx := context.Background()
-	dummySA := `{
-		"type": "service_account",
-		"private_key_id": "abc",
-		"private_key": "-----BEGIN PRIVATE KEY-----\nFAKE\n-----END PRIVATE KEY-----\n",
-		"client_email": "123-abc@developer.gserviceaccount.com",
-		"client_id": "123-abc.apps.googleusercontent.com",
-		"auth_uri": "https://accounts.google.com/o/oauth2/auth",
-		"token_uri": "http://localhost:8080/token"
-	  }`
-
 	// initialize actual client
-	return newClient(ctx, []byte(dummySA))
+	return newClient(ctx, credentials, region)
 }
 
-func newClient(ctx context.Context, serviceAccountJSON []byte) (*Client, error) {
-	credentials, err := google.CredentialsFromJSON(
-		ctx, serviceAccountJSON,
-		computev1.ComputeScope)
-	if err != nil {
-		return nil, err
-	}
-
+func newClient(ctx context.Context, credentials *google.Credentials, region string) (*Client, error) {
 	computeService, err := computev1.NewService(ctx, option.WithCredentials(credentials))
 	if err != nil {
 		return nil, err
@@ -60,6 +43,7 @@ func newClient(ctx context.Context, serviceAccountJSON []byte) (*Client, error) 
 
 	return &Client{
 		projectID:      credentials.ProjectID,
+		region:         region,
 		computeService: computeService,
 	}, nil
 }
