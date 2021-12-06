@@ -101,7 +101,7 @@ func describeEC2Instances(client *ec2.Client, instanceID string) (int, error) {
 
 	if len(result.InstanceStatuses) == 0 {
 		// Don't return an error here as if the instance is still too new, it may not be
-		// retured at all.
+		// returned at all.
 		//return 0, errors.New("no EC2 instances found")
 		fmt.Printf("Instance %s has no status yet\n", instanceID)
 		return 0, nil
@@ -112,7 +112,6 @@ func describeEC2Instances(client *ec2.Client, instanceID string) (int, error) {
 
 func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) error {
 	//wait for the instance to run
-	var descError error
 	totalWait := 25 * 60
 	currentWait := 1
 	// Double the wait time until we reach totalWait seconds
@@ -123,8 +122,7 @@ func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) erro
 		}
 		totalWait -= currentWait
 		time.Sleep(time.Duration(currentWait) * time.Second)
-		var code int
-		code, descError = describeEC2Instances(ec2Client, instanceID)
+		code, descError := describeEC2Instances(ec2Client, instanceID)
 		if code == 16 { // 16 represents a successful region initialization
 			// Instance is running, break
 			break
@@ -151,6 +149,7 @@ func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) erro
 
 func generateUserData() (string, error) {
 	var data strings.Builder
+	data.Grow(351)
 	data.WriteString("#!/bin/bash -xe\n")
 	data.WriteString("exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1\n")
 
@@ -197,7 +196,7 @@ func terminateEC2Instance(ec2Client *ec2.Client, instanceID string) error {
 	}
 	_, err := ec2Client.TerminateInstances(context.TODO(), &input)
 	if err != nil {
-		//log message saying there's been an error while Terminating ec2 instance
+		fmt.Printf("Unable to terminate EC2 instance: %s\n", err.Error())
 		return err
 	}
 
@@ -224,7 +223,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	fmt.Printf("Waiting for EC2 instance %s to be running\n", instanceID)
 	err = waitForEC2InstanceCompletion(c.ec2Client, instanceID)
 	if err != nil {
-		fmt.Printf("Error while waiting for EC2 instnace to start: %s\n", err.Error())
+		fmt.Printf("Error while waiting for EC2 instance to start: %s\n", err.Error())
 		return err
 	}
 	fmt.Println("Gather and parse console log output")
