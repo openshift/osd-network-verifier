@@ -1,7 +1,9 @@
+GOFLAGS=-mod=mod
+
 .PHONY: build
 build: 
-	go fmt ./...
-	go mod tidy
-	go build .
+	$(GOFLAGS) go fmt ./...
+	$(GOFLAGS) go mod tidy
+	$(GOFLAGS) go build .
 test: 
-	go test 
+	$(GOFLAGS) go test 
