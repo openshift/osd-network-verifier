@@ -1,0 +1,9 @@
+# binaries
+osd-network-verifier
+network-validator
+
+# ide
+.vscode/
+
+# Ignore temporary *.swp files
+*.swp
