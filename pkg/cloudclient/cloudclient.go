@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
+	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
+	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
 
@@ -25,7 +26,7 @@ type CloudClient interface {
 
 func NewClient(creds interface{}, region string) (CloudClient, error) {
 	switch c := creds.(type) {
-	case credentials.StaticCredentialsProvider:
+	case awscredsv1.Credentials, awscredsv2.StaticCredentialsProvider:
 		return awsCloudClient.NewClient(c, region)
 	case *google.Credentials:
 		return gcpCloudClient.NewClient(c, region)
