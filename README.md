@@ -19,6 +19,7 @@ osd-network-verifier can be used prior to the installation of osd/rosa clusters 
 
 ### Validate egress using go library
 
+#### using aws-sdk-go-v2
 ```go
 // validate aws VPC egress access
 import (
@@ -31,6 +32,27 @@ region := "us-east-1"
 
 // init a cloudclient
 cli, err := cloudclient.NewClient(creds, region)
+
+// ... error checking
+
+// call the validation function
+err = cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
+
+// ... error checking
+```
+
+#### using aws-sdk-go-v1
+```go
+import (
+    "github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+)
+// build the credentials provider
+creds := credentials.NewStaticCredentials("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
+region := "us-east-1"
+
+// init a cloudclient
+cli, err := cloudclient.NewClient(*creds, region)
 
 // ... error checking
 
