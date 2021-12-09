@@ -68,6 +68,12 @@ err = cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
 AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7
 ```
 
+Optionally provide a list of tags to use outside of the default:
+
+```shell
+AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7 --cloud-tags key=value,osd-network-verifier=owned
+```
+
 ## Other Subcommands
 
 Take a look at <https://github.com/openshift/osd-network-verifier/tree/main/cmd>
