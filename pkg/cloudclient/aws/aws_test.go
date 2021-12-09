@@ -12,7 +12,7 @@ func TestNewClient(t *testing.T) {
 	cli, err := NewClient(creds, region)
 
 	if err != nil {
-		t.Error("err occured while creating cli:", err)
+		t.Error("err occurred while creating cli:", err)
 	}
 
 	if cli == nil {
