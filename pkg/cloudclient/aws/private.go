@@ -17,7 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
-
+// For mocking: mockgen -source=pkg/cloudclient/aws/private.go -destination=pkg/cloudclient/aws/mock_private/mock_private.go
 var (
 	instanceType  string = "t2.micro"
 	instanceCount int    = 1
