@@ -18,6 +18,7 @@ type Client struct {
 	projectID      string
 	region         string
 	computeService *computev1.Service
+	tags           map[string]string
 }
 
 func (c *Client) ByoVPCValidator(context.Context) error {
@@ -29,13 +30,13 @@ func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	return nil
 }
 
-func NewClient(credentials *google.Credentials, region string) (*Client, error) {
+func NewClient(credentials *google.Credentials, region string, tags map[string]string) (*Client, error) {
 	ctx := context.Background()
 	// initialize actual client
-	return newClient(ctx, credentials, region)
+	return newClient(ctx, credentials, region, tags)
 }
 
-func newClient(ctx context.Context, credentials *google.Credentials, region string) (*Client, error) {
+func newClient(ctx context.Context, credentials *google.Credentials, region string, tags map[string]string) (*Client, error) {
 	computeService, err := computev1.NewService(ctx, option.WithCredentials(credentials))
 	if err != nil {
 		return nil, err
@@ -45,5 +46,6 @@ func newClient(ctx context.Context, credentials *google.Credentials, region stri
 		projectID:      credentials.ProjectID,
 		region:         region,
 		computeService: computeService,
+		tags:           tags,
 	}, nil
 }
