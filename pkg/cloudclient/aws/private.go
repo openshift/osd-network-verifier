@@ -21,6 +21,30 @@ import (
 var (
 	instanceType  string = "t2.micro"
 	instanceCount int    = 1
+	defaultAmi           = map[string]string{
+		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
+		"us-east-1":      "ami-0ed9277fb7eb570c",
+		"us-east-2":      "ami-002068ed284fb165b",
+		"us-west-1":      "ami-03af6a70ccd8cb578",
+		"us-west-2":      "ami-00f7e5c52c0f43726",
+		"ca-central-1":   "ami-0bae7412735610274",
+		"eu-north-1":     "ami-06bfd6343550d4a29",
+		"eu-central-1":   "ami-05d34d340fb1d89e5",
+		"eu-west-1":      "ami-04dd4500af104442f",
+		"eu-west-2":      "ami-0d37e07bd4ff37148",
+		"eu-west-3":      "ami-0d3c032f5934e1b41",
+		"eu-south-1":     "",
+		"ap-northeast-1": "",
+		"ap-northeast-2": "",
+		"ap-northeast-3": "",
+		"ap-east-1":      "",
+		"ap-south-1":     "",
+		"ap-southeast-1": "",
+		"ap-southeast-2": "",
+		"sa-east-1":      "",
+		"af-south-1":     "",
+		"me-south-1":     "",
+	}
 )
 
 func newClient(accessID, accessSecret, sessiontoken, region string) (*Client, error) {
@@ -38,6 +62,7 @@ func newClient(accessID, accessSecret, sessiontoken, region string) (*Client, er
 
 	return &Client{
 		ec2Client: ec2.NewFromConfig(cfg),
+		region:    region,
 	}, nil
 }
 
@@ -209,6 +234,15 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	if err != nil {
 		fmt.Printf("Unable to generate UserData file: %s\n", err.Error())
 		return err
+	}
+	// If a cloud image wasn't provided by the caller,
+	if cloudImageID == "" {
+		// use defaultAmi for the region instead
+		cloudImageID = defaultAmi[c.region]
+
+		if cloudImageID == "" {
+			return fmt.Errorf("No default AMI found for region %s ", c.region)
+		}
 	}
 
 	// Create an ec2 instance

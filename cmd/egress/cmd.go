@@ -40,7 +40,6 @@ func NewCmdValidateEgress(streams genericclioptions.IOStreams) *cobra.Command {
 	validateEgressCmd.Flags().StringVar(&vpcSubnetID, "subnet-id", "", "ID of the source subnet")
 	validateEgressCmd.Flags().StringVar(&cloudImageID, "image-id", "", "ID of cloud image")
 	validateEgressCmd.MarkFlagRequired("subnet-id")
-	validateEgressCmd.MarkFlagRequired("image-id")
 
 	return validateEgressCmd
 
