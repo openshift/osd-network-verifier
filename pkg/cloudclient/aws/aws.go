@@ -16,6 +16,7 @@ const ClientIdentifier configv1.PlatformType = configv1.AWSPlatformType
 // Client represents an AWS Client
 type Client struct {
 	ec2Client *ec2.Client
+	region    string
 }
 
 func (c *Client) ByoVPCValidator(context.Context) error {
