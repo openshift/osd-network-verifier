@@ -64,6 +64,11 @@ err = cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
 
 ### Validate egress using command line
 
+Build the cli executable 
+```shell
+make build
+```
+Execute 
 ```shell
 AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7
 ```
