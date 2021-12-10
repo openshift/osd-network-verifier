@@ -74,7 +74,7 @@ AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-veri
 ```
 * For `<image-id>`, use either:
     - the following public image-id: `resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 `
-    - Or select one from this list, for the region where your subnet is: [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75) 
+    - or select one from this list, for the region where your subnet is: [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75) 
 
 
 Optionally provide a list of tags to use outside of the default:
