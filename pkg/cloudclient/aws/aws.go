@@ -17,6 +17,7 @@ const ClientIdentifier configv1.PlatformType = configv1.AWSPlatformType
 type Client struct {
 	ec2Client *ec2.Client
 	region    string
+	tags      map[string]string
 }
 
 func (c *Client) ByoVPCValidator(context.Context) error {
@@ -25,7 +26,7 @@ func (c *Client) ByoVPCValidator(context.Context) error {
 }
 
 // NewClient creates a new CloudClient for use with AWS.
-func NewClient(creds interface{}, region string) (client *Client, err error) {
+func NewClient(creds interface{}, region string, tags map[string]string) (client *Client, err error) {
 
 	switch c := creds.(type) {
 	case awscredsv1.Credentials:
@@ -35,6 +36,7 @@ func NewClient(creds interface{}, region string) (client *Client, err error) {
 				value.SecretAccessKey,
 				value.SessionToken,
 				region,
+				tags,
 			)
 		}
 	case awscredsv2.StaticCredentialsProvider:
@@ -43,6 +45,7 @@ func NewClient(creds interface{}, region string) (client *Client, err error) {
 			c.Value.SecretAccessKey,
 			c.Value.SessionToken,
 			region,
+			tags,
 		)
 	default:
 		err = fmt.Errorf("unsupported credentials type %T", c)

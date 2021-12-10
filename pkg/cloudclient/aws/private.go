@@ -47,7 +47,7 @@ var (
 	}
 )
 
-func newClient(accessID, accessSecret, sessiontoken, region string) (*Client, error) {
+func newClient(accessID, accessSecret, sessiontoken, region string, tags map[string]string) (*Client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
@@ -63,10 +63,29 @@ func newClient(accessID, accessSecret, sessiontoken, region string) (*Client, er
 	return &Client{
 		ec2Client: ec2.NewFromConfig(cfg),
 		region:    region,
+		tags:      tags,
 	}, nil
 }
 
-func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instanceCount int, vpcSubnetID, userdata string) (ec2.RunInstancesOutput, error) {
+func buildTags(tags map[string]string) []ec2Types.TagSpecification {
+	tagList := []ec2Types.Tag{}
+	for k, v := range tags {
+		t := ec2Types.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		}
+		tagList = append(tagList, t)
+	}
+
+	tagSpec := ec2Types.TagSpecification{
+		ResourceType: ec2Types.ResourceTypeInstance,
+		Tags:         tagList,
+	}
+
+	return []ec2Types.TagSpecification{tagSpec}
+}
+
+func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instanceCount int, vpcSubnetID, userdata string, tags map[string]string) (ec2.RunInstancesOutput, error) {
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
 		ImageId:      aws.String(amiID),
@@ -81,7 +100,8 @@ func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instan
 				SubnetId:                 aws.String(vpcSubnetID),
 			},
 		},
-		UserData: aws.String(userdata),
+		UserData:          aws.String(userdata),
+		TagSpecifications: buildTags(tags),
 	}
 	// Finally, we make our request
 	instanceResp, err := ec2Client.RunInstances(context.TODO(), &instanceReq)
@@ -246,7 +266,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 
 	// Create an ec2 instance
-	instance, err := createEC2Instance(c.ec2Client, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData)
+	instance, err := createEC2Instance(c.ec2Client, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData, c.tags)
 	if err != nil {
 		fmt.Printf("Unable to create EC2 Instance: %s\n", err.Error())
 		return err
