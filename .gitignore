@@ -7,3 +7,6 @@ network-validator
 
 # Ignore temporary *.swp files
 *.swp
+
+#vendor
+vendor/modules.txt
