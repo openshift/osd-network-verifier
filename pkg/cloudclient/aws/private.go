@@ -21,9 +21,33 @@ import (
 var (
 	instanceType  string = "t2.micro"
 	instanceCount int    = 1
+	defaultAmi           = map[string]string{
+		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
+		"us-east-1":      "ami-0ed9277fb7eb570c",
+		"us-east-2":      "ami-002068ed284fb165b",
+		"us-west-1":      "ami-03af6a70ccd8cb578",
+		"us-west-2":      "ami-00f7e5c52c0f43726",
+		"ca-central-1":   "ami-0bae7412735610274",
+		"eu-north-1":     "ami-06bfd6343550d4a29",
+		"eu-central-1":   "ami-05d34d340fb1d89e5",
+		"eu-west-1":      "ami-04dd4500af104442f",
+		"eu-west-2":      "ami-0d37e07bd4ff37148",
+		"eu-west-3":      "ami-0d3c032f5934e1b41",
+		"eu-south-1":     "",
+		"ap-northeast-1": "",
+		"ap-northeast-2": "",
+		"ap-northeast-3": "",
+		"ap-east-1":      "",
+		"ap-south-1":     "",
+		"ap-southeast-1": "",
+		"ap-southeast-2": "",
+		"sa-east-1":      "",
+		"af-south-1":     "",
+		"me-south-1":     "",
+	}
 )
 
-func newClient(accessID, accessSecret, sessiontoken, region string) (*Client, error) {
+func newClient(accessID, accessSecret, sessiontoken, region string, tags map[string]string) (*Client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
@@ -38,10 +62,30 @@ func newClient(accessID, accessSecret, sessiontoken, region string) (*Client, er
 
 	return &Client{
 		ec2Client: ec2.NewFromConfig(cfg),
+		region:    region,
+		tags:      tags,
 	}, nil
 }
 
-func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instanceCount int, vpcSubnetID, userdata string) (ec2.RunInstancesOutput, error) {
+func buildTags(tags map[string]string) []ec2Types.TagSpecification {
+	tagList := []ec2Types.Tag{}
+	for k, v := range tags {
+		t := ec2Types.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		}
+		tagList = append(tagList, t)
+	}
+
+	tagSpec := ec2Types.TagSpecification{
+		ResourceType: ec2Types.ResourceTypeInstance,
+		Tags:         tagList,
+	}
+
+	return []ec2Types.TagSpecification{tagSpec}
+}
+
+func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instanceCount int, vpcSubnetID, userdata string, tags map[string]string) (ec2.RunInstancesOutput, error) {
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
 		ImageId:      aws.String(amiID),
@@ -56,7 +100,8 @@ func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instan
 				SubnetId:                 aws.String(vpcSubnetID),
 			},
 		},
-		UserData: aws.String(userdata),
+		UserData:          aws.String(userdata),
+		TagSpecifications: buildTags(tags),
 	}
 	// Finally, we make our request
 	instanceResp, err := ec2Client.RunInstances(context.TODO(), &instanceReq)
@@ -210,9 +255,18 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		fmt.Printf("Unable to generate UserData file: %s\n", err.Error())
 		return err
 	}
+	// If a cloud image wasn't provided by the caller,
+	if cloudImageID == "" {
+		// use defaultAmi for the region instead
+		cloudImageID = defaultAmi[c.region]
+
+		if cloudImageID == "" {
+			return fmt.Errorf("No default AMI found for region %s ", c.region)
+		}
+	}
 
 	// Create an ec2 instance
-	instance, err := createEC2Instance(c.ec2Client, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData)
+	instance, err := createEC2Instance(c.ec2Client, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData, c.tags)
 	if err != nil {
 		fmt.Printf("Unable to create EC2 Instance: %s\n", err.Error())
 		return err

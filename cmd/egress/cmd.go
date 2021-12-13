@@ -10,17 +10,22 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
+var defaultTags = map[string]string{
+	"osd-network-verifier": "owned",
+}
+
 func NewCmdValidateEgress(streams genericclioptions.IOStreams) *cobra.Command {
 	var vpcSubnetID string
 	var cloudImageID string
+	var cloudTags map[string]string
 
 	validateEgressCmd := &cobra.Command{
 		Use: "egress",
 		Run: func(cmd *cobra.Command, args []string) {
 			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 			region := os.Getenv("AWS_DEFAULT_REGION")
-			cli, err := cloudclient.NewClient(creds, region)
 
+			cli, err := cloudclient.NewClient(creds, region, cloudTags)
 			if err != nil {
 				streams.ErrOut.Write([]byte(err.Error()))
 				os.Exit(1)
@@ -39,8 +44,8 @@ func NewCmdValidateEgress(streams genericclioptions.IOStreams) *cobra.Command {
 
 	validateEgressCmd.Flags().StringVar(&vpcSubnetID, "subnet-id", "", "ID of the source subnet")
 	validateEgressCmd.Flags().StringVar(&cloudImageID, "image-id", "", "ID of cloud image")
+	validateEgressCmd.Flags().StringToStringVar(&cloudTags, "cloud-tags", defaultTags, "Comma-seperated list of tags to assign to cloud resources")
 	validateEgressCmd.MarkFlagRequired("subnet-id")
-	validateEgressCmd.MarkFlagRequired("image-id")
 
 	return validateEgressCmd
 

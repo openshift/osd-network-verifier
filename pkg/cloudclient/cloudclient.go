@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
+	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
+	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
 
@@ -23,12 +24,12 @@ type CloudClient interface {
 	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error
 }
 
-func NewClient(creds interface{}, region string) (CloudClient, error) {
+func NewClient(creds interface{}, region string, tags map[string]string) (CloudClient, error) {
 	switch c := creds.(type) {
-	case credentials.StaticCredentialsProvider:
-		return awsCloudClient.NewClient(c, region)
+	case awscredsv1.Credentials, awscredsv2.StaticCredentialsProvider:
+		return awsCloudClient.NewClient(c, region, tags)
 	case *google.Credentials:
-		return gcpCloudClient.NewClient(c, region)
+		return gcpCloudClient.NewClient(c, region, tags)
 	default:
 		return nil, fmt.Errorf("unsupported credentials type %T", c)
 	}

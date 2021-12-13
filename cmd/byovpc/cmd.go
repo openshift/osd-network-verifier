@@ -16,7 +16,8 @@ func NewCmdByovpc(streams genericclioptions.IOStreams) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 			region := os.Getenv("AWS_DEFAULT_REGION")
-			cli, err := cloudclient.NewClient(creds, region)
+			tags := map[string]string{}
+			cli, err := cloudclient.NewClient(creds, region, tags)
 
 			err = cli.ByoVPCValidator(context.TODO())
 			if err != nil {
