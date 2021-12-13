@@ -226,12 +226,16 @@ func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string)
 				// unable to decode output. we will try again
 				return false, nil
 			}
+
+			// If debug logging is enabled, output the full console log
+			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
+
 			re := regexp.MustCompile(`Unable to reach (\S+)`)
 			match = re.FindAllString(string(scriptOutput), -1)
 
 			return true, nil
 		}
-		c.logger.Debug(ctx, "waiting for UserData script to complete")
+		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
 		return false, nil
 	})
 	return match, err
@@ -257,6 +261,8 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		err = fmt.Errorf("Unable to generate UserData file: %s", err.Error())
 		return err
 	}
+	c.logger.Debug(ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
+
 	// If a cloud image wasn't provided by the caller,
 	if cloudImageID == "" {
 		// use defaultAmi for the region instead
