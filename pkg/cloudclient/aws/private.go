@@ -46,6 +46,7 @@ var (
 		"af-south-1":     "",
 		"me-south-1":     "",
 	}
+	userdataEndVerifier string = "USERDATA END"
 )
 
 func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region string, tags map[string]string) (*Client, error) {
@@ -207,7 +208,7 @@ func generateUserData() (string, error) {
 	// TODO find a location for future docker images
 	data.WriteString("sudo docker pull docker.io/tiwillia/network-validator-test:v0.1\n")
 	data.WriteString("sudo docker run docker.io/tiwillia/network-validator-test:v0.1\n")
-	data.WriteString("echo 'USERDATA END' \n")
+	data.WriteString(fmt.Sprintf(`echo "%s"`, userdataEndVerifier) + "\n")
 
 	userData := base64.StdEncoding.EncodeToString([]byte(data.String()))
 
@@ -217,26 +218,39 @@ func generateUserData() (string, error) {
 func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string) ([]string, error) {
 	var match []string
 
+	// Compile the regular expressions once
+	reVerify := regexp.MustCompile(userdataEndVerifier)
+	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
+
 	err := wait.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{InstanceId: &instanceID})
 		if err == nil && output.Output != nil {
-			// Find unreachable targets from output
+			// First, gather the ec2 console output
 			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
 			if err != nil {
 				// unable to decode output. we will try again
+				c.logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
 				return false, nil
 			}
 
-			// If debug logging is enabled, output the full console log
+			// In the early stages, an ec2 instance may be running but the console is not populated with any data, retry if that is the case
+			if len(scriptOutput) < 1 {
+				c.logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
+				return false, nil
+			}
+
+			// Check for the specific string we output in the gerated userdata file at the end to verify the userdata script has run
+			// It is possible we get EC2 console output, but the userdata script has not yet completed.
+			verifyMatch := reVerify.FindString(string(scriptOutput))
+			if len(verifyMatch) < 1 {
+				c.logger.Debug(ctx, "EC2 console output contains data, but end of userdata script not seen, continuing to wait...")
+				return false, nil
+			}
+
+			// If debug logging is enabled, output the full console log that appears to include the full userdata run
 			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
 
-			if !strings.Contains(string(scriptOutput), "USERDATA END") {
-				c.logger.Debug(ctx, "the UserData script isn't quite done running")
-				return false, nil
-			}
-
-			re := regexp.MustCompile(`Unable to reach (\S+)`)
-			match = re.FindAllString(string(scriptOutput), -1)
+			match = reUnreachableErrors.FindAllString(string(scriptOutput), -1)
 
 			return true, nil
 		}
