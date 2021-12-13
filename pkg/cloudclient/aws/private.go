@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -47,8 +48,8 @@ var (
 	}
 )
 
-func newClient(accessID, accessSecret, sessiontoken, region string, tags map[string]string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
+func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region string, tags map[string]string) (*Client, error) {
+	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
 			Value: aws.Credentials{
@@ -64,6 +65,7 @@ func newClient(accessID, accessSecret, sessiontoken, region string, tags map[str
 		ec2Client: ec2.NewFromConfig(cfg),
 		region:    region,
 		tags:      tags,
+		logger:    logger,
 	}, nil
 }
 
@@ -85,7 +87,7 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 	return []ec2Types.TagSpecification{tagSpec}
 }
 
-func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instanceCount int, vpcSubnetID, userdata string, tags map[string]string) (ec2.RunInstancesOutput, error) {
+func (c Client) createEC2Instance(ctx context.Context, amiID, instanceType string, instanceCount int, vpcSubnetID, userdata string, tags map[string]string) (ec2.RunInstancesOutput, error) {
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
 		ImageId:      aws.String(amiID),
@@ -104,20 +106,20 @@ func createEC2Instance(ec2Client *ec2.Client, amiID, instanceType string, instan
 		TagSpecifications: buildTags(tags),
 	}
 	// Finally, we make our request
-	instanceResp, err := ec2Client.RunInstances(context.TODO(), &instanceReq)
+	instanceResp, err := c.ec2Client.RunInstances(ctx, &instanceReq)
 	if err != nil {
 		return ec2.RunInstancesOutput{}, err
 	}
 
 	for _, i := range instanceResp.Instances {
-		fmt.Println("Created instance with ID:", *i.InstanceId)
+		c.logger.Info(ctx, "Created instance with ID: %s", *i.InstanceId)
 	}
 
 	return *instanceResp, nil
 }
 
 // Returns state code as int
-func describeEC2Instances(client *ec2.Client, instanceID string) (int, error) {
+func (c Client) describeEC2Instances(ctx context.Context, instanceID string) (int, error) {
 	// States and codes
 	// 0 : pending
 	// 16 : running
@@ -126,12 +128,12 @@ func describeEC2Instances(client *ec2.Client, instanceID string) (int, error) {
 	// 64 : stopping
 	// 80 : stopped
 	// 401 : failed
-	result, err := client.DescribeInstanceStatus(context.TODO(), &ec2.DescribeInstanceStatusInput{
+	result, err := c.ec2Client.DescribeInstanceStatus(ctx, &ec2.DescribeInstanceStatusInput{
 		InstanceIds: []string{instanceID},
 	})
 
 	if err != nil {
-		fmt.Printf("Errors while describing the instance status: %s\n", err.Error())
+		c.logger.Error(ctx, "Errors while describing the instance status: %s", err.Error())
 		if aerr, ok := err.(awserr.Error); ok {
 			if aerr.Code() == "UnauthorizedOperation" {
 				return 401, err
@@ -148,14 +150,14 @@ func describeEC2Instances(client *ec2.Client, instanceID string) (int, error) {
 		// Don't return an error here as if the instance is still too new, it may not be
 		// returned at all.
 		//return 0, errors.New("no EC2 instances found")
-		fmt.Printf("Instance %s has no status yet\n", instanceID)
+		c.logger.Debug(ctx, "Instance %s has no status yet", instanceID)
 		return 0, nil
 	}
 
 	return int(*result.InstanceStatuses[0].InstanceState.Code), nil
 }
 
-func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) error {
+func (c Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
 	//wait for the instance to run
 	totalWait := 25 * 60
 	currentWait := 1
@@ -167,7 +169,7 @@ func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) erro
 		}
 		totalWait -= currentWait
 		time.Sleep(time.Duration(currentWait) * time.Second)
-		code, descError := describeEC2Instances(ec2Client, instanceID)
+		code, descError := c.describeEC2Instances(ctx, instanceID)
 		if code == 16 { // 16 represents a successful region initialization
 			// Instance is running, break
 			break
@@ -188,7 +190,7 @@ func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) erro
 		}
 	}
 
-	fmt.Printf("EC2 Instance: %s Running\n", instanceID)
+	c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
 	return nil
 }
 
@@ -212,11 +214,11 @@ func generateUserData() (string, error) {
 	return userData, nil
 }
 
-func findUnreachableEndpoints(ec2Client *ec2.Client, instanceID string) ([]string, error) {
+func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string) ([]string, error) {
 	var match []string
 
 	err := wait.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
-		output, err := ec2Client.GetConsoleOutput(context.TODO(), &ec2.GetConsoleOutputInput{InstanceId: &instanceID})
+		output, err := c.ec2Client.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{InstanceId: &instanceID})
 		if err == nil && output.Output != nil {
 			// Find unreachable targets from output
 			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
@@ -229,19 +231,19 @@ func findUnreachableEndpoints(ec2Client *ec2.Client, instanceID string) ([]strin
 
 			return true, nil
 		}
-		fmt.Print("waiting for UserData script to complete\n")
+		c.logger.Debug(ctx, "waiting for UserData script to complete")
 		return false, nil
 	})
 	return match, err
 }
 
-func terminateEC2Instance(ec2Client *ec2.Client, instanceID string) error {
+func (c Client) terminateEC2Instance(ctx context.Context, instanceID string) error {
 	input := ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
-	_, err := ec2Client.TerminateInstances(context.TODO(), &input)
+	_, err := c.ec2Client.TerminateInstances(ctx, &input)
 	if err != nil {
-		fmt.Printf("Unable to terminate EC2 instance: %s\n", err.Error())
+		c.logger.Error(ctx, "Unable to terminate EC2 instance: %s", err.Error())
 		return err
 	}
 
@@ -252,7 +254,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	// Generate the userData file
 	userData, err := generateUserData()
 	if err != nil {
-		fmt.Printf("Unable to generate UserData file: %s\n", err.Error())
+		err = fmt.Errorf("Unable to generate UserData file: %s", err.Error())
 		return err
 	}
 	// If a cloud image wasn't provided by the caller,
@@ -266,30 +268,30 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 
 	// Create an ec2 instance
-	instance, err := createEC2Instance(c.ec2Client, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData, c.tags)
+	instance, err := c.createEC2Instance(ctx, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData, c.tags)
 	if err != nil {
-		fmt.Printf("Unable to create EC2 Instance: %s\n", err.Error())
+		err = fmt.Errorf("Unable to create EC2 Instance: %s", err.Error())
 		return err
 	}
 	instanceID := *instance.Instances[0].InstanceId
 
 	// Wait for the ec2 instance to be running
-	fmt.Printf("Waiting for EC2 instance %s to be running\n", instanceID)
-	err = waitForEC2InstanceCompletion(c.ec2Client, instanceID)
+	c.logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
+	err = c.waitForEC2InstanceCompletion(ctx, instanceID)
 	if err != nil {
-		fmt.Printf("Error while waiting for EC2 instance to start: %s\n", err.Error())
+		err = fmt.Errorf("Error while waiting for EC2 instance to start: %s", err.Error())
 		return err
 	}
-	fmt.Println("Gather and parse console log output")
-	unreachableEndpoints, err := findUnreachableEndpoints(c.ec2Client, instanceID)
+	c.logger.Info(ctx, "Gathering and parsing console log output...")
+	unreachableEndpoints, err := c.findUnreachableEndpoints(ctx, instanceID)
 	if err != nil {
-		fmt.Printf("Error parsing output from console log: %s\n", err.Error())
+		c.logger.Error(ctx, "Error parsing output from console log: %s", err.Error())
 		return err
 	}
 
-	fmt.Println("Terminating instance")
-	if err := terminateEC2Instance(c.ec2Client, instanceID); err != nil {
-		fmt.Printf("Error terminating instances: %s\n", err.Error())
+	c.logger.Info(ctx, "Terminating ec2 instance with id %s", instanceID)
+	if err := c.terminateEC2Instance(ctx, instanceID); err != nil {
+		err = fmt.Errorf("Error terminating instances: %s", err.Error())
 		return err
 	}
 	if len(unreachableEndpoints) > 0 {
