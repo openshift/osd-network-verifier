@@ -90,7 +90,6 @@ endpoints:
   - host: iam.amazonaws.com
     ports:
       - 443
-      - 80
   - host: route53.amazonaws.com
     ports:
       - 443
@@ -113,7 +112,7 @@ endpoints:
       - 443
   - host: sftp.access.redhat.com
     ports:
-      - 443
+      - 22
   - host: inputs1.osdsecuritylogs.splunkcloud.com
     ports:
       - 443

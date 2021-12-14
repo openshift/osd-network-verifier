@@ -23,7 +23,7 @@ var (
 	instanceCount int    = 1
 	defaultAmi           = map[string]string{
 		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
-		"us-east-1":      "ami-0ed9277fb7eb570c",
+		"us-east-1":      "ami-0ed9277fb7eb570c9",
 		"us-east-2":      "ami-002068ed284fb165b",
 		"us-west-1":      "ami-03af6a70ccd8cb578",
 		"us-west-2":      "ami-00f7e5c52c0f43726",
@@ -195,17 +195,17 @@ func waitForEC2InstanceCompletion(ec2Client *ec2.Client, instanceID string) erro
 func generateUserData() (string, error) {
 	var data strings.Builder
 	data.Grow(351)
-	data.WriteString("#!/bin/bash -xe\n")
+	data.WriteString("#!/bin/bash\n")
 	data.WriteString("exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1\n")
 
-	data.WriteString(`echo "USERDATA BEGIN"` + "\n")
-	data.WriteString("sudo yum update -y\n")
-	data.WriteString("sudo amazon-linux-extras install docker\n")
+	data.WriteString("echo 'USERDATA BEGIN' \n")
+	data.WriteString("sudo yum update -y -q -e 0\n")
+	data.WriteString("sudo yum install -y docker -q -e 0\n")
 	data.WriteString("sudo service docker start\n")
 	// TODO find a location for future docker images
 	data.WriteString("sudo docker pull docker.io/tiwillia/network-validator-test:v0.1\n")
 	data.WriteString("sudo docker run docker.io/tiwillia/network-validator-test:v0.1\n")
-	data.WriteString(`echo "USERDATA END"` + "\n")
+	data.WriteString("echo 'USERDATA END' \n")
 
 	userData := base64.StdEncoding.EncodeToString([]byte(data.String()))
 
@@ -224,6 +224,12 @@ func findUnreachableEndpoints(ec2Client *ec2.Client, instanceID string) ([]strin
 				// unable to decode output. we will try again
 				return false, nil
 			}
+
+			if !strings.Contains(string(scriptOutput), "USERDATA END") {
+				fmt.Print("the UserData script isn't quite done running")
+				return false, nil
+			}
+
 			re := regexp.MustCompile(`Unable to reach (\S+)`)
 			match = re.FindAllString(string(scriptOutput), -1)
 
