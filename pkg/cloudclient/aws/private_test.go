@@ -41,7 +41,9 @@ func  TestCreateEC2Instance( t *testing.T){
 
 	ec2 := &mockedEC2{
 		RunInstancesMethod: func(*ec2.RunInstancesInput)  (*ec2.RunInstancesOutput, error) {
-			return &ec2.RunInstancesOutput{}, nil 
+
+			return &ec2.RunInstancesOutput{}, nil
+
 		},
 	}
 	_  , err := ec2.RunInstances(&instanceReq)
