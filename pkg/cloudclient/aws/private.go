@@ -20,7 +20,8 @@ import (
 )
 
 var (
-	instanceType  string = "t2.micro"
+	// NOTE a "nitro" EC2 instance type is required to be used
+	instanceType  string = "t3.micro"
 	instanceCount int    = 1
 	defaultAmi           = map[string]string{
 		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
@@ -207,7 +208,8 @@ func generateUserData() (string, error) {
 	data.WriteString("sudo service docker start\n")
 	// TODO find a location for future docker images
 	data.WriteString("sudo docker pull docker.io/tiwillia/network-validator-test:v0.1\n")
-	data.WriteString("sudo docker run docker.io/tiwillia/network-validator-test:v0.1\n")
+	// Use `|| true` to ignore failure exit codes, we want the script to continue either way
+	data.WriteString("sudo docker run docker.io/tiwillia/network-validator-test:v0.1 || true\n")
 	data.WriteString(fmt.Sprintf(`echo "%s"`, userdataEndVerifier) + "\n")
 
 	userData := base64.StdEncoding.EncodeToString([]byte(data.String()))
@@ -222,8 +224,14 @@ func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string)
 	reVerify := regexp.MustCompile(userdataEndVerifier)
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 
+	latest := true
+	input := ec2.GetConsoleOutputInput{
+		InstanceId: &instanceID,
+		Latest:     &latest,
+	}
+
 	err := wait.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
-		output, err := c.ec2Client.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{InstanceId: &instanceID})
+		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err == nil && output.Output != nil {
 			// First, gather the ec2 console output
 			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
