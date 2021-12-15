@@ -36,7 +36,14 @@ func NewCmdValidateEgress() *cobra.Command {
 			ctx := context.TODO()
 
 			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-			region := os.Getenv("AWS_DEFAULT_REGION")
+			// TODO this should probably be a command-line option that overwrites the env var
+			regionEnvVarStr := "AWS_DEFAULT_REGION"
+			regionDefault := "us-east-2"
+			region := os.Getenv(regionEnvVarStr)
+			if len(region) < 1 {
+				logger.Warn(ctx, "No region defined in %s env, defaulting to %s", regionEnvVarStr, regionDefault)
+				region = regionDefault
+			}
 
 			cli, err := cloudclient.NewClient(ctx, logger, creds, region, cloudTags)
 			if err != nil {
