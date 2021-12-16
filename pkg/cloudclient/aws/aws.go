@@ -16,10 +16,11 @@ const ClientIdentifier configv1.PlatformType = configv1.AWSPlatformType
 
 // Client represents an AWS Client
 type Client struct {
-	ec2Client *ec2.Client
-	region    string
-	tags      map[string]string
-	logger    ocmlog.Logger
+	ec2Client    *ec2.Client
+	region       string
+	instanceType string
+	tags         map[string]string
+	logger       ocmlog.Logger
 }
 
 func (c *Client) ByoVPCValidator(ctx context.Context) error {
@@ -28,7 +29,7 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 }
 
 // NewClient creates a new CloudClient for use with AWS.
-func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region string, tags map[string]string) (client *Client, err error) {
+func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (client *Client, err error) {
 
 	switch c := creds.(type) {
 	case awscredsv1.Credentials:
@@ -40,6 +41,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 				value.SecretAccessKey,
 				value.SessionToken,
 				region,
+				instanceType,
 				tags,
 			)
 		}
@@ -51,6 +53,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 			c.Value.SecretAccessKey,
 			c.Value.SessionToken,
 			region,
+			instanceType,
 			tags,
 		)
 	default:
@@ -58,7 +61,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("couldn't create AWS client %w", err)
+		return nil, fmt.Errorf("Unable to create AWS client: %w", err)
 	}
 
 	return

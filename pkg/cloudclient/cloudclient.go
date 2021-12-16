@@ -25,12 +25,12 @@ type CloudClient interface {
 	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region string, tags map[string]string) (CloudClient, error) {
+func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {
 	switch c := creds.(type) {
 	case awscredsv1.Credentials, awscredsv2.StaticCredentialsProvider:
-		return awsCloudClient.NewClient(ctx, logger, c, region, tags)
+		return awsCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
 	case *google.Credentials:
-		return gcpCloudClient.NewClient(ctx, logger, c, region, tags)
+		return gcpCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
 	default:
 		return nil, fmt.Errorf("unsupported credentials type %T", c)
 	}

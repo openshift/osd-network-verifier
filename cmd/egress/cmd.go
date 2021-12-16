@@ -17,6 +17,15 @@ var (
 	regionDefault   string = "us-east-2"
 )
 
+type egressConfig struct {
+	vpcSubnetID  string
+	cloudImageID string
+	instanceType string
+	cloudTags    map[string]string
+	debug        bool
+	region       string
+}
+
 func getDefaultRegion() string {
 	val, present := os.LookupEnv(regionEnvVarStr)
 	if present {
@@ -25,20 +34,15 @@ func getDefaultRegion() string {
 		return regionDefault
 	}
 }
-
 func NewCmdValidateEgress() *cobra.Command {
-	var vpcSubnetID string
-	var cloudImageID string
-	var cloudTags map[string]string
-	var debug bool
-	var region string
+	config := egressConfig{}
 
 	validateEgressCmd := &cobra.Command{
 		Use: "egress",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create logger
 			builder := ocmlog.NewStdLoggerBuilder()
-			builder.Debug(debug)
+			builder.Debug(config.debug)
 			logger, err := builder.Build()
 			if err != nil {
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
@@ -49,13 +53,13 @@ func NewCmdValidateEgress() *cobra.Command {
 
 			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 
-			logger.Warn(ctx, "Using region: %s", region)
-			cli, err := cloudclient.NewClient(ctx, logger, creds, region, cloudTags)
+			logger.Warn(ctx, "Using region: %s", config.region)
+			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)
 			}
-			err = cli.ValidateEgress(ctx, vpcSubnetID, cloudImageID)
+			err = cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID)
 
 			if err != nil {
 				logger.Error(ctx, err.Error())
@@ -67,11 +71,13 @@ func NewCmdValidateEgress() *cobra.Command {
 		},
 	}
 
-	validateEgressCmd.Flags().StringVar(&vpcSubnetID, "subnet-id", "", "ID of the source subnet")
-	validateEgressCmd.Flags().StringVar(&cloudImageID, "image-id", "", "ID of cloud image")
-	validateEgressCmd.Flags().StringVar(&region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&cloudTags, "cloud-tags", defaultTags, "Comma-seperated list of tags to assign to cloud resources")
-	validateEgressCmd.Flags().BoolVar(&debug, "debug", false, "If true, enable additional debug-level logging")
+	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "ID of the source subnet")
+	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "ID of cloud image")
+	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "t3.micro", "Instance type of the compute instance egress tests are run from")
+	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
+	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "Comma-seperated list of tags to assign to cloud resources")
+	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "If true, enable additional debug-level logging")
+
 	validateEgressCmd.MarkFlagRequired("subnet-id")
 
 	return validateEgressCmd

@@ -21,10 +21,8 @@ import (
 )
 
 var (
-	// NOTE a "nitro" EC2 instance type is required to be used
-	instanceType  string = "t3.micro"
-	instanceCount int    = 1
-	defaultAmi           = map[string]string{
+	instanceCount int = 1
+	defaultAmi        = map[string]string{
 		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
 		"us-east-1":      "ami-0ed9277fb7eb570c9",
 		"us-east-2":      "ami-002068ed284fb165b",
@@ -53,7 +51,7 @@ var (
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region string, tags map[string]string) (*Client, error) {
+func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region, instanceType string, tags map[string]string) (*Client, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
@@ -66,12 +64,21 @@ func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret
 		return nil, err
 	}
 
-	return &Client{
-		ec2Client: ec2.NewFromConfig(cfg),
-		region:    region,
-		tags:      tags,
-		logger:    logger,
-	}, nil
+	c := &Client{
+		ec2Client:    ec2.NewFromConfig(cfg),
+		region:       region,
+		instanceType: instanceType,
+		tags:         tags,
+		logger:       logger,
+	}
+
+	// Validates the provided instance type will work with the verifier
+	// NOTE a "nitro" EC2 instance type is required to be used
+	if err := c.validateInstanceType(ctx); err != nil {
+		return nil, fmt.Errorf("Instance type %s is invalid: %s", c.instanceType, err)
+	}
+
+	return c, nil
 }
 
 func buildTags(tags map[string]string) []ec2Types.TagSpecification {
@@ -92,13 +99,51 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 	return []ec2Types.TagSpecification{tagSpec}
 }
 
-func (c Client) createEC2Instance(ctx context.Context, amiID, instanceType string, instanceCount int, vpcSubnetID, userdata string, tags map[string]string) (ec2.RunInstancesOutput, error) {
+func (c Client) validateInstanceType(ctx context.Context) error {
+	// Describe the provided instance type only
+	//      https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
+	descInput := ec2.DescribeInstanceTypesInput{
+		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.instanceType)},
+	}
+
+	c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.instanceType)
+	descOut, err := c.ec2Client.DescribeInstanceTypes(ctx, &descInput)
+	if err != nil {
+		// Check for invalid instance type error and return a cleaner error
+		re := regexp.MustCompile("400.*api error InvalidInstanceType")
+		if re.Match([]byte(err.Error())) {
+			err = fmt.Errorf("Instance type %s does not exist", c.instanceType)
+		}
+		return fmt.Errorf("Unable to gather list of supported instance types from EC2: %s", err)
+	}
+	c.logger.Debug(ctx, "Full describe instance types output contains %d instance types", len(descOut.InstanceTypes))
+
+	found := false
+	for _, t := range descOut.InstanceTypes {
+		if string(t.InstanceType) == c.instanceType {
+			found = true
+			if t.Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
+				return fmt.Errorf("Instance type must use hypervisor type 'nitro' to support reliable result collection")
+			}
+			c.logger.Debug(ctx, "Instance type %s has hypervisor %s", c.instanceType, t.Hypervisor)
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("Instance type %s not found in EC2 API", c.instanceType)
+	}
+
+	return nil
+}
+
+func (c Client) createEC2Instance(ctx context.Context, amiID string, instanceCount int, vpcSubnetID, userdata string, tags map[string]string) (ec2.RunInstancesOutput, error) {
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
 		ImageId:      aws.String(amiID),
 		MaxCount:     aws.Int32(int32(instanceCount)),
 		MinCount:     aws.Int32(int32(instanceCount)),
-		InstanceType: ec2Types.InstanceType(instanceType),
+		InstanceType: ec2Types.InstanceType(c.instanceType),
 		// Because we're making this VPC aware, we also have to include a network interface specification
 		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{
 			{
@@ -304,7 +349,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 
 	// Create an ec2 instance
-	instance, err := c.createEC2Instance(ctx, cloudImageID, instanceType, instanceCount, vpcSubnetID, userData, c.tags)
+	instance, err := c.createEC2Instance(ctx, cloudImageID, instanceCount, vpcSubnetID, userData, c.tags)
 	if err != nil {
 		err = fmt.Errorf("Unable to create EC2 Instance: %s", err.Error())
 		return err
