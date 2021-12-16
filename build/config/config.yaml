@@ -83,21 +83,15 @@ endpoints:
     ports:
       - 443
       - 80
-  - host: events.amazonaws.com
-    ports:
-      - 443
-      - 80
   - host: iam.amazonaws.com
     ports:
       - 443
   - host: route53.amazonaws.com
     ports:
       - 443
-      - 80
   - host: sts.amazonaws.com
     ports:
       - 443
-      - 80
   - host: api.pagerduty.com
     ports:
       - 443
@@ -115,7 +109,21 @@ endpoints:
       - 22
   - host: inputs1.osdsecuritylogs.splunkcloud.com
     ports:
+      - 9997
+  - host: http-inputs-osdsecuritylogs.splunkcloud.com
+    ports:
       - 443
   - host: observatorium.api.openshift.com
+    ports:
+      - 443
+  - host: ec2.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+      - 80
+  - host: elasticloadbalancing.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+      - 80
+  - host: events.${AWS_REGION}.amazonaws.com
     ports:
       - 443
