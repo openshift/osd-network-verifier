@@ -13,9 +13,9 @@ import (
 
 func TestByoVPCValidator(t *testing.T) {
 	ctx := context.TODO()
-	mock := mock_cloudclient.NewMockCloudClient(gomock.NewController(t))
-	mock.EXPECT().ByoVPCValidator(ctx).Return(nil)
-	err := mock.ByoVPCValidator(ctx)
+	logger := &ocmlog.StdLogger{}
+	client := &Client{logger: logger}
+	err := client.ByoVPCValidator(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -35,10 +35,7 @@ func TestValidateEgress(t *testing.T) {
 
 func TestNewClient(t *testing.T) {
 	ctx := context.TODO()
-	logger, err := ocmlog.NewStdLoggerBuilder().Error(true).Debug(true).Build()
-	if err != nil {
-		println("unexpected error creating logger: %v", err)
-	}
+	logger := &ocmlog.StdLogger{}
 	credentials := &google.Credentials{ProjectID: "my-sample-project-191923"}
 	region := "superstable-region1-z"
 	tags := map[string]string{"osd-network-verifier": "owned"}
