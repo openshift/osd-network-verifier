@@ -28,7 +28,9 @@ func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
 	if err != nil {
 		return err
 	}
-	err = yaml.Unmarshal([]byte(buf), c)
+	// expand environment variables
+	buf = []byte(os.ExpandEnv(string(buf)))
+	err = yaml.Unmarshal(buf, c)
 	if err != nil {
 		return err
 	}
@@ -58,16 +60,11 @@ func TestEndpoints(config reachabilityConfig) {
 	// need to validate any CDN such as `cdn01.quay.io` should be available?
 	//  We don't need to. We just best-effort check what we can.
 
-	// TODO we need a way to test the <aws_region> URLs:
-	// ec2.<aws_region>.amazonaws.com
-	// elasticloadbalancing.<aws_region>.amazonaws.com
-
 	failures := []error{}
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
 			err := ValidateReachability(e.Host, port)
 			if err != nil {
-				fmt.Println(err)
 				failures = append(failures, err)
 			}
 		}

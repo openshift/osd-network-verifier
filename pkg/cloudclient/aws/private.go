@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
+
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -47,7 +48,9 @@ var (
 		"af-south-1":     "",
 		"me-south-1":     "",
 	}
-	userdataEndVerifier string = "USERDATA END"
+	// TODO find a location for future docker images
+	networkValidatorImage string = "quay.io/bngoy/osd-network-verifier:1"
+	userdataEndVerifier   string = "USERDATA END"
 )
 
 func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region string, tags map[string]string) (*Client, error) {
@@ -196,25 +199,17 @@ func (c Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID str
 	return nil
 }
 
-func generateUserData() (string, error) {
-	var data strings.Builder
-	data.Grow(351)
-	data.WriteString("#!/bin/bash\n")
-	data.WriteString("exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1\n")
+func generateUserData(variables map[string]string) (string, error) {
+	template, err := os.ReadFile("config/userdata.yaml")
+	if err != nil {
+		return "", err
+	}
+	variableMapper := func(varName string) string {
+		return variables[varName]
+	}
+	data := os.Expand(string(template), variableMapper)
 
-	data.WriteString("echo 'USERDATA BEGIN' \n")
-	data.WriteString("sudo yum update -y -q -e 0\n")
-	data.WriteString("sudo yum install -y docker -q -e 0\n")
-	data.WriteString("sudo service docker start\n")
-	// TODO find a location for future docker images
-	data.WriteString("sudo docker pull docker.io/tiwillia/network-validator-test:v0.1\n")
-	// Use `|| true` to ignore failure exit codes, we want the script to continue either way
-	data.WriteString("sudo docker run docker.io/tiwillia/network-validator-test:v0.1 || true\n")
-	data.WriteString(fmt.Sprintf(`echo "%s"`, userdataEndVerifier) + "\n")
-
-	userData := base64.StdEncoding.EncodeToString([]byte(data.String()))
-
-	return userData, nil
+	return base64.StdEncoding.EncodeToString([]byte(data)), nil
 }
 
 func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string) ([]string, error) {
@@ -283,7 +278,15 @@ func (c Client) terminateEC2Instance(ctx context.Context, instanceID string) err
 
 func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
 	// Generate the userData file
-	userData, err := generateUserData()
+	userDataVariables := map[string]string{
+		"AWS_REGION":               c.region,
+		"USERDATA_BEGIN":           "USERDATA BEGIN",
+		"USERDATA_END":             userdataEndVerifier,
+		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
+		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
+		"VALIDATOR_IMAGE":          networkValidatorImage,
+	}
+	userData, err := generateUserData(userDataVariables)
 	if err != nil {
 		err = fmt.Errorf("Unable to generate UserData file: %s", err.Error())
 		return err
