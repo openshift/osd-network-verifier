@@ -17,6 +17,7 @@ const ClientIdentifier configv1.PlatformType = configv1.GCPPlatformType
 type Client struct {
 	projectID      string
 	region         string
+	instanceType   string
 	computeService *computev1.Service
 	tags           map[string]string
 	logger         ocmlog.Logger
@@ -31,12 +32,12 @@ func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	return nil
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region string, tags map[string]string) (*Client, error) {
+func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	// initialize actual client
-	return newClient(ctx, logger, credentials, region, tags)
+	return newClient(ctx, logger, credentials, region, instanceType, tags)
 }
 
-func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region string, tags map[string]string) (*Client, error) {
+func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	computeService, err := computev1.NewService(ctx, option.WithCredentials(credentials))
 	if err != nil {
 		return nil, err
@@ -45,6 +46,7 @@ func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Cr
 	return &Client{
 		projectID:      credentials.ProjectID,
 		region:         region,
+		instanceType:   instanceType,
 		computeService: computeService,
 		tags:           tags,
 		logger:         logger,
