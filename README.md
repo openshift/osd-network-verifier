@@ -71,7 +71,7 @@ make build
 ```
 Execute 
 ```shell
-AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-verifier egress --subnet-id <subnet-id> --image-id=<image-id>
+AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier egress --subnet-id <subnet-id> --image-id=<image-id>
 ```
 * For `<image-id>`, use either:
     - the following public image-id: `resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 `
@@ -81,15 +81,11 @@ AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-veri
 Optionally provide a list of tags to use outside of the default:
 
 ```shell
-AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7 --cloud-tags key=value,osd-network-verifier=owned
+AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7 --cloud-tags key=value,osd-network-verifier=owned
 ```
 
 ## Other Subcommands
 
 Take a look at <https://github.com/openshift/osd-network-verifier/tree/main/cmd>
 
-## Dev
 
-```shell
-make build
-```
