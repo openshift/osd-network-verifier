@@ -2,8 +2,8 @@ package gcp
 
 import (
 	"context"
-	"fmt"
 
+	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	configv1 "github.com/openshift/api/config/v1"
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
@@ -17,12 +17,14 @@ const ClientIdentifier configv1.PlatformType = configv1.GCPPlatformType
 type Client struct {
 	projectID      string
 	region         string
+	instanceType   string
 	computeService *computev1.Service
 	tags           map[string]string
+	logger         ocmlog.Logger
 }
 
-func (c *Client) ByoVPCValidator(context.Context) error {
-	fmt.Println("interface executed: " + ClientIdentifier)
+func (c *Client) ByoVPCValidator(ctx context.Context) error {
+	c.logger.Info(ctx, "interface executed: %s", ClientIdentifier)
 	return nil
 }
 
@@ -30,13 +32,12 @@ func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	return nil
 }
 
-func NewClient(credentials *google.Credentials, region string, tags map[string]string) (*Client, error) {
-	ctx := context.Background()
+func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	// initialize actual client
-	return newClient(ctx, credentials, region, tags)
+	return newClient(ctx, logger, credentials, region, instanceType, tags)
 }
 
-func newClient(ctx context.Context, credentials *google.Credentials, region string, tags map[string]string) (*Client, error) {
+func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	computeService, err := computev1.NewService(ctx, option.WithCredentials(credentials))
 	if err != nil {
 		return nil, err
@@ -45,7 +46,9 @@ func newClient(ctx context.Context, credentials *google.Credentials, region stri
 	return &Client{
 		projectID:      credentials.ProjectID,
 		region:         region,
+		instanceType:   instanceType,
 		computeService: computeService,
 		tags:           tags,
+		logger:         logger,
 	}, nil
 }

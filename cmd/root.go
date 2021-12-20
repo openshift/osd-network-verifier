@@ -7,8 +7,6 @@ import (
 	byovpc "github.com/openshift/osd-network-verifier/cmd/byovpc"
 	"github.com/openshift/osd-network-verifier/cmd/egress"
 	"github.com/spf13/cobra"
-
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 // GitCommit is the short git commit hash from the environment
@@ -18,7 +16,7 @@ var GitCommit string
 var Version string
 
 // NewCmdRoot represents the base command when called without any subcommands
-func NewCmdRoot(streams genericclioptions.IOStreams) *cobra.Command {
+func NewCmdRoot() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:               "osd-network-verifier",
 		Version:           fmt.Sprintf("%s, GitCommit: %s", Version, GitCommit),
@@ -31,8 +29,8 @@ func NewCmdRoot(streams genericclioptions.IOStreams) *cobra.Command {
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
 	// add sub commands
-	rootCmd.AddCommand(byovpc.NewCmdByovpc(streams))
-	rootCmd.AddCommand(egress.NewCmdValidateEgress(streams))
+	rootCmd.AddCommand(byovpc.NewCmdByovpc())
+	rootCmd.AddCommand(egress.NewCmdValidateEgress())
 
 	return rootCmd
 }

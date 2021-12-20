@@ -12,13 +12,13 @@ GOFLAGS=-mod=mod
 
 .PHONY: build
 build:
-	$(GOFLAGS) go fmt ./...
-	$(GOFLAGS) go mod tidy
-	$(GOFLAGS) go build .
+	go fmt ./...
+	go mod tidy
+	go build $(GOFLAGS) .
 
 .PHONY: test
-test: 
-	$(GOFLAGS) go test 
+test:
+	go test $(GOFLAGS)
 
 .PHONY: build-push
 build-push:
