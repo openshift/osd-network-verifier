@@ -16,11 +16,22 @@ const ClientIdentifier configv1.PlatformType = configv1.AWSPlatformType
 
 // Client represents an AWS Client
 type Client struct {
-	ec2Client    *ec2.Client
+	ec2Client    EC2Client
 	region       string
 	instanceType string
 	tags         map[string]string
 	logger       ocmlog.Logger
+}
+
+// Extend EC2Client so that we can mock them all for testing
+// to re-generate mockfile once another interface is added for testing:
+// mockgen -source=pkg/cloudclient/aws/aws.go -package mocks -destination=pkg/cloudclient/mocks/mock_aws.go
+type EC2Client interface {
+	RunInstances(ctx context.Context, params *ec2.RunInstancesInput, optFns ...func(*ec2.Options)) (*ec2.RunInstancesOutput, error)
+	DescribeInstanceStatus(ctx context.Context, input *ec2.DescribeInstanceStatusInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceStatusOutput, error)
+	DescribeInstanceTypes(ctx context.Context, input *ec2.DescribeInstanceTypesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceTypesOutput, error)
+	GetConsoleOutput(ctx context.Context, input *ec2.GetConsoleOutputInput, optFns ...func(*ec2.Options)) (*ec2.GetConsoleOutputOutput, error)
+	TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput, optFns ...func(*ec2.Options)) (*ec2.TerminateInstancesOutput, error)
 }
 
 func (c *Client) ByoVPCValidator(ctx context.Context) error {

@@ -14,7 +14,7 @@ import (
 )
 
 // CloudClient defines the interface for a cloud agnostic implementation
-// For mocking: mockgen -source=pkg/cloudclient/cloudclient.go -destination=pkg/cloudclient/mock_cloudclient/mock_cloudclient.go
+// For mocking: mockgen -source=pkg/cloudclient/cloudclient.go -package mocks -destination=pkg/cloudclient/mocks/mock_cloudclient.go
 type CloudClient interface {
 
 	// ByoVPCValidator validates the configuration given by the customer
