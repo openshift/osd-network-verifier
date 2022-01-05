@@ -78,7 +78,11 @@ func TestEndpoints(config reachabilityConfig) {
 	for _, f := range failures {
 		fmt.Println(f)
 	}
-	os.Exit(1)
+	// NOTE even though not all endpoints were reachable, the script still completed successfully. To ensure
+	// the docker image run doesn't abort when not all endpoints are reachable, we exit with a 0 code here.
+	// This may make it difficult when directly using the script to rely on the exit code to determine if
+	// endpoints were reachable or not, but there is not a use case for that as of this writing.
+	os.Exit(0)
 }
 
 func ValidateReachability(host string, port int) error {
