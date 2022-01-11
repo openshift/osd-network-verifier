@@ -18,7 +18,7 @@ build:
 
 .PHONY: test
 test:
-	go test $(GOFLAGS)
+	go test $(GOFLAGS) ./...
 
 .PHONY: build-push
 build-push:
