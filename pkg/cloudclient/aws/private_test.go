@@ -30,7 +30,7 @@ func TestCreateEC2Instance(t *testing.T) {
 		logger:    &logging.GlogLogger{},
 	}
 	out, err := cli.createEC2Instance(context.Background(), "test-ami", 1, "", "test", map[string]string{})
-	if err != nil {
+	if err == nil {
 		t.Errorf("instance should be created")
 	}
 
