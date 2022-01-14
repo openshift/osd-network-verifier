@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
@@ -24,6 +25,7 @@ type egressConfig struct {
 	cloudTags    map[string]string
 	debug        bool
 	region       string
+	timeout      time.Duration
 }
 
 func getDefaultRegion() string {
@@ -59,7 +61,7 @@ func NewCmdValidateEgress() *cobra.Command {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)
 			}
-			err = cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID)
+			err = cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.timeout)
 
 			if err != nil {
 				logger.Error(ctx, err.Error())
@@ -77,6 +79,7 @@ func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "Comma-seperated list of tags to assign to cloud resources")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "If true, enable additional debug-level logging")
+	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "Timeout for individual egress validation requests")
 
 	validateEgressCmd.MarkFlagRequired("subnet-id")
 

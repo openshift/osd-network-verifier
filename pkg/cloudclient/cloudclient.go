@@ -3,6 +3,7 @@ package cloudclient
 import (
 	"context"
 	"fmt"
+	"time"
 
 	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
 	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
@@ -22,7 +23,7 @@ type CloudClient interface {
 
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// required target are defined in https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
-	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error
+	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) error
 }
 
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {

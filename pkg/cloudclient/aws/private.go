@@ -321,7 +321,8 @@ func (c Client) terminateEC2Instance(ctx context.Context, instanceID string) err
 	return nil
 }
 
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
+func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) error {
+	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
 		"AWS_REGION":               c.region,
@@ -330,6 +331,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
 		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
 		"VALIDATOR_IMAGE":          networkValidatorImage,
+		"TIMEOUT":                  timeout.String(),
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {

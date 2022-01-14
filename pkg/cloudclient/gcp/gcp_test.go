@@ -3,6 +3,7 @@ package gcp
 import (
 	"context"
 	"testing"
+	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"golang.org/x/oauth2/google"
@@ -23,7 +24,8 @@ func TestValidateEgress(t *testing.T) {
 	subnetID := "subnet-id"
 	cloudImageID := "image-id"
 	cli := Client{}
-	err := cli.ValidateEgress(ctx, subnetID, cloudImageID)
+	timeout := 1 * time.Second
+	err := cli.ValidateEgress(ctx, subnetID, cloudImageID, timeout)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
