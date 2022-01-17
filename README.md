@@ -65,22 +65,27 @@ err = cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
 
 ### Validate egress using command line
 
+Build the cli executable 
 ```shell
-AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7
+make build
 ```
+Execute 
+```shell
+AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier egress --subnet-id <subnet-id> --image-id=<image-id>
+```
+* For `<image-id>`, use either:
+    - the following public image-id: `resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 `
+    - or select one from this list, for the region where your subnet is: [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75) 
+
 
 Optionally provide a list of tags to use outside of the default:
 
 ```shell
-AWS_ACCESS_KEY_ID=<redacted> AWS_SECRET_ACCESS_KEY=<redacted> ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7 --cloud-tags key=value,osd-network-verifier=owned
+AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7 --cloud-tags key=value,osd-network-verifier=owned
 ```
 
 ## Other Subcommands
 
 Take a look at <https://github.com/openshift/osd-network-verifier/tree/main/cmd>
 
-## Dev
 
-```shell
-make build
-```
