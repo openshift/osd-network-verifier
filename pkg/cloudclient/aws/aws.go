@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"fmt"
+	"time"
 
 	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -78,6 +79,6 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 	return
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID)
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) error {
+	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, timeout)
 }

@@ -2,6 +2,7 @@ package gcp
 
 import (
 	"context"
+	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	configv1 "github.com/openshift/api/config/v1"
@@ -28,7 +29,7 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) error {
 	return nil
 }
 

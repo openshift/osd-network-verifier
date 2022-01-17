@@ -26,4 +26,4 @@ WORKDIR /app
 COPY --from=builder /app/bin/network-validator /usr/bin/network-validator
 COPY --from=builder /app/config/ /app/config/
 
-ENTRYPOINT network-validator --config=/app/config/config.yaml --timeout=1s
+ENTRYPOINT ["network-validator", "--config=/app/config/config.yaml"]
