@@ -90,4 +90,4 @@ if image_exists_in_repo "$IMAGE_URI"; then
     exit 0
 fi
 
-make IMAGE_REPOSITORY=${IMAGE_REPOSITORY:-app-sre} build skopeo-push
+make IMAGE_REPOSITORY=${IMAGE_REPOSITORY:-app-sre} skopeo-push
