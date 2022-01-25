@@ -15,7 +15,7 @@ osd-network-verifier can be used prior to the installation of osd/rosa clusters 
     * installs appropriate packages, primarily docker
     * runs the validation image against the vpc/subnet as containerized form of <https://github.com/openshift/osd-network-verifier/tree/main/build>
         * the image is available at: https://quay.io/repository/app-sre/osd-network-verifier?tag=latest&tab=tags
-        * it can be run either locally or on an instance on the target vpc via: 
+        * it can be run locally or on an instance on the target vpc via:
         ```shell
         docker run --env "AWS_REGION=us-east-1" quay.io/app-sre/osd-network-verifier:latest --timeout=2s
         ```
