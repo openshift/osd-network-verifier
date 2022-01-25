@@ -12,8 +12,13 @@ osd-network-verifier can be used prior to the installation of osd/rosa clusters 
 
 * it creates an instance in the target vpc/subnet and wait till the instance gets ready
 * when the instance is ready, an `userdata` script is run in the instance. The `userdata` mainly performs 2 steps, it
-* installs appropriate packages, primarily docker
-* runs the validation image against the vpc/subnet as containerized form of <https://github.com/openshift/osd-network-verifier/tree/main/build>
+    * installs appropriate packages, primarily docker
+    * runs the validation image against the vpc/subnet as containerized form of <https://github.com/openshift/osd-network-verifier/tree/main/build>
+        * the image is available at: https://quay.io/repository/app-sre/osd-network-verifier?tag=latest&tab=tags
+        * it can be run either locally or on an instance on the target vpc via: 
+        ```shell
+        docker run --env "AWS_REGION=us-east-1" quay.io/app-sre/osd-network-verifier:latest --timeout=2s
+        ```
 * the output is collected via the SDK from the EC2 console output, which only includes the userdata script output because of a special line we added to the userdata to redirect the output.
 
 ### Validate egress using go library
