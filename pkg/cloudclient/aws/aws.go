@@ -9,11 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	configv1 "github.com/openshift/api/config/v1"
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
-const ClientIdentifier configv1.PlatformType = configv1.AWSPlatformType
+const ClientIdentifier string = "AWS"
 
 // Client represents an AWS Client
 type Client struct {
