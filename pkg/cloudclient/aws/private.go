@@ -17,7 +17,7 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 )
 
 var (
@@ -270,7 +270,7 @@ func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string)
 		Latest:     &latest,
 	}
 
-	err := wait.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
+	err := helpers.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err == nil && output.Output != nil {
 			// First, gather the ec2 console output
