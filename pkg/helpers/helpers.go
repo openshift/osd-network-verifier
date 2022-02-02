@@ -1,9 +1,11 @@
 package helpers
 
 import (
-	"fmt"
+	"errors"
 	"time"
 )
+
+var ErrWaitTimeout = errors.New("timed out waiting for the condition")
 
 func PollImmediate(interval time.Duration, timeout time.Duration, condition func() (bool, error)) error {
 
@@ -21,5 +23,5 @@ func PollImmediate(interval time.Duration, timeout time.Duration, condition func
 		totalTime += interval
 	}
 
-	return fmt.Errorf("timed out")
+	return ErrWaitTimeout
 }
