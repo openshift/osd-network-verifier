@@ -1,9 +1,13 @@
 package helpers
 
 import (
+	_ "embed"
 	"errors"
 	"time"
 )
+
+//go:embed config/userdata.yaml
+var UserdataTemplate string
 
 var ErrWaitTimeout = errors.New("timed out waiting for the condition")
 

@@ -245,14 +245,10 @@ func (c Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID str
 }
 
 func generateUserData(variables map[string]string) (string, error) {
-	template, err := os.ReadFile("config/userdata.yaml")
-	if err != nil {
-		return "", err
-	}
 	variableMapper := func(varName string) string {
 		return variables[varName]
 	}
-	data := os.Expand(string(template), variableMapper)
+	data := os.Expand(helpers.UserdataTemplate, variableMapper)
 
 	return base64.StdEncoding.EncodeToString([]byte(data)), nil
 }
