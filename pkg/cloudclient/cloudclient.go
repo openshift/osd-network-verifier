@@ -10,6 +10,7 @@ import (
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
+	"github.com/openshift/osd-network-verifier/pkg/output"
 
 	"golang.org/x/oauth2/google"
 )
@@ -22,8 +23,9 @@ type CloudClient interface {
 	ByoVPCValidator(ctx context.Context) error
 
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
-	// required target are defined in https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
-	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) error
+	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
+	// Expected return value is *output.Output that's storing failures, exceptions and errors
+	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output
 }
 
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {

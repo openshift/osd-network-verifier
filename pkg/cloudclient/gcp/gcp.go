@@ -5,6 +5,7 @@ import (
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/output"
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
 	"google.golang.org/api/option"
@@ -21,6 +22,7 @@ type Client struct {
 	computeService *computev1.Service
 	tags           map[string]string
 	logger         ocmlog.Logger
+	output         output.Output
 }
 
 func (c *Client) ByoVPCValidator(ctx context.Context) error {
@@ -28,8 +30,8 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) error {
-	return nil
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
+	return &c.output
 }
 
 func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {

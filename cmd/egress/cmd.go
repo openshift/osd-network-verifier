@@ -42,6 +42,9 @@ func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd := &cobra.Command{
 		Use: "egress",
 		Run: func(cmd *cobra.Command, args []string) {
+			// ctx
+			ctx := context.TODO()
+
 			// Create logger
 			builder := ocmlog.NewStdLoggerBuilder()
 			builder.Debug(config.debug)
@@ -51,25 +54,22 @@ func NewCmdValidateEgress() *cobra.Command {
 				os.Exit(1)
 			}
 
-			ctx := context.TODO()
-
-			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-
 			logger.Warn(ctx, "Using region: %s", config.region)
+			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)
 			}
-			err = cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.timeout)
 
-			if err != nil {
-				logger.Error(ctx, err.Error())
+			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.timeout)
+			out.Summary()
+			if !out.IsSuccessful() {
+				logger.Error(ctx, "Failure!")
 				os.Exit(1)
 			}
 
 			logger.Info(ctx, "Success")
-
 		},
 	}
 
