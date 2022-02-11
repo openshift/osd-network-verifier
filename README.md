@@ -37,13 +37,14 @@ region := "us-east-1"
 
 // init a cloudclient
 cli, err := cloudclient.NewClient(creds, region)
-
 // ... error checking
 
-// call the validation function
-err = cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
-
-// ... error checking
+// call the validation function and check if it was successful
+out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
+if !out.IsSuccessful() {
+    // Failure
+    failures, exceptions, errors := out.Parse()
+}
 ```
 
 #### using aws-sdk-go-v1
@@ -59,13 +60,13 @@ region := "us-east-1"
 
 // init a cloudclient
 cli, err := cloudclient.NewClient(*creds, region)
-
 // ... error checking
 
-// call the validation function
-err = cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
-
-// ... error checking
+out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
+if !out.IsSuccessful() {
+    // Failure
+    failures, exceptions, errors := out.Parse()
+}
 ```
 
 ### Validate egress using command line

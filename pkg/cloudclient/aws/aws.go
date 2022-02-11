@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
@@ -21,6 +22,7 @@ type Client struct {
 	instanceType string
 	tags         map[string]string
 	logger       ocmlog.Logger
+	output       output.Output
 }
 
 // Extend EC2Client so that we can mock them all for testing
@@ -37,6 +39,10 @@ type EC2Client interface {
 func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	c.logger.Info(ctx, "interface executed: %s", ClientIdentifier)
 	return nil
+}
+
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
+	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, timeout)
 }
 
 // NewClient creates a new CloudClient for use with AWS.
@@ -76,8 +82,4 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 	}
 
 	return
-}
-
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) error {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, timeout)
 }
