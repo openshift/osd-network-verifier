@@ -266,7 +266,8 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 		Latest:     &latest,
 	}
 
-	_ = helpers.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
+	// getConsoleOutput then parse, use c.output to store result of the execution
+	helpers.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err == nil && output.Output != nil {
 			// First, gather the ec2 console output
@@ -311,6 +312,8 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	})
 }
 
+// terminateEC2Instance terminates target ec2 instance
+// uses c.output to store result of the execution
 func (c *Client) terminateEC2Instance(ctx context.Context, instanceID string) {
 	c.logger.Info(ctx, "Terminating ec2 instance with id %s", instanceID)
 	input := ec2.TerminateInstancesInput{
@@ -333,8 +336,12 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 	return cloudImageID, nil
 }
 
-// validateEgress returns 3 values that represents
-// Failures, Exceptions that occured during validation, unhandled errors
+// validateEgress performs validation process for egress
+// Basic workflow is:
+// - prepare for ec2 instance creation
+// - create instance and wait till it gets ready, wait for userdata script execution
+// - find unreachable endpoints & parse output, then terminate instance
+// - return `c.output` which stores the execution results
 func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	// Generate the userData file
