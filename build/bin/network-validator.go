@@ -7,10 +7,11 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"sync"
 	"time"
+
+	"net/http"
 
 	"gopkg.in/yaml.v2"
 )
@@ -96,11 +97,29 @@ func TestEndpoints(config reachabilityConfig) {
 }
 
 func ValidateReachability(host string, port int) error {
-	endpoint := fmt.Sprintf("%s:%d", host, port)
-	fmt.Printf("Validating %s\n", endpoint)
-	_, err := net.DialTimeout("tcp", endpoint, *timeout)
-	if err != nil {
-		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)
+	var endpoint string
+
+	httpClient := http.Client{
+		Timeout: *timeout * time.Second,
 	}
+
+	switch port {
+	case 80:
+		endpoint = fmt.Sprintf("%s://%s", "http", host)
+	case 443:
+		endpoint = fmt.Sprintf("%s://%s", "https", host)
+	case 22:
+		endpoint = fmt.Sprintf("%s://%s", "ssh", host)
+	default:
+		endpoint = fmt.Sprintf("%s://%s", "http", host)
+	}
+
+	fmt.Printf("Validating %s\n", endpoint)
+
+	_, err := httpClient.Get(endpoint)
+	if err != nil {
+		return fmt.Errorf("unable to reach %s within specified timeout: %s", endpoint, err)
+	}
+
 	return nil
 }
