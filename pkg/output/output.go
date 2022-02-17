@@ -70,9 +70,13 @@ func (o *Output) printErrors() {
 // Summary can be used for printing out output structure
 func (o *Output) Summary() {
 	fmt.Println("Summary:")
-	o.printFailures()
-	o.printExceptions()
-	o.printErrors()
+	if o.IsSuccessful() {
+		fmt.Println("All tests pass!")
+	} else {
+		o.printFailures()
+		o.printExceptions()
+		o.printErrors()
+	}
 }
 
 // Parse returns the data being stored on output
