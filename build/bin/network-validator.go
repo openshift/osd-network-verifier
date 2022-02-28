@@ -7,11 +7,15 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"sync"
 	"time"
 
-	"net/http"
+	"crypto/tls"
+
+	"golang.org/x/crypto/ssh"
 
 	"gopkg.in/yaml.v2"
 )
@@ -97,26 +101,32 @@ func TestEndpoints(config reachabilityConfig) {
 }
 
 func ValidateReachability(host string, port int) error {
-	var endpoint string
-
+	var err error
+	endpoint := fmt.Sprintf("%s:%d", host, port)
 	httpClient := http.Client{
-		Timeout: *timeout * time.Second,
-	}
-
-	switch port {
-	case 80:
-		endpoint = fmt.Sprintf("%s://%s", "http", host)
-	case 443:
-		endpoint = fmt.Sprintf("%s://%s", "https", host)
-	case 22:
-		endpoint = fmt.Sprintf("%s://%s", "ssh", host)
-	default:
-		endpoint = fmt.Sprintf("%s://%s", "http", host)
+		Timeout: *timeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
 	}
 
 	fmt.Printf("Validating %s\n", endpoint)
 
-	_, err := httpClient.Get(endpoint)
+	switch port {
+	case 80:
+		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "http", host))
+	case 443:
+		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "https", host))
+	case 22:
+		_, err = ssh.Dial("tcp", endpoint, &ssh.ClientConfig{HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: *timeout})
+		if err.Error() == "ssh: handshake failed: EOF" {
+			// at this point, connectivity is available
+			err = nil
+		}
+	default:
+		_, err = net.DialTimeout("tcp", endpoint, *timeout)
+	}
+
 	if err != nil {
 		return fmt.Errorf("unable to reach %s within specified timeout: %s", endpoint, err)
 	}
