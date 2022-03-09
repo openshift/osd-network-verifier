@@ -6,6 +6,15 @@ A cli and set of libraries that validates the pre-configured networking componen
 
 osd-network-verifier can be used prior to the installation of osd/rosa clusters to ensure the pre-requirements are valid for various network options.
 
+## Required Permissions
+
+### AWS
+- ec2:RunInstances
+- ec2:DescribeInstanceStatus
+- ec2:DescribeInstanceTypes
+- ec2:GetConsoleOutput
+- ec2:TerminateInstances
+
 ## Egress validation
 
 ### Workflow for egress
