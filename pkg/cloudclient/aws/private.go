@@ -255,7 +255,7 @@ func generateUserData(variables map[string]string) (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(data)), nil
 }
 
-func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string) {
+func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string) error {
 	// Compile the regular expressions once
 	reVerify := regexp.MustCompile(userdataEndVerifier)
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
@@ -267,7 +267,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	}
 
 	// getConsoleOutput then parse, use c.output to store result of the execution
-	helpers.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
+	err := helpers.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err == nil && output.Output != nil {
 			// First, gather the ec2 console output
@@ -310,6 +310,8 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
 		return false, nil
 	})
+
+	return err
 }
 
 // terminateEC2Instance terminates target ec2 instance
@@ -378,7 +380,10 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 
 	c.logger.Info(ctx, "Gathering and parsing console log output...")
-	c.findUnreachableEndpoints(ctx, instanceID)
+	err = c.findUnreachableEndpoints(ctx, instanceID)
+	if err != nil {
+		c.output.AddError(err)
+	}
 	c.terminateEC2Instance(ctx, instanceID)
 
 	return &c.output
