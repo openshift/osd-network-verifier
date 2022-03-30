@@ -17,7 +17,8 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
+	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
 var (
@@ -47,7 +48,7 @@ var (
 		"me-south-1":     "",
 	}
 	// TODO find a location for future docker images
-	networkValidatorImage string = "quay.io/bngoy/osd-network-verifier:1"
+	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v81-bf8360e"
 	userdataEndVerifier   string = "USERDATA END"
 )
 
@@ -70,6 +71,7 @@ func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret
 		instanceType: instanceType,
 		tags:         tags,
 		logger:       logger,
+		output:       output.Output{},
 	}
 
 	// Validates the provided instance type will work with the verifier
@@ -99,7 +101,7 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 	return []ec2Types.TagSpecification{tagSpec}
 }
 
-func (c Client) validateInstanceType(ctx context.Context) error {
+func (c *Client) validateInstanceType(ctx context.Context) error {
 	// Describe the provided instance type only
 	//      https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
 	descInput := ec2.DescribeInstanceTypesInput{
@@ -137,7 +139,7 @@ func (c Client) validateInstanceType(ctx context.Context) error {
 	return nil
 }
 
-func (c Client) createEC2Instance(ctx context.Context, amiID string, instanceCount int, vpcSubnetID, userdata string, tags map[string]string) (ec2.RunInstancesOutput, error) {
+func (c *Client) createEC2Instance(ctx context.Context, amiID, vpcSubnetID, userdata string, instanceCount int) (ec2.RunInstancesOutput, error) {
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
 		ImageId:      aws.String(amiID),
@@ -153,7 +155,7 @@ func (c Client) createEC2Instance(ctx context.Context, amiID string, instanceCou
 			},
 		},
 		UserData:          aws.String(userdata),
-		TagSpecifications: buildTags(tags),
+		TagSpecifications: buildTags(c.tags),
 	}
 	// Finally, we make our request
 	instanceResp, err := c.ec2Client.RunInstances(ctx, &instanceReq)
@@ -169,7 +171,7 @@ func (c Client) createEC2Instance(ctx context.Context, amiID string, instanceCou
 }
 
 // Returns state code as int
-func (c Client) describeEC2Instances(ctx context.Context, instanceID string) (int, error) {
+func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (int, error) {
 	// States and codes
 	// 0 : pending
 	// 16 : running
@@ -207,7 +209,7 @@ func (c Client) describeEC2Instances(ctx context.Context, instanceID string) (in
 	return int(*result.InstanceStatuses[0].InstanceState.Code), nil
 }
 
-func (c Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
+func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
 	//wait for the instance to run
 	totalWait := 25 * 60
 	currentWait := 1
@@ -245,21 +247,15 @@ func (c Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID str
 }
 
 func generateUserData(variables map[string]string) (string, error) {
-	template, err := os.ReadFile("config/userdata.yaml")
-	if err != nil {
-		return "", err
-	}
 	variableMapper := func(varName string) string {
 		return variables[varName]
 	}
-	data := os.Expand(string(template), variableMapper)
+	data := os.Expand(helpers.UserdataTemplate, variableMapper)
 
 	return base64.StdEncoding.EncodeToString([]byte(data)), nil
 }
 
-func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string) ([]string, error) {
-	var match []string
-
+func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string) error {
 	// Compile the regular expressions once
 	reVerify := regexp.MustCompile(userdataEndVerifier)
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
@@ -270,7 +266,8 @@ func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string)
 		Latest:     &latest,
 	}
 
-	err := wait.PollImmediate(30*time.Second, 10*time.Minute, func() (bool, error) {
+	// getConsoleOutput then parse, use c.output to store result of the execution
+	err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err == nil && output.Output != nil {
 			// First, gather the ec2 console output
@@ -295,33 +292,60 @@ func (c Client) findUnreachableEndpoints(ctx context.Context, instanceID string)
 				return false, nil
 			}
 
+			// check output failures, report as exception if they occurred
+			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
+			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
+			if len(notFoundMatch) > 0 {
+				for _, v := range notFoundMatch {
+					c.output.AddException(v[0])
+				}
+			}
+
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
 			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
 
-			match = reUnreachableErrors.FindAllString(string(scriptOutput), -1)
-
+			c.output.SetFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
 			return true, nil
 		}
 		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
 		return false, nil
 	})
-	return match, err
+
+	return err
 }
 
-func (c Client) terminateEC2Instance(ctx context.Context, instanceID string) error {
+// terminateEC2Instance terminates target ec2 instance
+// uses c.output to store result of the execution
+func (c *Client) terminateEC2Instance(ctx context.Context, instanceID string) {
+	c.logger.Info(ctx, "Terminating ec2 instance with id %s", instanceID)
 	input := ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
 	_, err := c.ec2Client.TerminateInstances(ctx, &input)
-	if err != nil {
-		c.logger.Error(ctx, "Unable to terminate EC2 instance: %s", err.Error())
-		return err
-	}
-
-	return nil
+	c.output.AddError(err)
 }
 
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
+func (c *Client) setCloudImage(cloudImageID string) (string, error) {
+	// If a cloud image wasn't provided by the caller,
+	if cloudImageID == "" {
+		// use defaultAmi for the region instead
+		cloudImageID = defaultAmi[c.region]
+		if cloudImageID == "" {
+			return "", fmt.Errorf("no default ami found for region %s ", c.region)
+		}
+	}
+
+	return cloudImageID, nil
+}
+
+// validateEgress performs validation process for egress
+// Basic workflow is:
+// - prepare for ec2 instance creation
+// - create instance and wait till it gets ready, wait for userdata script execution
+// - find unreachable endpoints & parse output, then terminate instance
+// - return `c.output` which stores the execution results
+func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
+	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
 		"AWS_REGION":               c.region,
@@ -330,53 +354,37 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
 		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
 		"VALIDATOR_IMAGE":          networkValidatorImage,
+		"TIMEOUT":                  timeout.String(),
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {
-		err = fmt.Errorf("Unable to generate UserData file: %s", err.Error())
-		return err
+		return c.output.AddErrorAndReturn(err)
 	}
 	c.logger.Debug(ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
 
-	// If a cloud image wasn't provided by the caller,
-	if cloudImageID == "" {
-		// use defaultAmi for the region instead
-		cloudImageID = defaultAmi[c.region]
-
-		if cloudImageID == "" {
-			return fmt.Errorf("No default AMI found for region %s ", c.region)
-		}
-	}
-
-	// Create an ec2 instance
-	instance, err := c.createEC2Instance(ctx, cloudImageID, instanceCount, vpcSubnetID, userData, c.tags)
+	cloudImageID, err = c.setCloudImage(cloudImageID)
 	if err != nil {
-		err = fmt.Errorf("Unable to create EC2 Instance: %s", err.Error())
-		return err
+		return c.output.AddErrorAndReturn(err) // fatal
 	}
+
+	instance, err := c.createEC2Instance(ctx, cloudImageID, vpcSubnetID, userData, instanceCount)
+	if err != nil {
+		return c.output.AddErrorAndReturn(err) // fatal
+	}
+
 	instanceID := *instance.Instances[0].InstanceId
-
-	// Wait for the ec2 instance to be running
 	c.logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
-	err = c.waitForEC2InstanceCompletion(ctx, instanceID)
-	if err != nil {
-		err = fmt.Errorf("Error while waiting for EC2 instance to start: %s", err.Error())
-		return err
-	}
-	c.logger.Info(ctx, "Gathering and parsing console log output...")
-	unreachableEndpoints, err := c.findUnreachableEndpoints(ctx, instanceID)
-	if err != nil {
-		c.logger.Error(ctx, "Error parsing output from console log: %s", err.Error())
-		return err
+	if instanceReadyErr := c.waitForEC2InstanceCompletion(ctx, instanceID); instanceReadyErr != nil {
+		c.terminateEC2Instance(ctx, instanceID)             // try to terminate the created instance
+		return c.output.AddErrorAndReturn(instanceReadyErr) // fatal
 	}
 
-	c.logger.Info(ctx, "Terminating ec2 instance with id %s", instanceID)
-	if err := c.terminateEC2Instance(ctx, instanceID); err != nil {
-		err = fmt.Errorf("Error terminating instances: %s", err.Error())
-		return err
+	c.logger.Info(ctx, "Gathering and parsing console log output...")
+	err = c.findUnreachableEndpoints(ctx, instanceID)
+	if err != nil {
+		c.output.AddError(err)
 	}
-	if len(unreachableEndpoints) > 0 {
-		return fmt.Errorf("multiple targets unreachable %q", unreachableEndpoints)
-	}
-	return nil
+	c.terminateEC2Instance(ctx, instanceID)
+
+	return &c.output
 }
