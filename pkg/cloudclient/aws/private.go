@@ -154,6 +154,16 @@ func (c *Client) createEC2Instance(ctx context.Context, amiID, vpcSubnetID, user
 				SubnetId:                 aws.String(vpcSubnetID),
 			},
 		},
+		// We specify block devices mainly to enable EBS encryption
+		BlockDeviceMappings: []ec2Types.BlockDeviceMapping{
+			{
+				DeviceName: aws.String("/dev/xvda"),
+				Ebs: &ec2Types.EbsBlockDevice{
+					DeleteOnTermination: aws.Bool(true),
+					Encrypted:           aws.Bool(true),
+				},
+			},
+		},
 		UserData:          aws.String(userdata),
 		TagSpecifications: buildTags(c.tags),
 	}
