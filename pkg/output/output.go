@@ -2,6 +2,8 @@ package output
 
 import (
 	"fmt"
+
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
 // Output can be used when showcasing validation results at the end of the execution.
@@ -9,32 +11,30 @@ import (
 // `exceptions` is to show edge cases where onv couldn't be ended up as expected
 // `errors` is collection of unhandled errors
 type Output struct {
-	failures   []string
-	exceptions []string
+	failures   []error
+	exceptions []error
 	errors     []error
 }
 
-// AddError adds error to the list of errors
-func (o *Output) AddError(err error) {
+// AddError adds error as generic to the list of errors
+func (o *Output) AddError(err error) *Output {
 	if err != nil {
-		o.errors = append(o.errors, err)
+		o.errors = append(o.errors, handledErrors.NewGenericError(err))
 	}
-}
 
-// AddErrorAndReturn calls AddError then returns the object itself
-func (o *Output) AddErrorAndReturn(err error) *Output {
-	o.AddError(err)
 	return o
 }
 
 // AddException adds an exception to the list of exceptions
-func (o *Output) AddException(message string) {
+func (o *Output) AddException(message error) {
 	o.exceptions = append(o.exceptions, message)
 }
 
 // SetFailures sets failures as a bulk update
 func (o *Output) SetFailures(failures []string) {
-	o.failures = failures
+	for _, f := range failures {
+		o.failures = append(o.failures, handledErrors.NewEgressURLError(f))
+	}
 }
 
 // IsSuccessful checks whether the output contains any item, returns false if there's any
@@ -80,9 +80,9 @@ func (o *Output) Summary() {
 }
 
 // Parse returns the data being stored on output
-// - failures as []string
-// - exceptions as []string
+// - failures as []error
+// - exceptions as []error
 // - errors as []error
-func (o *Output) Parse() ([]string, []string, []error) {
+func (o *Output) Parse() ([]error, []error, []error) {
 	return o.failures, o.exceptions, o.errors
 }
