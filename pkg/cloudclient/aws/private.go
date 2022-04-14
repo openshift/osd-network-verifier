@@ -19,6 +19,8 @@ import (
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
 var (
@@ -307,7 +309,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 			if len(notFoundMatch) > 0 {
 				for _, v := range notFoundMatch {
-					c.output.AddException(v[0])
+					c.output.AddException(handledErrors.NewEgressURLError(v[0]))
 				}
 			}
 
@@ -368,25 +370,25 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {
-		return c.output.AddErrorAndReturn(err)
+		return c.output.AddError(err)
 	}
 	c.logger.Debug(ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
 
 	cloudImageID, err = c.setCloudImage(cloudImageID)
 	if err != nil {
-		return c.output.AddErrorAndReturn(err) // fatal
+		return c.output.AddError(err) // fatal
 	}
 
 	instance, err := c.createEC2Instance(ctx, cloudImageID, vpcSubnetID, userData, instanceCount)
 	if err != nil {
-		return c.output.AddErrorAndReturn(err) // fatal
+		return c.output.AddError(err) // fatal
 	}
 
 	instanceID := *instance.Instances[0].InstanceId
 	c.logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
 	if instanceReadyErr := c.waitForEC2InstanceCompletion(ctx, instanceID); instanceReadyErr != nil {
-		c.terminateEC2Instance(ctx, instanceID)             // try to terminate the created instance
-		return c.output.AddErrorAndReturn(instanceReadyErr) // fatal
+		c.terminateEC2Instance(ctx, instanceID)    // try to terminate the created instance
+		return c.output.AddError(instanceReadyErr) // fatal
 	}
 
 	c.logger.Info(ctx, "Gathering and parsing console log output...")
