@@ -26,6 +26,7 @@ type egressConfig struct {
 	debug        bool
 	region       string
 	timeout      time.Duration
+	kmsKeyID     string
 }
 
 func getDefaultRegion() string {
@@ -62,7 +63,7 @@ func NewCmdValidateEgress() *cobra.Command {
 				os.Exit(1)
 			}
 
-			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.timeout)
+			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout)
 			out.Summary()
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
@@ -80,6 +81,7 @@ func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "Comma-seperated list of tags to assign to cloud resources")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "If true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "Timeout for individual egress validation requests")
+	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "ID of KMS key used to encrypt root volumes of created instances. Defaults to cloud account default key")
 
 	validateEgressCmd.MarkFlagRequired("subnet-id")
 

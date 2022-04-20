@@ -31,7 +31,11 @@ func TestCreateEC2Instance(t *testing.T) {
 		ec2Client: FakeEC2Cli,
 		logger:    &logging.GlogLogger{},
 	}
-	out, err := cli.createEC2Instance(context.Background(), "test-ami", "test", "", 1)
+	out, err := cli.createEC2Instance(context.Background(), createEC2InstanceInput{
+		amiID:         "test-ami",
+		vpcSubnetID:   "test",
+		instanceCount: 1,
+	})
 	if err != nil {
 		t.Errorf("instance should be created")
 	}
@@ -80,7 +84,7 @@ func TestValidateEgress(t *testing.T) {
 		logger:    &logging.GlogLogger{},
 	}
 
-	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, time.Duration(1*time.Second)).IsSuccessful() {
+	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
 		t.Errorf("validateEgress(): should pass")
 	}
 }

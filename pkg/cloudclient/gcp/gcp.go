@@ -30,7 +30,7 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	return &c.output
 }
 

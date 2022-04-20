@@ -49,7 +49,7 @@ cli, err := cloudclient.NewClient(creds, region)
 // ... error checking
 
 // call the validation function and check if it was successful
-out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
+out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 600)
 if !out.IsSuccessful() {
     // Failure
     failures, exceptions, errors := out.Parse()
@@ -71,7 +71,7 @@ region := "us-east-1"
 cli, err := cloudclient.NewClient(*creds, region)
 // ... error checking
 
-out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID")
+out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 600)
 if !out.IsSuccessful() {
     // Failure
     failures, exceptions, errors := out.Parse()
@@ -102,5 +102,3 @@ AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SEC
 ## Other Subcommands
 
 Take a look at <https://github.com/openshift/osd-network-verifier/tree/main/cmd>
-
-

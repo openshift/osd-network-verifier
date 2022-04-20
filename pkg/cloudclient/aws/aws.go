@@ -41,8 +41,8 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, timeout)
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
+	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
 }
 
 // NewClient creates a new CloudClient for use with AWS.

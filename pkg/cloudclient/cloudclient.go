@@ -25,7 +25,7 @@ type CloudClient interface {
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output
+	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output
 }
 
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {
