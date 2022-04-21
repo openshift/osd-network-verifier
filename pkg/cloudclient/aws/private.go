@@ -23,6 +23,14 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
+type createEC2InstanceInput struct {
+	amiID         string
+	vpcSubnetID   string
+	userdata      string
+	ebsKmsKeyID   string
+	instanceCount int
+}
+
 var (
 	instanceCount int = 1
 	defaultAmi        = map[string]string{
@@ -141,32 +149,38 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) createEC2Instance(ctx context.Context, amiID, vpcSubnetID, userdata string, instanceCount int) (ec2.RunInstancesOutput, error) {
+func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceInput) (ec2.RunInstancesOutput, error) {
+	ebsBlockDevice := &ec2Types.EbsBlockDevice{
+		DeleteOnTermination: aws.Bool(true),
+		Encrypted:           aws.Bool(true),
+	}
+	// Check if KMS key was specified for root volume encryption
+	if input.ebsKmsKeyID != "" {
+		ebsBlockDevice.KmsKeyId = aws.String(input.ebsKmsKeyID)
+	}
+
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
-		ImageId:      aws.String(amiID),
-		MaxCount:     aws.Int32(int32(instanceCount)),
-		MinCount:     aws.Int32(int32(instanceCount)),
+		ImageId:      aws.String(input.amiID),
+		MaxCount:     aws.Int32(int32(input.instanceCount)),
+		MinCount:     aws.Int32(int32(input.instanceCount)),
 		InstanceType: ec2Types.InstanceType(c.instanceType),
 		// Because we're making this VPC aware, we also have to include a network interface specification
 		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{
 			{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int32(0),
-				SubnetId:                 aws.String(vpcSubnetID),
+				SubnetId:                 aws.String(input.vpcSubnetID),
 			},
 		},
 		// We specify block devices mainly to enable EBS encryption
 		BlockDeviceMappings: []ec2Types.BlockDeviceMapping{
 			{
 				DeviceName: aws.String("/dev/xvda"),
-				Ebs: &ec2Types.EbsBlockDevice{
-					DeleteOnTermination: aws.Bool(true),
-					Encrypted:           aws.Bool(true),
-				},
+				Ebs:        ebsBlockDevice,
 			},
 		},
-		UserData:          aws.String(userdata),
+		UserData:          aws.String(input.userdata),
 		TagSpecifications: buildTags(c.tags),
 	}
 	// Finally, we make our request
@@ -356,7 +370,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `c.output` which stores the execution results
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
+func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
@@ -379,7 +393,13 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		return c.output.AddError(err) // fatal
 	}
 
-	instance, err := c.createEC2Instance(ctx, cloudImageID, vpcSubnetID, userData, instanceCount)
+	instance, err := c.createEC2Instance(ctx, createEC2InstanceInput{
+		amiID:         cloudImageID,
+		vpcSubnetID:   vpcSubnetID,
+		userdata:      userData,
+		ebsKmsKeyID:   kmsKeyID,
+		instanceCount: instanceCount,
+	})
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}

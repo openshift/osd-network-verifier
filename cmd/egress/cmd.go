@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/lithammer/dedent"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
@@ -27,6 +26,7 @@ type egressConfig struct {
 	debug        bool
 	region       string
 	timeout      time.Duration
+	kmsKeyID     string
 }
 
 func getDefaultRegion() string {
@@ -41,14 +41,7 @@ func NewCmdValidateEgress() *cobra.Command {
 	config := egressConfig{}
 
 	validateEgressCmd := &cobra.Command{
-		Use:   "egress",
-		Short: "Verify essential openshift domains are reachable from given subnet ID",
-		Long: dedent.Dedent(`Verify essential openshift domains are reachable from given VPC subnet ID.
-Each subnet must be verified individually.`),
-		Example: dedent.Dedent(`(IMPORTANT: For AWS, ensure your cloud credential environment vars AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are set correctly before execution)
-1. Verify essential openshift domains are reachable from a given SUBNET_ID:
-	./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id $(IMAGE_ID)
-`),
+		Use: "egress",
 		Run: func(cmd *cobra.Command, args []string) {
 			// ctx
 			ctx := context.TODO()
@@ -70,7 +63,7 @@ Each subnet must be verified individually.`),
 				os.Exit(1)
 			}
 
-			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.timeout)
+			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout)
 			out.Summary()
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
@@ -81,13 +74,14 @@ Each subnet must be verified individually.`),
 		},
 	}
 
-	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "unique subnet ID to be verified")
-	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "cloud image to use for test instance")
-	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "t3.micro", "target compute instance type")
-	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("target compute instance region. If absent, environment var %[1]v will be used, if set", regionEnvVarStr, regionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "comma-seperated list of tags to assign to cloud resources")
-	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "if true, enable additional debug-level logging")
-	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "timeout for individual egress verification requests")
+	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "ID of the source subnet")
+	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "ID of cloud image")
+	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "t3.micro", "Instance type of the compute instance egress tests are run from")
+	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
+	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "Comma-seperated list of tags to assign to cloud resources")
+	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "If true, enable additional debug-level logging")
+	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "Timeout for individual egress validation requests")
+	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "ID of KMS key used to encrypt root volumes of created instances. Defaults to cloud account default key")
 
 	validateEgressCmd.MarkFlagRequired("subnet-id")
 
