@@ -150,21 +150,13 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 }
 
 func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceInput) (ec2.RunInstancesOutput, error) {
+	ebsBlockDevice := &ec2Types.EbsBlockDevice{
+		DeleteOnTermination: aws.Bool(true),
+		Encrypted:           aws.Bool(true),
+	}
 	// Check if KMS key was specified for root volume encryption
-	var ebsBlockDevice *ec2Types.EbsBlockDevice
 	if input.ebsKmsKeyID != "" {
-		// Key specified
-		ebsBlockDevice = &ec2Types.EbsBlockDevice{
-			DeleteOnTermination: aws.Bool(true),
-			Encrypted:           aws.Bool(true),
-			KmsKeyId:            aws.String(input.ebsKmsKeyID),
-		}
-	} else {
-		// Key unspecified
-		ebsBlockDevice = &ec2Types.EbsBlockDevice{
-			DeleteOnTermination: aws.Bool(true),
-			Encrypted:           aws.Bool(true),
-		}
+		ebsBlockDevice.KmsKeyId = aws.String(input.ebsKmsKeyID)
 	}
 
 	// Build our request, converting the go base types into the pointers required by the SDK
