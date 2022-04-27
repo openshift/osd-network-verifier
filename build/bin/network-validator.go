@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -60,15 +61,23 @@ func TestEndpoints(config reachabilityConfig) {
 	// need to validate any CDN such as `cdn01.quay.io` should be available?
 	//  We don't need to. We just best-effort check what we can.
 
+	var waitGroup sync.WaitGroup
+
 	failures := []error{}
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
-			err := ValidateReachability(e.Host, port)
-			if err != nil {
-				failures = append(failures, err)
-			}
+			waitGroup.Add(1)
+			fmt.Println("TEST:", e.Host, port)
+			go func() {
+				defer waitGroup.Done()
+				err := ValidateReachability(e.Host, port)
+				if err != nil {
+					failures = append(failures, err)
+				}
+			}()
 		}
 	}
+	waitGroup.Wait()
 
 	if len(failures) < 1 {
 		fmt.Println("Success!")
