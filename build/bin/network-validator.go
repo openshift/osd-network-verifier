@@ -63,28 +63,29 @@ func TestEndpoints(config reachabilityConfig) {
 
 	var waitGroup sync.WaitGroup
 
-	failures := []error{}
+	failures := make(chan error, len(config.Endpoints))
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
-			fmt.Println("TEST:", e.Host, port)
-			go func() {
+			// Validate the endpoints in parallel
+			go func(host string, port int, failures chan<- error) {
 				defer waitGroup.Done()
-				err := ValidateReachability(e.Host, port)
+				err := ValidateReachability(host, port)
 				if err != nil {
-					failures = append(failures, err)
+					failures <- err
 				}
-			}()
+			}(e.Host, port, failures)
 		}
 	}
 	waitGroup.Wait()
+	close(failures)
 
 	if len(failures) < 1 {
 		fmt.Println("Success!")
 		return
 	}
 	fmt.Println("\nNot all endpoints were reachable:")
-	for _, f := range failures {
+	for f := range failures {
 		fmt.Println(f)
 	}
 	// NOTE even though not all endpoints were reachable, the script still completed successfully. To ensure
