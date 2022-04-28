@@ -17,9 +17,9 @@ osd-network-verifier can be used prior to the installation of osd/rosa clusters 
 -  [GCP](README_GCP.md)
 
 ### Contributing and Maintenance ####
-##### Egress List#####
+##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
-##### To Contribute: #####
+##### To Contribute #####
 Fork the main repository and create pull requests against the `main` branch.
 
 ## Other Subcommands

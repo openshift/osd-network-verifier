@@ -70,22 +70,21 @@ Ensure that the IAM support role policy (default: ManagedOpenShift-Support-Role-
 
 ### 1. Egress Verification ###
 #### 1.1 Usage ####
-The processes below describe different ways verifying egress requirements on a single subnet. 
+The processes below describe different ways of using egress verifier on a single subnet. 
 In order to verify entire VPC, 
 repeat the processes described below for each subnet ID.
 
 ##### 1.1.1 CLI Executable #####
-   1. Ensure correct [environment setup](#setup)
-   2. From AWS, get the id for the subnet to be tested.
-    ```
+   1. Ensure correct [environment setup](#setup).
+   2. From AWS, obtain the id for the subnet to be tested and export it.
+    
     export SUBNET_ID=<subnet_id>
-    ```
-   3. Set the optional image parameter to pass for ec2 instance. You may use the following public image-id
-    ```
-     export IMAGE_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 
-     ```
-   
-If the image id is not passed, it is defaulted to the `ami-xxxxxxxxxxxxx` image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
+    
+   3. Set the optional image id parameter (in the form ami-xxxxxxxxxxxx) to run on ec2 instance. You may use the following public image-id
+
+    export IMAGE_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 
+ 
+If the image id is not passed, it is defaulted to an image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
 
    3. Execute
@@ -99,9 +98,9 @@ If the image id is not passed, it is defaulted to the `ami-xxxxxxxxxxxxx` image 
      --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
     
    For more help, see 
-   ```shell
+
     ./osd-network-verifier egress --help
-   ```
+
 
 ##### 1.1.2 AWS Go SDK implementation #####
 ##### aws-sdk-go-v2 #####
@@ -162,13 +161,14 @@ The [`USERDATA`](pkg/helpers/config/userdata.yaml) script is in the form of base
    ```shell
    network-validator --timeout=1s --config=config/config.yaml
     ```
-   - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the egress list (i.e. list of all essential domains for OSD clusters).
-4. The verifier docker image can also be tested locally as:
-   ```shell
-   docker run --env "AWS_REGION=us-east-1" quay.io/app-sre/osd-network-verifier:latest --timeout=2s
-   ```
-5. `USERDATA` redirects the instance's console output to the AWS cloud client SDK. The end of this output message is signified with a special End Verification string.
-6. If debug logging is enabled, this output is printed in full, otherwise only errors are printed, if any.
+   - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the [egress list](README.md#egress-list) (i.e. list of all essential domains for OSD clusters).
+   - During development, the verifier docker image can be tested locally as:
+      ```shell
+      docker run --env "AWS_REGION=us-east-1" quay.io/app-sre/osd-network-verifier:latest --timeout=2s
+      ```
+   
+4. `USERDATA` script then redirects the instance's console output to the AWS cloud client SDK. The end of this output message is signified with a special End Verification string.
+5. If debug logging is enabled, this output is printed in full, otherwise only errors are printed, if any.
 
 ### 2. BYOVPC Configurations Verification ###
 (TODO: add doc)
