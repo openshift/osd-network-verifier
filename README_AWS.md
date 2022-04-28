@@ -2,7 +2,7 @@
 
 - [Setup](#setup)
   - [VPC](#vpc)
-  - [AWS Credentials](#aws-credentials)
+  - [AWS Environment](#aws-environment)
   - [IAM Support Role](#iam-support-role)
   - [Build Source](#build-source)
 - [Available tools](#available-tools)
@@ -89,12 +89,14 @@ repeat the processes described below for each subnet ID.
     ```shell
     ./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id=$(IMAGE_ID)
     ```
-   Optionally, provide a list custom tags to apply to the test instance:
-    ```shell
-    ./osd-network-verifier egress --subnet-id=$(SUBNET_ID) \
-     --image-id=$(IMAGE_ID) \
-     --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
-    ```
+
+
+       Optionally, provide a list custom tags to apply to the test instance:
+        ```shell
+        ./osd-network-verifier egress --subnet-id=$(SUBNET_ID) \
+         --image-id=$(IMAGE_ID) \
+         --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
+        ```
    For more help, see 
    ```shell
     ./osd-network-verifier egress --help
