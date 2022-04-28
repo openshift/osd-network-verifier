@@ -75,16 +75,17 @@ In order to verify entire VPC,
 repeat the processes described below for each subnet ID.
 
 ##### 1.1.1 CLI Executable #####
-   1. From AWS, get the id for the subnet to be tested.
+   1. Ensure correct [environment setup](#setup)
+   2. From AWS, get the id for the subnet to be tested.
     ```
     export SUBNET_ID=<subnet_id>
     ```
-   2. Set the optional image parameter to pass for ec2 instance.
-      You may use the following public image-id
-   ```
-      export IMAGE_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 
-   ```
-   If the image id is not passed, it is defaulted to the `ami-xxxxxxxxxxxxx` image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
+   3. Set the optional image parameter to pass for ec2 instance. You may use the following public image-id
+    ```
+     export IMAGE_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 
+     ```
+   
+If the image id is not passed, it is defaulted to the `ami-xxxxxxxxxxxxx` image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
 
    3. Execute
