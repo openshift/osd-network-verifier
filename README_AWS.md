@@ -4,7 +4,6 @@
   - [VPC](#vpc)
   - [AWS Environment](#aws-environment)
   - [IAM Support Role](#iam-support-role)
-  - [Build Source](#build-source)
 - [Available tools](#available-tools)
   - [1. Egress Verification](#1-egress-verification)
     - [1.1 Usage](#11-usage)
@@ -57,15 +56,7 @@ Ensure that the IAM support role policy (default: ManagedOpenShift-Support-Role-
   ]
 }
 ```
-
-### Build Source ###
-1. Clone this [repo](https://github.com/openshift/osd-network-verifier)
-2. Build the cli. 
-   ```shell
-   make build
-   ```
-   This generates `osd-network-verifier` executable in project root directory.
-
+ 
 ## Available Tools ##
 
 ### 1. Egress Verification ###
@@ -76,31 +67,42 @@ repeat the processes described below for each subnet ID.
 
 ##### 1.1.1 CLI Executable #####
    1. Ensure correct [environment setup](#setup).
-   2. From AWS, obtain the id for the subnet to be tested and export it.
-    
-    export SUBNET_ID=<subnet_id>
-    
-   3. Set the optional image id parameter (in the form ami-xxxxxxxxxxxx) to run on ec2 instance. You may use the following public image-id
 
-    export IMAGE_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 
- 
-If the image id is not passed, it is defaulted to an image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
+   2. Clone this [repo.](https://github.com/openshift/osd-network-verifier)
+   3. Build the cli.
+      ```shell
+      make build
+      ```
+      This generates `osd-network-verifier` executable in project root directory. 
+   4. From AWS, obtain the id for the subnet to be tested and export it.
+       ```shell 
+       export SUBNET_ID=<subnet_id>
+        ```
+   5. Set the optional image id parameter (in the form ami-xxxxxxxxxxxx) to run on ec2 instance. You may use the following public image-id
+       ```shell 
+       export IMAGE_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 
+       ```
+        If the image id is not passed, it is defaulted to an image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
 
-   3. Execute
-
-    ./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id=$(IMAGE_ID)
-
-   Optionally, provide a list custom tags to apply to the test instance:
+   6. Execute:
     
-    ./osd-network-verifier egress --subnet-id=$(SUBNET_ID) \
-     --image-id=$(IMAGE_ID) \
-     --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
+        ```shell        
+        ./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id=$(IMAGE_ID)
+        ```
+
+        Optionally, provide a list of tags to apply to the test instance:
+       
+         ```shell
+        ./osd-network-verifier egress --subnet-id=$(SUBNET_ID) \
+         --image-id=$(IMAGE_ID) \
+         --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
+        ```
+       Get more help:
     
-   For more help, see 
-
-    ./osd-network-verifier egress --help
-
+        ```shell
+        ./osd-network-verifier egress --help
+        ```
 
 ##### 1.1.2 AWS Go SDK implementation #####
 ##### aws-sdk-go-v2 #####
