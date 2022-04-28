@@ -59,7 +59,7 @@ Ensure that the IAM support role policy (default: ManagedOpenShift-Support-Role-
 ```
 
 ### Build Source ###
-1. Clone [repo](git@github.com:openshift/osd-network-verifier.git)
+1. Clone this [repo](https://github.com/openshift/osd-network-verifier)
 2. Build the cli. 
    ```shell
    make build
