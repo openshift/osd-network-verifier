@@ -1,6 +1,6 @@
 # binaries
 osd-network-verifier
-network-validator
+network-verifier
 
 # ide
 .vscode/

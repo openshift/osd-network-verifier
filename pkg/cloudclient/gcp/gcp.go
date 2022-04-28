@@ -25,12 +25,12 @@ type Client struct {
 	output         output.Output
 }
 
-func (c *Client) ByoVPCValidator(ctx context.Context) error {
+func (c *Client) ByoVPCVerifier(ctx context.Context) error {
 	c.logger.Info(ctx, "interface executed: %s", ClientIdentifier)
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
+func (c *Client) VerifyEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	return &c.output
 }
 

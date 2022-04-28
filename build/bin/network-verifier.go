@@ -1,7 +1,7 @@
 package main
 
 // Usage
-// $ network-validator --timeout=1s --config=config/config.yaml
+// $ network-verifier --timeout=1s --config=config/config.yaml
 
 import (
 	"flag"
@@ -58,7 +58,7 @@ func main() {
 
 func TestEndpoints(config reachabilityConfig) {
 	// TODO how would we check for wildcard entries like the `.quay.io` entry, where we
-	// need to validate any CDN such as `cdn01.quay.io` should be available?
+	// need to verify any CDN such as `cdn01.quay.io` should be available?
 	//  We don't need to. We just best-effort check what we can.
 
 	var waitGroup sync.WaitGroup
@@ -67,10 +67,10 @@ func TestEndpoints(config reachabilityConfig) {
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
-			// Validate the endpoints in parallel
+			// Verify the endpoints in parallel
 			go func(host string, port int, failures chan<- error) {
 				defer waitGroup.Done()
-				err := ValidateReachability(host, port)
+				err := VerifyReachability(host, port)
 				if err != nil {
 					failures <- err
 				}
@@ -95,9 +95,9 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func ValidateReachability(host string, port int) error {
+func VerifyReachability(host string, port int) error {
 	endpoint := fmt.Sprintf("%s:%d", host, port)
-	fmt.Printf("Validating %s\n", endpoint)
+	fmt.Printf("Verifying %s\n", endpoint)
 	_, err := net.DialTimeout("tcp", endpoint, *timeout)
 	if err != nil {
 		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)

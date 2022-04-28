@@ -6,8 +6,8 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
-// Output can be used when showcasing validation results at the end of the execution.
-// `failures` represents the failed validation tests
+// Output can be used when showcasing verification results at the end of the execution.
+// `failures` represents the failed verification tests
 // `exceptions` is to show edge cases where onv couldn't be ended up as expected
 // `errors` is collection of unhandled errors
 type Output struct {

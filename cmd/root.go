@@ -30,7 +30,7 @@ func NewCmdRoot() *cobra.Command {
 
 	// add sub commands
 	rootCmd.AddCommand(byovpc.NewCmdByovpc())
-	rootCmd.AddCommand(egress.NewCmdValidateEgress())
+	rootCmd.AddCommand(egress.NewCmdVerifyEgress())
 
 	return rootCmd
 }

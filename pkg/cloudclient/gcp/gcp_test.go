@@ -9,24 +9,24 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-func TestByoVPCValidator(t *testing.T) {
+func TestByoVPCVerifier(t *testing.T) {
 	ctx := context.TODO()
 	logger := &ocmlog.StdLogger{}
 	client := &Client{logger: logger}
-	err := client.ByoVPCValidator(ctx)
+	err := client.ByoVPCVerifier(ctx)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateEgress(t *testing.T) {
+func TestVerifyEgress(t *testing.T) {
 	ctx := context.TODO()
 	subnetID := "subnet-id"
 	cloudImageID := "image-id"
 	cli := Client{}
 	timeout := 1 * time.Second
-	if !cli.ValidateEgress(ctx, subnetID, cloudImageID, "", timeout).IsSuccessful() {
-		t.Errorf("validation should have been successful")
+	if !cli.VerifyEgress(ctx, subnetID, cloudImageID, "", timeout).IsSuccessful() {
+		t.Errorf("verification should have been successful")
 	}
 }
 

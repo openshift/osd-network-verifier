@@ -19,13 +19,13 @@ import (
 // For mocking: mockgen -source=pkg/cloudclient/cloudclient.go -package mocks -destination=pkg/cloudclient/mocks/mock_cloudclient.go
 type CloudClient interface {
 
-	// ByoVPCValidator validates the configuration given by the customer
-	ByoVPCValidator(ctx context.Context) error
+	// ByoVPCVerifier verifies the configuration given by the customer
+	ByoVPCVerifier(ctx context.Context) error
 
-	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
+	// VerifyEgress verifies that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output
+	VerifyEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output
 }
 
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {
