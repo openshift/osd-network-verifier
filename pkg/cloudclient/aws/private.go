@@ -310,7 +310,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 				return false, nil
 			}
 
-			// Check for the specific string we output in the gerated userdata file at the end to verify the userdata script has run
+			// Check for the specific string we output in the generated userdata file at the end to verify the userdata script has run
 			// It is possible we get EC2 console output, but the userdata script has not yet completed.
 			verifyMatch := reVerify.FindString(string(scriptOutput))
 			if len(verifyMatch) < 1 {
