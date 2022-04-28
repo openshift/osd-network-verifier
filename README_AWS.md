@@ -23,10 +23,10 @@
 ### AWS Environment ###
 Set up your environment to use the correct credentials for the AWS account for the target cluster. 
 - If this is an existing cluster, use [this SOP](https://github.com/openshift/ops-sop/blob/master/v4/howto/aws/aws.md#via-ocm-the-quickest-way-1) to get AWS credentials.
-- If this cluster is not installed yet
-  - If cluster is STS, customer should provide credentials for support role
+- If this cluster is not installed yet:
+  - If cluster is STS, customer should provide credentials for support role.
   - If cluster is non-STS, creds are creaed by AWS account operator on hive shard. Obtain them using [this SOP](https://github.com/openshift/ops-sop/blob/master/v4/howto/aws/aws.md#on-hive-shard).
-- Export these credentials and any other AWS defaults in your environment
+- Export these AWS credentials and any other AWS defaults:
    ```shell
    export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
    export AWS_SECRET_ACCESS_KEY=<YOUR-AWS_SECRET_ACCESS_KEY>
@@ -40,7 +40,7 @@ Set up your environment to use the correct credentials for the AWS account for t
 Ensure that the IAM support role policy (default: ManagedOpenShift-Support-Role-Policy) includes the following permissions.
 ```json
 {
-  "Version": "2012-10-17",
+  "Version": "<version>",
   "Statement": [
     {
       "Effect": "Allow",
@@ -63,7 +63,7 @@ Ensure that the IAM support role policy (default: ManagedOpenShift-Support-Role-
 #### 1.1 Usage ####
 The processes below describe different ways of using egress verifier on a single subnet. 
 In order to verify entire VPC, 
-repeat the processes described below for each subnet ID.
+repeat the verification process for each subnet ID.
 
 ##### 1.1.1 CLI Executable #####
    1. Ensure correct [environment setup](#setup).
@@ -74,7 +74,7 @@ repeat the processes described below for each subnet ID.
       make build
       ```
       This generates `osd-network-verifier` executable in project root directory. 
-   4. From AWS, obtain the id for the subnet to be tested and export it.
+   4. From AWS, obtain the subnet id to be verified and export it.
        ```shell 
        export SUBNET_ID=<subnet_id>
         ```
