@@ -76,29 +76,27 @@ repeat the processes described below for each subnet ID.
 
 ##### 1.1.1 CLI Executable #####
    1. From AWS, get the id for the subnet to be tested.
-    ```shell
+    ```
     export SUBNET_ID=<subnet_id>
     ```
    2. Set the optional image parameter to pass for ec2 instance.
       You may use the following public image-id
-   ```shell
+   ```
       export IMAGE_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 
    ```
    If the image id is not passed, it is defaulted to the `ami-xxxxxxxxxxxxx` image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
 
    3. Execute
-    ```shell
+
     ./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id=$(IMAGE_ID)
-    ```
 
-
-       Optionally, provide a list custom tags to apply to the test instance:
-        ```shell
-        ./osd-network-verifier egress --subnet-id=$(SUBNET_ID) \
-         --image-id=$(IMAGE_ID) \
-         --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
-        ```
+   Optionally, provide a list custom tags to apply to the test instance:
+    
+    ./osd-network-verifier egress --subnet-id=$(SUBNET_ID) \
+     --image-id=$(IMAGE_ID) \
+     --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
+    
    For more help, see 
    ```shell
     ./osd-network-verifier egress --help
