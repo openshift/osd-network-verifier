@@ -14,7 +14,7 @@
     - [1.3 Workflow](#13-workflow)
   - [2. BYOVPC Configurations Verification](#2-byovpc-configurations-verification)
 
-## Setup
+## Setup ##
 ### VPC ###
 - Any VPC for a non-STS CCS cluster can be tested using this tool.
 - You will need to know the following information about the VPC to be verified.
@@ -26,7 +26,7 @@ Set up your environment to use the correct credentials for the AWS account for t
 - If this is an existing cluster, use [this SOP](https://github.com/openshift/ops-sop/blob/master/v4/howto/aws/aws.md#via-ocm-the-quickest-way-1) to get AWS credentials.
 - If this cluster is not installed yet
   - If cluster is STS, customer should provide credentials for support role
-  - If cluster is non-STS, creds are creaed by AWS account operator on hive shard (TODO add sop to obtain them)
+  - If cluster is non-STS, creds are creaed by AWS account operator on hive shard using [this SOP](https://github.com/openshift/ops-sop/blob/master/v4/howto/aws/aws.md#on-hive-shard).
 - Export these credentials and any other AWS defaults in your environment
    ```shell
    export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
