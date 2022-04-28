@@ -1,21 +1,31 @@
 # osd-network-verifier
 
-A cli and set of libraries that validates the pre-configured networking components for some osd options.
+A cli tool and set of libraries that 
+verify the pre-configured networking components
+for non-STS OSD CCS clusters.
 
 ## Overview
 
-osd-network-verifier can be used prior to the installation of osd/rosa clusters to ensure the pre-requirements are valid for various network options.
+osd-network-verifier can be used prior to the installation 
+of osd/rosa clusters to ensure the network configuration 
+is correctly set up per [OSD requirements] listed on https://docs.openshift.com/container-platform/4.6/installing/installing_aws/installing-aws-vpc.html#installation-custom-aws-vpc-requirements_installing-aws-vpc
 
-## Makefile Targets
-- `make build`: Builds executable
-- `make test`: `go test $(GOFLAGS)`
-- `make build-push`: Builds and pushes image from build/ to ` quay.io/app-sre/osd-network-verifier:$(IMAGE_URI_VERSION)`
-- `make skopeo-push`: (TODO add)  
+It currently verifies:
+- Egress from VPC subnets to essential OSD domains
+- BYOVPC config requirements
+
 
 ## Cloud Provider Specific READMEs
 -  [AWS](README_AWS.md)
 -  [GCP](README_GCP.md)
 
+
+## Makefile Targets
+- `make build`: Builds executable
+- `make test`: `go test $(GOFLAGS)`
+- `make build-push`: Builds and pushes image from build/ to ` quay.io/app-sre/osd-network-verifier:$(IMAGE_URI_VERSION)`
+- `make skopeo-push`: (TODO add)
+- 
 ### Contributing and Maintenance ####
 ##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.

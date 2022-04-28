@@ -1,6 +1,6 @@
 package aws
 
-// validate VPC egress access with AWS SDK v1
+// verify VPC egress access with AWS SDK v1
 import (
 	"context"
 	"fmt"

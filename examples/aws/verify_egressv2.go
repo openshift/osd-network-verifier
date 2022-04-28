@@ -1,6 +1,6 @@
 package aws
 
-// validate VPC egress access with AWS SDK v2
+// verify VPC egress access with AWS SDK v2
 import (
 	"context"
 	"fmt"
@@ -17,7 +17,7 @@ type egressConfigV2 struct {
 }
 
 // Use egress validator
-func TestValidateEgressV2(t *testing.T) {
+func extendValidateEgressV2(t *testing.T) {
 	ctx := context.TODO()
 	//initialize required args
 	//---------
