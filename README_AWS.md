@@ -1,9 +1,9 @@
 ### Table of Contents ###
 
 - [Setup](#setup)
-  - [VPC](#vpc)
   - [AWS Environment](#aws-environment)
-  - [IAM Support Role](#iam-support-role)
+  - [VPC](#vpc)
+  - [IAM Permissions](#iam-permissions)
 - [Available tools](#available-tools)
   - [1. Egress Verification](#1-egress-verification)
     - [1.1 Usage](#11-usage)
@@ -37,7 +37,7 @@ Set up your environment to use the correct credentials for the AWS account for t
     - Subnet IDs
     - AWS region
   
-### IAM Support Role ###
+### IAM permissions ###
 Ensure that the AWS credentials being used have the following permissions.
 ```json
 {
