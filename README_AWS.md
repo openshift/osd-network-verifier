@@ -149,17 +149,23 @@ if !out.IsSuccessful() {
 
 #### 1.3 Workflow ####
 1. AWS client creates a test ec2 instance in the target vpc/subnet and wait till the instance gets ready
-2. The actual network verification sequence is automated by using the `USERDATA` param [available for ec2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) which the instance runs on creation. The [`USERDATA`](pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
+2. The actual network verification is automated by using the `USERDATA` param [available for ec2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) which is run by ec2 on the instance on creation. 
+The [`USERDATA`](pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
    1. passes default cloud configurations
    2. installs dependencies
-   3. runs the [verifier docker image](https://github.com/openshift/osd-network-verifier/tree/main/build) included with this source.
+   3. runs the [ONV docker image](https://github.com/openshift/osd-network-verifier/tree/main/build) included with this source.
       (The image is also published at: https://quay.io/repository/app-sre/osd-network-verifier)
-3. As an alternative to `USERDATA`, the entry point for this image can also be run locally as
+3. The entry point of the ONV docker image then executes the main egress verification script
+   ```shell
+   network-validator --timeout=1s --config=config/config.yaml
+    ```
+   - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the egress list (i.e. list of all essential domains for OSD clusters).
+4. The verifier docker image can also be tested locally as:
    ```shell
    docker run --env "AWS_REGION=us-east-1" quay.io/app-sre/osd-network-verifier:latest --timeout=2s
    ```
-4. `USERDATA` redirects the instance's console output to the AWS cloud client SDK. The end of this output message is signified with a special End Verification string.
-5. If debug logging is enabled, this output is printed in full, otherwise only errors are printed, if any.
+5. `USERDATA` redirects the instance's console output to the AWS cloud client SDK. The end of this output message is signified with a special End Verification string.
+6. If debug logging is enabled, this output is printed in full, otherwise only errors are printed, if any.
 
 ### 2. BYOVPC Configurations Verification ###
 (TODO: add doc)
