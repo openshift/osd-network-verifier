@@ -34,30 +34,30 @@ func (m *MockCloudClient) EXPECT() *MockCloudClientMockRecorder {
 	return m.recorder
 }
 
-// ByoVPCValidator mocks base method.
-func (m *MockCloudClient) ByoVPCValidator(ctx context.Context) error {
+// ByoVPCVerifier mocks base method.
+func (m *MockCloudClient) ByoVPCVerifier(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ByoVPCValidator", ctx)
+	ret := m.ctrl.Call(m, "ByoVPCVerifier", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ByoVPCValidator indicates an expected call of ByoVPCValidator.
-func (mr *MockCloudClientMockRecorder) ByoVPCValidator(ctx interface{}) *gomock.Call {
+// ByoVPCVerifier indicates an expected call of ByoVPCVerifier.
+func (mr *MockCloudClientMockRecorder) ByoVPCVerifier(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ByoVPCValidator", reflect.TypeOf((*MockCloudClient)(nil).ByoVPCValidator), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ByoVPCVerifier", reflect.TypeOf((*MockCloudClient)(nil).ByoVPCVerifier), ctx)
 }
 
-// ValidateEgress mocks base method.
-func (m *MockCloudClient) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
+// VerifyEgress mocks base method.
+func (m *MockCloudClient) VerifyEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateEgress", ctx, vpcSubnetID, cloudImageID)
+	ret := m.ctrl.Call(m, "VerifyEgress", ctx, vpcSubnetID, cloudImageID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ValidateEgress indicates an expected call of ValidateEgress.
-func (mr *MockCloudClientMockRecorder) ValidateEgress(ctx, vpcSubnetID, cloudImageID interface{}) *gomock.Call {
+// VerifyEgress indicates an expected call of VerifyEgress.
+func (mr *MockCloudClientMockRecorder) VerifyEgress(ctx, vpcSubnetID, cloudImageID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateEgress", reflect.TypeOf((*MockCloudClient)(nil).ValidateEgress), ctx, vpcSubnetID, cloudImageID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEgress", reflect.TypeOf((*MockCloudClient)(nil).VerifyEgress), ctx, vpcSubnetID, cloudImageID)
 }

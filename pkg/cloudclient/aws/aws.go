@@ -36,13 +36,13 @@ type EC2Client interface {
 	TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput, optFns ...func(*ec2.Options)) (*ec2.TerminateInstancesOutput, error)
 }
 
-func (c *Client) ByoVPCValidator(ctx context.Context) error {
+func (c *Client) ByoVPCVerifier(ctx context.Context) error {
 	c.logger.Info(ctx, "interface executed: %s", ClientIdentifier)
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
+func (c *Client) VerifyEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
+	return c.verifyEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
 }
 
 // NewClient creates a new CloudClient for use with AWS.

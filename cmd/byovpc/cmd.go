@@ -15,7 +15,8 @@ var debug bool
 
 func NewCmdByovpc() *cobra.Command {
 	byovpcCmd := &cobra.Command{
-		Use: "byovpc",
+		Use:   "byovpc",
+		Short: "Verify given VPC configuration",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create logger
 			builder := ocmlog.NewStdLoggerBuilder()
@@ -37,7 +38,7 @@ func NewCmdByovpc() *cobra.Command {
 
 			cli, err := cloudclient.NewClient(ctx, logger, creds, region, instanceType, tags)
 
-			err = cli.ByoVPCValidator(ctx)
+			err = cli.ByoVPCVerifier(ctx)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)

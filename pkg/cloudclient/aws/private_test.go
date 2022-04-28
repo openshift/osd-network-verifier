@@ -45,7 +45,7 @@ func TestCreateEC2Instance(t *testing.T) {
 	}
 }
 
-func TestValidateEgress(t *testing.T) {
+func TestVerifyEgress(t *testing.T) {
 	testID := "aws-docs-example-instanceID"
 	vpcSubnetID, cloudImageID := "dummy-id", "dummy-id"
 	consoleOut := `[   48.062407] cloud-init[2472]: Cloud-init v. 19.3-44.amzn2 running 'modules:final' at Mon, 07 Feb 2022 12:30:22 +0000. Up 48.00 seconds.
@@ -84,7 +84,7 @@ func TestValidateEgress(t *testing.T) {
 		logger:    &logging.GlogLogger{},
 	}
 
-	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
-		t.Errorf("validateEgress(): should pass")
+	if !cli.verifyEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
+		t.Errorf("verifyEgress(): should pass")
 	}
 }

@@ -1,7 +1,7 @@
 package main
 
 // Usage
-// $ network-validator --timeout=1s --config=config/config.yaml
+// $ network-verifier --timeout=1s --config=config/config.yaml
 
 import (
 	"flag"
@@ -57,13 +57,13 @@ func main() {
 
 func TestEndpoints(config reachabilityConfig) {
 	// TODO how would we check for wildcard entries like the `.quay.io` entry, where we
-	// need to validate any CDN such as `cdn01.quay.io` should be available?
+	// need to verify any CDN such as `cdn01.quay.io` should be available?
 	//  We don't need to. We just best-effort check what we can.
 
 	failures := []error{}
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
-			err := ValidateReachability(e.Host, port)
+			err := VerifyReachability(e.Host, port)
 			if err != nil {
 				failures = append(failures, err)
 			}
@@ -85,9 +85,9 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func ValidateReachability(host string, port int) error {
+func VerifyReachability(host string, port int) error {
 	endpoint := fmt.Sprintf("%s:%d", host, port)
-	fmt.Printf("Validating %s\n", endpoint)
+	fmt.Printf("Verifying %s\n", endpoint)
 	_, err := net.DialTimeout("tcp", endpoint, *timeout)
 	if err != nil {
 		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)

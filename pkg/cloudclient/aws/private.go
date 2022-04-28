@@ -58,8 +58,8 @@ var (
 		"me-south-1":     "",
 	}
 	// TODO find a location for future docker images
-	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v81-bf8360e"
-	userdataEndVerifier   string = "USERDATA END"
+	networkVerifierImage string = "quay.io/app-sre/osd-network-verifier:v81-bf8360e"
+	userdataEndVerifier  string = "USERDATA END"
 )
 
 func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region, instanceType string, tags map[string]string) (*Client, error) {
@@ -84,7 +84,7 @@ func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret
 		output:       output.Output{},
 	}
 
-	// Validates the provided instance type will work with the verifier
+	// Verifies the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := c.validateInstanceType(ctx); err != nil {
 		return nil, fmt.Errorf("Instance type %s is invalid: %s", c.instanceType, err)
@@ -364,22 +364,22 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 	return cloudImageID, nil
 }
 
-// validateEgress performs validation process for egress
+// verifyEgress performs verification process for egress
 // Basic workflow is:
 // - prepare for ec2 instance creation
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `c.output` which stores the execution results
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
+func (c *Client) verifyEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
 		"AWS_REGION":               c.region,
 		"USERDATA_BEGIN":           "USERDATA BEGIN",
 		"USERDATA_END":             userdataEndVerifier,
-		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
-		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
-		"VALIDATOR_IMAGE":          networkValidatorImage,
+		"VERIFIER_START_VERIFIER": "VERIFIER START",
+		"VERIFIER_END_VERIFIER":   "VERIFIER END",
+		"VERIFIER_IMAGE":          networkVerifierImage,
 		"TIMEOUT":                  timeout.String(),
 	}
 	userData, err := generateUserData(userDataVariables)
