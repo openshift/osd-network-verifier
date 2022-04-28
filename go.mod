@@ -11,7 +11,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lithammer/dedent v1.1.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/openshift-online/ocm-sdk-go v0.1.224
 	github.com/spf13/cobra v1.4.0

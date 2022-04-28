@@ -12,13 +12,15 @@ osd-network-verifier can be used prior to the installation of osd/rosa clusters 
 - `make build-push`: Builds and pushes image from build/ to ` quay.io/app-sre/osd-network-verifier:$(IMAGE_URI_VERSION)`
 - `make skopeo-push`: (TODO add)  
 
-## Cloud Provider Specific Readme
+## Cloud Provider Specific READMEs
 -  [AWS](README_AWS.md)
 -  [GCP](README_GCP.md)
 
 ### Contributing and Maintenance ####
 ##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
+##### IAM Permission Requirement List #####
+Version ID [required for IAM support role](README_AWS.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html). 
 ##### To Contribute #####
 Fork the main repository and create pull requests against the `main` branch.
 

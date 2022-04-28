@@ -18,11 +18,12 @@ var Version string
 // NewCmdRoot represents the base command when called without any subcommands
 func NewCmdRoot() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:               "osd-network-verifier",
-		Example:           "./osd-network-verifier [command] [flags]",
-		Version:           fmt.Sprintf("%s, GitCommit: %s", Version, GitCommit),
-		Short:             "OSD network verifier CLI",
-		Long:              `CLI tool for pre-flight verification of VPC configuration against OSD requirements`,
+		Use:     "osd-network-verifier",
+		Example: "./osd-network-verifier [command] [flags]",
+		Version: fmt.Sprintf("%s, GitCommit: %s", Version, GitCommit),
+		Short:   "OSD network verifier CLI",
+		Long: `CLI tool for pre-flight verification of VPC configuration against OSD requirements. 
+For more information see https://github.com/openshift/osd-network-verifier/blob/main/README.md`,
 		DisableAutoGenTag: true,
 		Run:               help,
 	}
