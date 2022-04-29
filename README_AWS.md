@@ -22,7 +22,7 @@ Set up your environment to use the correct credentials for the AWS account for t
    export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
    export AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY>
    ```
-  For STS clusters, also:
+  For STS credentials, also:
     ```shell 
     export AWS_SESSION_TOKEN=<YOUR_SESSION_TOKEN_STRING> 
     ```

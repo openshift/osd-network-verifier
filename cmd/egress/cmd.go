@@ -45,7 +45,7 @@ func NewCmdValidateEgress() *cobra.Command {
 		Short: "Verify essential openshift domains are reachable from given subnet ID.",
 		Long:  `Verify essential openshift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars 
-AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS clusters) 
+AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credentials) 
 are set correctly before execution.
 
 # Verify that essential openshift domains are reachable from a given SUBNET_ID
