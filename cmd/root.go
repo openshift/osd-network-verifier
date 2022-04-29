@@ -3,6 +3,7 @@ package cmd
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	byovpc "github.com/openshift/osd-network-verifier/cmd/byovpc"
 	"github.com/openshift/osd-network-verifier/cmd/egress"
@@ -36,5 +37,8 @@ func NewCmdRoot() *cobra.Command {
 }
 
 func help(cmd *cobra.Command, _ []string) {
-	cmd.Help()
+	if err := cmd.Help(); err != nil {
+		cmd.PrintErr(err)
+		os.Exit(1)
+	}
 }
