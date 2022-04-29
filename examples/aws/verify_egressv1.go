@@ -1,6 +1,5 @@
 package aws
 
-// verify VPC egress access with AWS SDK v1
 import (
 	"context"
 	"fmt"
@@ -11,25 +10,24 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 )
 
-//Example config struct
+// Example config struct
 type egressConfigV1 struct {
 	debug bool
 }
 
-// Use egress validator
 func extendValidateEgressV1(ctx context.Context) error {
-	//---------initialize required args---------
-	//read AWS creds from environment
+	//---------Initialize required args---------
+	// Read AWS creds from environment
 	key, _ := os.LookupEnv("AWS_ACCESS_KEY_ID")
 	secret, _ := os.LookupEnv("AWS_SECRET_ACCESS_KEY")
 	session, _ := os.LookupEnv("AWS_SESSION_TOKEN")
-	//build the v1 credentials
+	// Build the v1 credentials
 	creds := credentials.NewStaticCredentials(key, secret, session)
 	builder := ocmlog.NewStdLoggerBuilder()
 	config := egressConfigV1{}
 	builder.Debug(config.debug)
 	logger, _ := builder.Build()
-	//example required values
+	// Example required values
 	region := "us-east-1"
 	instanceType := "m5.2xlarge"
 	tags := make(map[string]string)
