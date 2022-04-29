@@ -1,8 +1,8 @@
+default: build
+
 include boilerplate/generated-includes.mk
 
 SHELL := /usr/bin/env bash
-
-default: build
 
 # Include shared Makefiles
 include project.mk
