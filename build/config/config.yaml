@@ -127,3 +127,9 @@ endpoints:
   - host: events.${AWS_REGION}.amazonaws.com
     ports:
       - 443
+  - host: tagging.us-east-1.amazonaws.com
+    ports:
+      - 443
+  - host: route53domains.us-east-1.amazonaws.com
+    ports:
+      - 443
