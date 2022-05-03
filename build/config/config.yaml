@@ -2,11 +2,9 @@ endpoints:
   - host: registry.redhat.io
     ports:
       - 443
-      - 80
   - host: quay.io
     ports:
       - 443
-      - 80
   - host: sso.redhat.com
     ports:
       - 443
@@ -14,11 +12,9 @@ endpoints:
   - host: pull.q1w2.quay.rhcloud.com
     ports:
       - 443
-      - 80
   - host: openshift.org
     ports:
       - 443
-      - 80
   - host: console.redhat.com
     ports:
       - 443
@@ -26,63 +22,39 @@ endpoints:
   - host: quay-registry.s3.amazonaws.com
     ports:
       - 443
-      - 80
-  - host: cloud.redhat.com
-    ports:
-      - 443
-      - 80
   - host: cert-api.access.redhat.com
     ports:
       - 443
-      - 80
   - host: api.access.redhat.com
     ports:
       - 443
-      - 80
   - host: infogw.api.openshift.com
     ports:
       - 443
-      - 80
-  - host: oso-rhc4tp-docker-registry.s3-us-west-2.amazonaws.com
-    ports:
-      - 443
-      - 80
   - host: mirror.openshift.com
     ports:
       - 443
-      - 80
   - host: storage.googleapis.com
     ports:
       - 443
-      - 80
   - host: quay-registry.s3.amazonaws.com
     ports:
       - 443
-      - 80
   - host: api.openshift.com
     ports:
       - 443
-      - 80
-  - host: art-rhcos-ci.s3.amazonaws.com
+  - host: cart-rhcos-ci.s3.amazonaws.com
     ports:
       - 443
-      - 80
   - host: registry.access.redhat.com
     ports:
       - 443
-      - 80
-  - host: quayio-production-s3.s3.amazonaws.com
-    ports:
-      - 443
-      - 80
   - host: cm-quay-production-s3.s3.amazonaws.com
     ports:
       - 443
-      - 80
   - host: ec2.amazonaws.com
     ports:
       - 443
-      - 80
   - host: iam.amazonaws.com
     ports:
       - 443
@@ -119,11 +91,9 @@ endpoints:
   - host: ec2.${AWS_REGION}.amazonaws.com
     ports:
       - 443
-      - 80
   - host: elasticloadbalancing.${AWS_REGION}.amazonaws.com
     ports:
       - 443
-      - 80
   - host: events.${AWS_REGION}.amazonaws.com
     ports:
       - 443
