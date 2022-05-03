@@ -45,6 +45,10 @@ func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
 }
 
+func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
+	return c.verifyDns(ctx, vpcID)
+}
+
 // NewClient creates a new CloudClient for use with AWS.
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (client *Client, err error) {
 	switch c := creds.(type) {

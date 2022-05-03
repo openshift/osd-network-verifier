@@ -34,6 +34,10 @@ func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	return &c.output
 }
 
+func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
+	return &c.output
+}
+
 func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	// initialize actual client
 	return newClient(ctx, logger, credentials, region, instanceType, tags)

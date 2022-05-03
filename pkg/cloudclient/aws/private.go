@@ -418,3 +418,13 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 
 	return &c.output
 }
+
+// verifyDns performs verification process for VPC's DNS
+// Basic workflow is:
+// - ask AWS API for VPC attributes
+// - ensure they're set correctly
+func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
+	c.logger.Warn(ctx, "Testing DNS for VPC %s", vpcID)
+
+	return &c.output
+}
