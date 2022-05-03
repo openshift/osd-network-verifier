@@ -83,7 +83,10 @@ func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "Timeout for individual egress validation requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "ID of KMS key used to encrypt root volumes of created instances. Defaults to cloud account default key")
 
-	validateEgressCmd.MarkFlagRequired("subnet-id")
+	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
+		validateEgressCmd.PrintErr(err)
+		os.Exit(1)
+	}
 
 	return validateEgressCmd
 
