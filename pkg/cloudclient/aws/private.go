@@ -293,7 +293,8 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	}
 
 	// getConsoleOutput then parse, use c.output to store result of the execution
-	err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
+	// err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
+	err := helpers.PollImmediate(1*time.Microsecond, 2*time.Microsecond, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err == nil && output.Output != nil {
 			// First, gather the ec2 console output
@@ -319,10 +320,10 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			}
 
 			// check output failures, report as exception if they occurred
-			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
+			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`) //Help to grep an exceptions
 			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 			if len(notFoundMatch) > 0 {
-				c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
+				c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets")) //If exception occured, then throw this error and throw it in the output.
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
@@ -414,6 +415,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	if err != nil {
 		c.output.AddError(err)
 	}
+
 	c.terminateEC2Instance(ctx, instanceID)
 
 	return &c.output

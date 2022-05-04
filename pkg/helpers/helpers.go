@@ -2,14 +2,13 @@ package helpers
 
 import (
 	_ "embed"
-	"errors"
 	"time"
+
+	"github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
 //go:embed config/userdata.yaml
 var UserdataTemplate string
-
-var ErrWaitTimeout = errors.New("timed out waiting for the condition")
 
 func PollImmediate(interval time.Duration, timeout time.Duration, condition func() (bool, error)) error {
 
@@ -27,5 +26,5 @@ func PollImmediate(interval time.Duration, timeout time.Duration, condition func
 		totalTime += interval
 	}
 
-	return ErrWaitTimeout
+	return errors.ErrWaitTimeout
 }

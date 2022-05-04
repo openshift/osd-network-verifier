@@ -1,10 +1,20 @@
 package errors
 
-import "fmt"
+import (
+	_ "embed"
+	"errors"
+	"fmt"
+)
+
+// import "fmt"
 
 type EgressURLError struct {
 	e string
 }
+
+var ErrWaitTimeout = errors.New("timed out waiting for the condition")
+
+func (e *GenericError) ErrWaitTimeout() string { return e.e }
 
 func (e *EgressURLError) Error() string { return e.e }
 
