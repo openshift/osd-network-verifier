@@ -1,0 +1,7 @@
+{
+    "severity": "Error",
+    "service_name": "SREManualAction",
+    "summary": "Action required: Remove custom workload from control plane/infra nodes",
+    "description": "Your cluster requires you to take action because there is a custom workload (router-umich-base-domain) scheduled on control plane/infra nodes (ip-10-196-40-71.us-east-2.compute.internal). The control plane and infrastructure nodes are reserved for Red hat workloads required to operate the service, as described in the Red hat OpenShift Dedicated Service Definition. Please refer https://www.openshift.com/products/dedicated/service-definition#compute-instances. If you wish to configure a custom domain for your cluster, please follow this procedure https://docs.openshift.com/rosa/applications/deployments/osd-config-custom-domains-applications.html",
+"internal_only": false
+}
