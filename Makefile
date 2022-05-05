@@ -4,6 +4,8 @@ IMAGE_NAME?=osd-network-verifier
 # Include shared Makefiles
 include boilerplate/generated-includes.mk
 
+GOFLAGS=-mod=mod
+
 .PHONY: build
 build:
 	go fmt ./...
@@ -17,6 +19,3 @@ test:
 .PHONY: boilerplate-update
 boilerplate-update:
 	@boilerplate/update
-
-
-
