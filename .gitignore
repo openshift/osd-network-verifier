@@ -4,6 +4,7 @@ network-validator
 
 # ide
 .vscode/
+.idea/
 
 # Ignore temporary *.swp files
 *.swp
