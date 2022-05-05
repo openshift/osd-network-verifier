@@ -7,34 +7,6 @@
     <list default="true" id="1970e3d0-4954-4c5d-b6f9-0f736e0404aa" name="Changes" comment="ignore ide files">
       <changelist_data name="Ritu Mundhe" email="rmundhe@redhat.com" date="1651777307000" />
       <change beforePath="$PROJECT_DIR$/Makefile" beforeDir="false" afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_data/backing-image-tag" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_data/last-boilerplate-commit" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/boilerplate-commit" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/boilerplate.mk" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/common.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/container-make" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/freeze-check" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/release.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber-propose" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber-propose-update" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber-report" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber-report-onboarding" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber-report-pr" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber-report-release" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/_lib/subscriber.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/generated-includes.mk" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-codecov/.codecov.yml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-codecov/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-codecov/codecov.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-codecov/standard.mk" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-codecov/update" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-lint/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-lint/ensure.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-lint/golangci.yml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/openshift/golang-lint/standard.mk" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/update" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/boilerplate/update.cfg" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
