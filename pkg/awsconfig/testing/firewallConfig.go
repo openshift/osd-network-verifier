@@ -189,11 +189,11 @@ func (c Client) CreateInternetGateway(Vpc ec2.CreateVpcOutput) ec2.CreateInterne
 }
 
 func (c Client) CreateSubnet(CidrBlock string, Vpc ec2.CreateVpcOutput) ec2.CreateSubnetOutput {
-	Subnetinput := &ec2.CreateSubnetInput{
+	
+	Subnet, err := c.ec2Client.CreateSubnet(Subnetinput := &ec2.CreateSubnetInput{
 		CidrBlock: aws.String(CidrBlock),
 		VpcId:     aws.String(*Vpc.Vpc.VpcId),
-	}
-	Subnet, err := c.ec2Client.CreateSubnet(Subnetinput)
+	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
