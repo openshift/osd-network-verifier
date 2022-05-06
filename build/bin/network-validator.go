@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"crypto/tls"
-
 	"golang.org/x/crypto/ssh"
 
 	"gopkg.in/yaml.v2"
@@ -105,9 +103,6 @@ func ValidateReachability(host string, port int) error {
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 	httpClient := http.Client{
 		Timeout: *timeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
 	}
 
 	fmt.Printf("Validating %s\n", endpoint)
