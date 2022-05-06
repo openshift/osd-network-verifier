@@ -47,10 +47,10 @@ func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 
 // NewClient creates a new CloudClient for use with AWS.
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (client *Client, err error) {
-
 	switch c := creds.(type) {
 	case awscredsv1.Credentials:
-		if value, err := c.Get(); err == nil {
+		var value awscredsv1.Value
+		if value, err = c.Get(); err == nil {
 			client, err = newClient(
 				ctx,
 				logger,

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -60,22 +61,31 @@ func TestEndpoints(config reachabilityConfig) {
 	// need to validate any CDN such as `cdn01.quay.io` should be available?
 	//  We don't need to. We just best-effort check what we can.
 
-	failures := []error{}
+	var waitGroup sync.WaitGroup
+
+	failures := make(chan error, len(config.Endpoints))
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
-			err := ValidateReachability(e.Host, port)
-			if err != nil {
-				failures = append(failures, err)
-			}
+			waitGroup.Add(1)
+			// Validate the endpoints in parallel
+			go func(host string, port int, failures chan<- error) {
+				defer waitGroup.Done()
+				err := ValidateReachability(host, port)
+				if err != nil {
+					failures <- err
+				}
+			}(e.Host, port, failures)
 		}
 	}
+	waitGroup.Wait()
+	close(failures)
 
 	if len(failures) < 1 {
 		fmt.Println("Success!")
 		return
 	}
 	fmt.Println("\nNot all endpoints were reachable:")
-	for _, f := range failures {
+	for f := range failures {
 		fmt.Println(f)
 	}
 	// NOTE even though not all endpoints were reachable, the script still completed successfully. To ensure

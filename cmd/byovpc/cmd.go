@@ -36,7 +36,12 @@ func NewCmdByovpc() *cobra.Command {
 			instanceType := "t3.micro"
 			tags := map[string]string{}
 
-			cli, err := cloudclient.NewClient(ctx, logger, creds, region, instanceType, tags)
+			var cli cloudclient.CloudClient
+			cli, err = cloudclient.NewClient(ctx, logger, creds, region, instanceType, tags)
+			if err != nil {
+				logger.Error(ctx, err.Error())
+				os.Exit(1)
+			}
 
 			err = cli.ByoVPCValidator(ctx)
 			if err != nil {

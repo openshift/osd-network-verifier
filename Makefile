@@ -1,6 +1,8 @@
-SHELL := /usr/bin/env bash
-
 default: build
+
+include boilerplate/generated-includes.mk
+
+SHELL := /usr/bin/env bash
 
 # Include shared Makefiles
 include project.mk
@@ -24,13 +26,6 @@ test:
 build-push:
 	hack/app_sre_build_push.sh $(IMAGE_URI_VERSION)
 
-.PHONY: skopeo-push
-skopeo-push: containerbuild
-	skopeo copy \
-		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-		"docker-daemon:${IMAGE_URI_VERSION}" \
-		"docker://${IMAGE_URI_VERSION}"
-	skopeo copy \
-		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-		"docker-daemon:${IMAGE_URI_LATEST}" \
-		"docker://${IMAGE_URI_LATEST}"
+.PHONY: boilerplate-update
+boilerplate-update:
+	@boilerplate/update
