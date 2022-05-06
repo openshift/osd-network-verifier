@@ -208,11 +208,11 @@ func (c Client) CreateSubnet(CidrBlock string, Vpc ec2.CreateVpcOutput) ec2.Crea
 }
 
 func (c Client) CreateRouteTableForSubnet(Vpc ec2.CreateVpcOutput, Subnet ec2.CreateSubnetOutput) ec2.CreateRouteTableOutput {
-	RouteTable1input := &ec2.CreateRouteTableInput{
-		VpcId: aws.String(*Vpc.Vpc.VpcId),
-	}
+	RouteTable1input := 
 
-	RT, err := c.ec2Client.CreateRouteTable(RouteTable1input)
+	RT, err := c.ec2Client.CreateRouteTable(&ec2.CreateRouteTableInput{
+		VpcId: aws.String(*Vpc.Vpc.VpcId),
+	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
