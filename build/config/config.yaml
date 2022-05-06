@@ -22,9 +22,6 @@ endpoints:
   - host: quay-registry.s3.amazonaws.com
     ports:
       - 443
-  - host: cert-api.access.redhat.com
-    ports:
-      - 443
   - host: api.access.redhat.com
     ports:
       - 443
