@@ -208,7 +208,7 @@ func (c Client) CreateSubnet(CidrBlock string, Vpc ec2.CreateVpcOutput) ec2.Crea
 	return *Subnet
 }
 
-func (c Client) CreateRouteTableForSubnet(Vpc ec2.CreateVpcOutput, Subnet ec2.CreateSubnetOutput) ec2.CreateRouteTableOutput {
+func (c Client) CreateRouteTableForSubnet(vpcID string, subnetID string) ec2.CreateRouteTableOutput {
 	RouteTable1input := 
 
 	RT, err := c.ec2Client.CreateRouteTable(&ec2.CreateRouteTableInput{
