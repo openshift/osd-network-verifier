@@ -153,8 +153,7 @@ func (c Client) CreateVPC() ec2.CreateVpcOutput {
 }
 
 func (c Client) CreateInternetGateway(Vpc ec2.CreateVpcOutput) ec2.CreateInternetGatewayOutput {
-	IGinput := &ec2.CreateInternetGatewayInput{}
-	IGresult, err := c.ec2Client.CreateInternetGateway(IGinput)
+	IGresult, err := c.ec2Client.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
