@@ -167,11 +167,12 @@ func (c Client) CreateInternetGateway(Vpc ec2.CreateVpcOutput) ec2.CreateInterne
 
 	fmt.Println("Successfully created IG")
 	//Attach the InternetGateway to the VPC
-	IGAttachinput := &ec2.AttachInternetGatewayInput{
+	IGAttachinput := 
+	_, err = c.ec2Client.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
 		InternetGatewayId: aws.String(*IGresult.InternetGateway.InternetGatewayId),
 		VpcId:             aws.String(*Vpc.Vpc.VpcId),
 	}
-	_, err = c.ec2Client.AttachInternetGateway(IGAttachinput)
+	)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
