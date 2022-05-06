@@ -123,7 +123,7 @@ func ValidateReachability(host string, port int) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("unable to reach %s within specified timeout: %s", endpoint, err)
+		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)
 	}
 
 	return nil
