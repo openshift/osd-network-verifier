@@ -293,8 +293,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	}
 
 	// getConsoleOutput then parse, use c.output to store result of the execution
-	// err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
-	err := helpers.PollImmediate(1*time.Microsecond, 2*time.Microsecond, func() (bool, error) {
+	err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err == nil && output.Output != nil {
 			// First, gather the ec2 console output
