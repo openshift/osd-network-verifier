@@ -11,3 +11,6 @@ network-validator
 
 # Ignore coverage reports
 coverage.out
+
+# Docker temp dir
+.docker
