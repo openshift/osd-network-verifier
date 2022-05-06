@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
@@ -16,7 +15,7 @@ type egressConfigV2 struct {
 	debug bool
 }
 
-func extendValidateEgressV2(t *testing.T) {
+func extendValidateEgressV2() {
 	ctx := context.TODO()
 	//---------initialize required args---------
 	// Read AWS creds from environment

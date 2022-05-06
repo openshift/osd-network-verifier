@@ -15,7 +15,7 @@ type egressConfigV1 struct {
 	debug bool
 }
 
-func extendValidateEgressV1(ctx context.Context) error {
+func extendValidateEgressV1() error {
 	//---------Initialize required args---------
 	// Read AWS creds from environment
 	key, _ := os.LookupEnv("AWS_ACCESS_KEY_ID")
@@ -33,7 +33,7 @@ func extendValidateEgressV1(ctx context.Context) error {
 	tags["key1"] = "val1"
 
 	//---------ONV egress verifier usage---------
-	cli, _ := cloudclient.NewClient(ctx, logger, *creds, region, instanceType, tags)
+	cli, _ := cloudclient.NewClient(context.TODO(), logger, *creds, region, instanceType, tags)
 	// Call egress validator
 	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 600)
 	if !out.IsSuccessful() {
