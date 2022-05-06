@@ -92,20 +92,23 @@ repeat the verification process for each subnet ID.
 
    5. Execute:
     
-        ```shell        
-        ./osd-network-verifier egress \
-            --subnet-id <subnet_id> \ 
-            --image-id <image_id>
+       ```shell        
+       ./osd-network-verifier egress \
+           --subnet-id <subnet_id> 
         ```
-
-        Optionally, provide a list of tags to apply to the test instance:
-       
-         ```shell
-        ./osd-network-verifier egress --subnet-id=$(SUBNET_ID) \
-         --image-id=$(IMAGE_ID) \
-         --cloud-tags osd-network-verifier=owned,key1=value1,key2=value2
-        ```
-       Get more help:
+   
+        Additional optional flags for overriding defaults:
+      ```shell
+      --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources (default [osd-network-verifier=owned,red-hat-managed=true,Name=osd-network-verifier])
+      --debug                       (optional) if true, enable additional debug-level logging
+      --image-id string             (optional) specify cloud image for the compute instance
+      --instance-type string        compute instance type (default "(optional) t3.micro")
+      --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
+      --region string               (optional) compute instance region. If absent, environment var AWS_DEFAULT_REGION will be used, if set (default "us-east-1")
+      --subnet-id string            source subnet ID
+      --timeout duration            (optional) timeout for individual egress verification requests (default 1s)
+       ```
+       Get cli help:
     
         ```shell
         ./osd-network-verifier egress --help
