@@ -4,6 +4,7 @@ package main
 // $ network-validator --timeout=1s --config=config/config.yaml
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -42,8 +43,9 @@ func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
 }
 
 type endpoint struct {
-	Host  string `yaml:"host"`
-	Ports []int  `yaml:"ports"`
+	Host        string `yaml:"host"`
+	Ports       []int  `yaml:"ports"`
+	TLSDisabled bool   `yaml:"tlsDisabled"`
 }
 
 func main() {
@@ -71,13 +73,13 @@ func TestEndpoints(config reachabilityConfig) {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
 			// Validate the endpoints in parallel
-			go func(host string, port int, failures chan<- error) {
+			go func(host string, port int, tlsDisabled bool, failures chan<- error) {
 				defer waitGroup.Done()
-				err := ValidateReachability(host, port)
+				err := ValidateReachability(host, port, tlsDisabled)
 				if err != nil {
 					failures <- err
 				}
-			}(e.Host, port, failures)
+			}(e.Host, port, e.TLSDisabled, failures)
 		}
 	}
 	waitGroup.Wait()
@@ -98,11 +100,17 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func ValidateReachability(host string, port int) error {
+func ValidateReachability(host string, port int, tlsDisabled bool) error {
 	var err error
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 	httpClient := http.Client{
 		Timeout: *timeout,
+	}
+
+	if tlsDisabled {
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
 	}
 
 	fmt.Printf("Validating %s\n", endpoint)
