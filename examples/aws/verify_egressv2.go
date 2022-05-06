@@ -23,18 +23,16 @@ func extendValidateEgressV2(t *testing.T) {
 	key, _ := os.LookupEnv("AWS_ACCESS_KEY_ID")
 	secret, _ := os.LookupEnv("AWS_SECRET_ACCESS_KEY")
 	session, _ := os.LookupEnv("AWS_SESSION_TOKEN")
+
 	// Build the v2 credentials provider
 	creds := credentials.NewStaticCredentialsProvider(key, secret, session)
-	builder := ocmlog.NewStdLoggerBuilder()
-	config := egressConfigV2{}
-	builder.Debug(config.debug)
-	logger, _ := builder.Build()
+
 	// Example required values
+	logger, _ := ocmlog.NewStdLoggerBuilder().Debug(true).Build()
 	region := "us-east-1"
 	instanceType := "m5.2xlarge"
 	tags := make(map[string]string)
 	tags["key1"] = "val1"
-
 
 	//---------ONV egress verifier usage---------
 	cli, _ := cloudclient.NewClient(ctx, logger, creds, region, instanceType, tags)

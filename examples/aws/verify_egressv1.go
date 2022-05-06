@@ -21,13 +21,12 @@ func extendValidateEgressV1(ctx context.Context) error {
 	key, _ := os.LookupEnv("AWS_ACCESS_KEY_ID")
 	secret, _ := os.LookupEnv("AWS_SECRET_ACCESS_KEY")
 	session, _ := os.LookupEnv("AWS_SESSION_TOKEN")
+
 	// Build the v1 credentials
 	creds := credentials.NewStaticCredentials(key, secret, session)
-	builder := ocmlog.NewStdLoggerBuilder()
-	config := egressConfigV1{}
-	builder.Debug(config.debug)
-	logger, _ := builder.Build()
+
 	// Example required values
+	logger, _ := ocmlog.NewStdLoggerBuilder().Debug(true).Build()
 	region := "us-east-1"
 	instanceType := "m5.2xlarge"
 	tags := make(map[string]string)
