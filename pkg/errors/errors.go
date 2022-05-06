@@ -6,8 +6,6 @@ import (
 	"fmt"
 )
 
-// import "fmt"
-
 type EgressURLError struct {
 	e string
 }
