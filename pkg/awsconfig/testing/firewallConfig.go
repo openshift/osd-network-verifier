@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"flag"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,83 +23,66 @@ type Client struct {
 	firewallClient networkfirewalliface.NetworkFirewallAPI
 }
 
-var wait2 = 360 * time.Second
+type awsFlag struct {
+	profile string
+	region string
+}
 
+var wait2 = 360 * time.Second
+var awsClient Client
+var profile string
+var region string
 
 func main() {
-	var ec2Client ec2iface.EC2API
-	var firewallClient networkfirewalliface.NetworkFirewallAPI
 
-	region := os.Getenv("REGION")
-	profile := os.Getenv("PROFILE")
+    awsProfile := flag.String("p", "", "aws profile")
+    awsRegion := flag.String("r", "", "aws region")
+    flag.Parse()
+	if (*awsProfile != ""){
+		fmt.Println("Profile: ", *awsProfile)
+		profile = *awsProfile
+	}else{
+		profile = os.Getenv("AWS_PROFILE")
+	}
+	if (*awsRegion != ""){
+		fmt.Println("Region: ", *awsRegion)
+		region = *awsRegion
+	}else{
+		region = os.Getenv("AWS_REGION")
+	}
+
 	if profile == ""{
 		fmt.Println("Profile is not provided, will take in ENV")
-		creds := credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-		
-		ec2Client = ec2.New(session.New(&aws.Config{
-			Region:      &region,
-			Credentials: creds,
-		}))
-
-		firewallClient = networkfirewall.New(session.Must(session.NewSession()), &aws.Config{
-			Region:      &region,
-			Credentials: creds,
-		})
-
+		awsClient = EnvClient(region)
 	}else{
-		sess := session.Must(session.NewSessionWithOptions(session.Options{
-			Config: aws.Config{
-				Region:      &region,
-			},
-			Profile: profile,
-		}))
-		if _, err := sess.Config.Credentials.Get(); err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case "NoCredentialProviders":
-					fmt.Println("could not create AWS session: ", err)
-				default:
-					fmt.Println("could not create AWS session: ", err)
-				}
-			}
-		}
-
-		ec2Client = ec2.New(sess)
-		//create firewall client
-		firewallClient = networkfirewall.New(sess)
-	}
-
-	awsClient := Client{
-		ec2Client,
-		firewallClient,
-	}
-	
+		awsClient = ProfileClient(region, profile)
+	}	
 	//Create VPC
 	Vpc := awsClient.CreateVPC()
 	//Create Internet Gateway
-	IG := awsClient.CreateInternetGateway(Vpc)
+	IG := awsClient.CreateInternetGatewayForVpc(*Vpc.Vpc.VpcId)
 	//Create Public Subnet
-	PublicSubnet := awsClient.CreateSubnet("10.0.0.0/24", Vpc)
+	PublicSubnet := awsClient.CreateSubnet("10.0.0.0/24", *Vpc.Vpc.VpcId)
 	//Create Private Subnet
-	PrivateSubnet := awsClient.CreateSubnet("10.0.1.0/24", Vpc)
+	PrivateSubnet := awsClient.CreateSubnet("10.0.1.0/24", *Vpc.Vpc.VpcId)
 	//Create Firewall Subnet
-	FirewallSubnet := awsClient.CreateSubnet("10.0.2.0/24", Vpc)
+	FirewallSubnet := awsClient.CreateSubnet("10.0.2.0/24", *Vpc.Vpc.VpcId)
 	//Create PublicSubnet Route Table
-	PublicRT := awsClient.CreateRouteTableForSubnet(Vpc, PublicSubnet)
+	PublicRT := awsClient.CreateRouteTableForSubnet(*Vpc.Vpc.VpcId,*PublicSubnet.Subnet.SubnetId)
 	//Create PrivateSubnet Route Table
-	PrivateRT := awsClient.CreateRouteTableForSubnet(Vpc, PrivateSubnet)
+	PrivateRT := awsClient.CreateRouteTableForSubnet(*Vpc.Vpc.VpcId,*PrivateSubnet.Subnet.SubnetId)
 	//Create FirewallSubnet Route Table
-	FirewallRT := awsClient.CreateRouteTableForSubnet(Vpc, FirewallSubnet)
+	FirewallRT := awsClient.CreateRouteTableForSubnet(*Vpc.Vpc.VpcId,*FirewallSubnet.Subnet.SubnetId)
 	//Create IGW Route Table
-	IgRT := awsClient.CreateRouteTableForIGW(Vpc, IG)
+	IgRT := awsClient.CreateRouteTableForIGW(*Vpc.Vpc.VpcId, *IG.InternetGateway.InternetGatewayId)
 	//Create NAT Gateway
-	NatGateway := awsClient.CreateNatGateway(PublicSubnet)
+	NatGateway := awsClient.CreateNatGateway(*PublicSubnet.Subnet.SubnetId)
 
 	//Create route 0.0.0.0/0 in PrivateRT for NatGateway
-	awsClient.CreateRouteForGateway("0.0.0.0/0", *NatGateway.NatGateway.NatGatewayId, PrivateRT)
+	awsClient.CreateRouteForGateway("0.0.0.0/0", *NatGateway.NatGateway.NatGatewayId, *PrivateRT.RouteTable.RouteTableId)
 	fmt.Println("Successfully Created a route 0.0.0.0/0 to NatGateway in Private Subnet")
 	//Create route 0.0.0.0/0 in FirewallSubnet for IG
-	awsClient.CreateRouteForGateway("0.0.0.0/0", *IG.InternetGateway.InternetGatewayId, FirewallRT)
+	awsClient.CreateRouteForGateway("0.0.0.0/0", *IG.InternetGateway.InternetGatewayId, *FirewallRT.RouteTable.RouteTableId)
 	fmt.Println("Successfully Created a route 0.0.0.0/0 to IGW in Firewall Subnet")
 
 	//Create Firewall
@@ -122,12 +106,67 @@ func main() {
 
 }
 
+func EnvClient(region string) Client{
+	creds := credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+
+	ec2Client := ec2.New(session.New(&aws.Config{
+		Region:      &region,
+		Credentials: creds,
+	}))
+
+	firewallClient := networkfirewall.New(session.Must(session.NewSession()), &aws.Config{
+		Region:      &region,
+		Credentials: creds,
+	})
+
+	awsClient := Client{
+		ec2Client,
+		firewallClient,
+	}
+	return awsClient
+}
+
+func ProfileClient(region, profile string) Client {
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Config: aws.Config{
+			Region:      &region,
+		},
+		Profile: profile,
+	}))
+	if _, err := sess.Config.Credentials.Get(); err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			case "NoCredentialProviders":
+				fmt.Println("could not create AWS session: ", err)
+			default:
+				fmt.Println("could not create AWS session: ", err)
+			}
+		}
+	}
+
+	ec2Client := ec2.New(sess)
+	firewallClient := networkfirewall.New(sess)
+
+	awsClient := Client{
+		ec2Client,
+		firewallClient,
+	}
+	return awsClient
+}
+
 func (c Client) CreateVPC() ec2.CreateVpcOutput {
 	VPC, err := c.ec2Client.CreateVpc(&ec2.CreateVpcInput{
 		CidrBlock: aws.String("10.0.0.0/16"),
 	})
 	if err != nil {
-		fmt.Println(err.Error())
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+				default:
+				fmt.Println(aerr.Error())
+			}
+		} else {
+			fmt.Println(err.Error())
+		}
 	}
 
 	fmt.Println("Successfully created a vpc with ID:", string(*VPC.Vpc.VpcId))
@@ -139,20 +178,13 @@ func (c Client) CreateVPC() ec2.CreateVpcOutput {
 		VpcId: aws.String(*VPC.Vpc.VpcId),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			fmt.Println(err.Error())
-		}
+		fmt.Println(err.Error())
 	}
 	fmt.Println("Successfully enabled DNSHostname for the newly created VPC")
 	return *VPC
 }
 
-func (c Client) CreateInternetGateway(Vpc ec2.CreateVpcOutput) ec2.CreateInternetGatewayOutput {
+func (c Client) CreateInternetGatewayForVpc(vpcID string) ec2.CreateInternetGatewayOutput {
 	IGresult, err := c.ec2Client.CreateInternetGateway(&ec2.CreateInternetGatewayInput{})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -167,12 +199,10 @@ func (c Client) CreateInternetGateway(Vpc ec2.CreateVpcOutput) ec2.CreateInterne
 
 	fmt.Println("Successfully created IG")
 	//Attach the InternetGateway to the VPC
-	IGAttachinput := 
 	_, err = c.ec2Client.AttachInternetGateway(&ec2.AttachInternetGatewayInput{
 		InternetGatewayId: aws.String(*IGresult.InternetGateway.InternetGatewayId),
-		VpcId:             aws.String(*Vpc.Vpc.VpcId),
-	}
-	)
+		VpcId:             aws.String(vpcID),
+	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -188,11 +218,11 @@ func (c Client) CreateInternetGateway(Vpc ec2.CreateVpcOutput) ec2.CreateInterne
 	return *IGresult
 }
 
-func (c Client) CreateSubnet(CidrBlock string, Vpc ec2.CreateVpcOutput) ec2.CreateSubnetOutput {
+func (c Client) CreateSubnet(CidrBlock string, vpcID string) ec2.CreateSubnetOutput {
 	
-	Subnet, err := c.ec2Client.CreateSubnet(Subnetinput := &ec2.CreateSubnetInput{
+	Subnet, err := c.ec2Client.CreateSubnet(&ec2.CreateSubnetInput{
 		CidrBlock: aws.String(CidrBlock),
-		VpcId:     aws.String(*Vpc.Vpc.VpcId),
+		VpcId:     aws.String(vpcID),
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -209,10 +239,8 @@ func (c Client) CreateSubnet(CidrBlock string, Vpc ec2.CreateVpcOutput) ec2.Crea
 }
 
 func (c Client) CreateRouteTableForSubnet(vpcID string, subnetID string) ec2.CreateRouteTableOutput {
-	RouteTable1input := 
-
 	RT, err := c.ec2Client.CreateRouteTable(&ec2.CreateRouteTableInput{
-		VpcId: aws.String(*Vpc.Vpc.VpcId),
+		VpcId: aws.String(vpcID),
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -226,7 +254,7 @@ func (c Client) CreateRouteTableForSubnet(vpcID string, subnetID string) ec2.Cre
 	}
 	Associateinput := &ec2.AssociateRouteTableInput{
 		RouteTableId: aws.String(*RT.RouteTable.RouteTableId),
-		SubnetId:     aws.String(*Subnet.Subnet.SubnetId),
+		SubnetId:     aws.String(subnetID),
 	}
 	_, err = c.ec2Client.AssociateRouteTable(Associateinput)
 	if err != nil {
@@ -242,9 +270,9 @@ func (c Client) CreateRouteTableForSubnet(vpcID string, subnetID string) ec2.Cre
 	return *RT
 }
 
-func (c Client) CreateRouteTableForIGW(Vpc ec2.CreateVpcOutput, IG ec2.CreateInternetGatewayOutput) ec2.CreateRouteTableOutput {
+func (c Client) CreateRouteTableForIGW(vpcId string, IgwId string) ec2.CreateRouteTableOutput {
 	RouteTable1input := &ec2.CreateRouteTableInput{
-		VpcId: aws.String(*Vpc.Vpc.VpcId),
+		VpcId: aws.String(vpcId),
 	}
 
 	RT, err := c.ec2Client.CreateRouteTable(RouteTable1input)
@@ -260,7 +288,7 @@ func (c Client) CreateRouteTableForIGW(Vpc ec2.CreateVpcOutput, IG ec2.CreateInt
 	}
 	Associateinput := &ec2.AssociateRouteTableInput{
 		RouteTableId: aws.String(*RT.RouteTable.RouteTableId),
-		GatewayId:    aws.String(*IG.InternetGateway.InternetGatewayId),
+		GatewayId:    aws.String(IgwId),
 	}
 	_, err = c.ec2Client.AssociateRouteTable(Associateinput)
 	if err != nil {
@@ -275,7 +303,7 @@ func (c Client) CreateRouteTableForIGW(Vpc ec2.CreateVpcOutput, IG ec2.CreateInt
 	}
 	return *RT
 }
-func (c Client) CreateNatGateway(Subnet ec2.CreateSubnetOutput) ec2.CreateNatGatewayOutput {
+func (c Client) CreateNatGateway(SubnetId string) ec2.CreateNatGatewayOutput {
 	EIPinput := &ec2.AllocateAddressInput{
 		Domain: aws.String("vpc"),
 	}
@@ -293,7 +321,7 @@ func (c Client) CreateNatGateway(Subnet ec2.CreateSubnetOutput) ec2.CreateNatGat
 	}
 	NGinput := &ec2.CreateNatGatewayInput{
 		AllocationId: aws.String(*EIPresult.AllocationId),
-		SubnetId:     aws.String(*Subnet.Subnet.SubnetId),
+		SubnetId:     aws.String(SubnetId),
 	}
 
 	NGresult, err := c.ec2Client.CreateNatGateway(NGinput)
@@ -318,11 +346,11 @@ func (c Client) CreateNatGateway(Subnet ec2.CreateSubnetOutput) ec2.CreateNatGat
 	fmt.Println("Successfully create a NAT Gateway")
 	return *NGresult
 }
-func (c Client) CreateRouteForGateway(CidrBlock string, GatewayID string, RouteTable ec2.CreateRouteTableOutput) {
+func (c Client) CreateRouteForGateway(CidrBlock string, GatewayID string, RouteTableId string ) {
 	Ruleinput := &ec2.CreateRouteInput{
 		DestinationCidrBlock: aws.String(CidrBlock),
 		GatewayId:            aws.String(GatewayID),
-		RouteTableId:         aws.String(*RouteTable.RouteTable.RouteTableId),
+		RouteTableId:         aws.String(RouteTableId),
 	}
 
 	_, err := c.ec2Client.CreateRoute(Ruleinput)
