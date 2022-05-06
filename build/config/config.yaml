@@ -25,6 +25,7 @@ endpoints:
   - host: cert-api.access.redhat.com
     ports:
       - 443
+    tlsDisabled: true
   - host: api.access.redhat.com
     ports:
       - 443
