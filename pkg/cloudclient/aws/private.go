@@ -237,39 +237,26 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (i
 
 func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
 	//wait for the instance to run
-	totalWait := 25 * 60
-	currentWait := 1
-	// Double the wait time until we reach totalWait seconds
-	for totalWait > 0 {
-		currentWait = currentWait * 2
-		if currentWait > totalWait {
-			currentWait = totalWait
-		}
-		totalWait -= currentWait
-		time.Sleep(time.Duration(currentWait) * time.Second)
+	err := helpers.PollImmediate(15*time.Second, 2*time.Minute, func() (bool, error) {
 		code, descError := c.describeEC2Instances(ctx, instanceID)
-		if code == 16 { // 16 represents a successful region initialization
+		switch code {
+		case 401:
+			return false, fmt.Errorf("missing required permissions for account: %s", descError)
+		case 16:
+			c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
+			// 16 represents a successful region initialization
 			// Instance is running, break
-			break
-		} else if code == 401 { // 401 represents an UnauthorizedOperation error
-			// Missing permission to perform operations, account needs to fail
-			return fmt.Errorf("missing required permissions for account: %s", descError)
+			return true, nil
 		}
 
 		if descError != nil {
-			// Log an error and make sure that instance is terminated
-			descErrorMsg := fmt.Sprintf("Could not get EC2 instance state, terminating instance %s", instanceID)
-
-			if descError, ok := descError.(awserr.Error); ok {
-				descErrorMsg = fmt.Sprintf("Could not get EC2 instance state: %s, terminating instance %s", descError.Code(), instanceID)
-			}
-
-			return fmt.Errorf("%s: %s", descError, descErrorMsg)
+			return false, descError // unhandled
 		}
-	}
 
-	c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
-	return nil
+		return false, nil // continue loop
+	})
+
+	return err
 }
 
 func generateUserData(variables map[string]string) (string, error) {
