@@ -10,11 +10,6 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 )
 
-// Example config struct
-type egressConfigV1 struct {
-	debug bool
-}
-
 func extendValidateEgressV1() error {
 	//---------Initialize required args---------
 	// Read AWS creds from environment

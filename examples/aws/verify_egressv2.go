@@ -10,11 +10,6 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 )
 
-// Example config struct
-type egressConfigV2 struct {
-	debug bool
-}
-
 func extendValidateEgressV2() {
 	ctx := context.TODO()
 	//---------initialize required args---------
