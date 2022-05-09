@@ -41,7 +41,7 @@ func NewCmdValidateEgress() *cobra.Command {
 	config := egressConfig{}
 
 	validateEgressCmd := &cobra.Command{
-		Use: "egress",
+		Use:   "egress",
 		Short: "Verify essential openshift domains are reachable from given subnet ID.",
 		Long:  `Verify essential openshift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars 
@@ -84,7 +84,7 @@ are set correctly before execution.
 
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
-	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "(optional) t3.micro", "compute instance type")
+	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "t3.micro", "(optional) compute instance type")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", regionEnvVarStr, regionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
