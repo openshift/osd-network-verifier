@@ -25,6 +25,5 @@ func PollImmediate(interval time.Duration, timeout time.Duration, condition func
 		time.Sleep(interval)
 		totalTime += interval
 	}
-
 	return errors.ErrWaitTimeout
 }
