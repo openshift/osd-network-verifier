@@ -7,3 +7,6 @@ network-validator
 
 # Ignore temporary *.swp files
 *.swp
+
+# Ignore coverage reports
+coverage.out

@@ -4,12 +4,17 @@ package main
 // $ network-validator --timeout=1s --config=config/config.yaml
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
+	"sync"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 
 	"gopkg.in/yaml.v2"
 )
@@ -38,8 +43,9 @@ func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
 }
 
 type endpoint struct {
-	Host  string `yaml:"host"`
-	Ports []int  `yaml:"ports"`
+	Host        string `yaml:"host"`
+	Ports       []int  `yaml:"ports"`
+	TLSDisabled bool   `yaml:"tlsDisabled"`
 }
 
 func main() {
@@ -60,22 +66,31 @@ func TestEndpoints(config reachabilityConfig) {
 	// need to validate any CDN such as `cdn01.quay.io` should be available?
 	//  We don't need to. We just best-effort check what we can.
 
-	failures := []error{}
+	var waitGroup sync.WaitGroup
+
+	failures := make(chan error, len(config.Endpoints))
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
-			err := ValidateReachability(e.Host, port)
-			if err != nil {
-				failures = append(failures, err)
-			}
+			waitGroup.Add(1)
+			// Validate the endpoints in parallel
+			go func(host string, port int, tlsDisabled bool, failures chan<- error) {
+				defer waitGroup.Done()
+				err := ValidateReachability(host, port, tlsDisabled)
+				if err != nil {
+					failures <- err
+				}
+			}(e.Host, port, e.TLSDisabled, failures)
 		}
 	}
+	waitGroup.Wait()
+	close(failures)
 
 	if len(failures) < 1 {
 		fmt.Println("Success!")
 		return
 	}
 	fmt.Println("\nNot all endpoints were reachable:")
-	for _, f := range failures {
+	for f := range failures {
 		fmt.Println(f)
 	}
 	// NOTE even though not all endpoints were reachable, the script still completed successfully. To ensure
@@ -85,12 +100,39 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func ValidateReachability(host string, port int) error {
+func ValidateReachability(host string, port int, tlsDisabled bool) error {
+	var err error
 	endpoint := fmt.Sprintf("%s:%d", host, port)
+	httpClient := http.Client{
+		Timeout: *timeout,
+	}
+
+	if tlsDisabled {
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	fmt.Printf("Validating %s\n", endpoint)
-	_, err := net.DialTimeout("tcp", endpoint, *timeout)
+
+	switch port {
+	case 80:
+		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "http", host))
+	case 443:
+		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "https", host))
+	case 22:
+		_, err = ssh.Dial("tcp", endpoint, &ssh.ClientConfig{HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: *timeout})
+		if err.Error() == "ssh: handshake failed: EOF" {
+			// at this point, connectivity is available
+			err = nil
+		}
+	default:
+		_, err = net.DialTimeout("tcp", endpoint, *timeout)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)
 	}
+
 	return nil
 }

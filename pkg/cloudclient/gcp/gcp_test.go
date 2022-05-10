@@ -25,7 +25,7 @@ func TestValidateEgress(t *testing.T) {
 	cloudImageID := "image-id"
 	cli := Client{}
 	timeout := 1 * time.Second
-	if !cli.ValidateEgress(ctx, subnetID, cloudImageID, timeout).IsSuccessful() {
+	if !cli.ValidateEgress(ctx, subnetID, cloudImageID, "", timeout).IsSuccessful() {
 		t.Errorf("validation should have been successful")
 	}
 }

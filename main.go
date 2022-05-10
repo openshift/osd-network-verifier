@@ -11,7 +11,10 @@ import (
 func main() {
 
 	flags := pflag.NewFlagSet("osd-network-verifier", pflag.ExitOnError)
-	flag.CommandLine.Parse([]string{})
+
+	if err := flag.CommandLine.Parse([]string{}); err != nil {
+		os.Exit(1)
+	}
 	pflag.CommandLine = flags
 
 	if err := cmd.NewCmdRoot().Execute(); err != nil {
