@@ -14,6 +14,7 @@ osd-network-verifier can be used prior to the installation of osd/rosa clusters 
 - ec2:DescribeInstanceTypes
 - ec2:GetConsoleOutput
 - ec2:TerminateInstances
+- ec2:DescribeVpcAttribute
 
 ## Egress validation
 
@@ -98,6 +99,25 @@ Optionally provide a list of tags to use outside of the default:
 ```shell
 AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier egress --subnet-id subnet-0ccetestsubnet1864 --image-id=ami-0df9a9ade3c65a1c7 --cloud-tags key=value,osd-network-verifier=owned
 ```
+
+## VPC DNS verification
+Verifying that a given VPC's DNS configuration is correct is fairly straightforward: we
+just need to ensure that the VPC attributes `enableDnsHostnames` and `enableDnsSupport`
+are both set to `true`.
+
+### Verify DNS using our go API
+See the egress documentation above, and replace the line starting with `out := cli.ValidateEgress(...` with:
+```go
+out := cli.VerifyDns(context.TODO(), "vpcID")
+```
+
+### Verify DNS using command line
+Build the `osd-network-verifier` executable as shown the egress documentation above.
+Then run:
+```shell
+AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier dns --vpc-id=vpc-0123456789deadbeef
+```
+
 
 ## Other Subcommands
 
