@@ -16,6 +16,7 @@ var debug bool
 func NewCmdByovpc() *cobra.Command {
 	byovpcCmd := &cobra.Command{
 		Use: "byovpc",
+		Short: "Verify subnet configuration of a specific VPC",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create logger
 			builder := ocmlog.NewStdLoggerBuilder()
