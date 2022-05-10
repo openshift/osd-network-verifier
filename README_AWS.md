@@ -32,7 +32,7 @@ Set up your environment to use the correct credentials for the AWS account for t
     ````
   
 ### VPC ###
-- Any VPC for a non-STS CCS cluster can be tested using this tool.
+- Any VPC for a ROSA/OSD CCS cluster can be tested using this tool.
 - Apart from the AWS credentials, you will need to know the following information about the VPC to be verified.
     - Subnet IDs
     - AWS region
