@@ -50,7 +50,8 @@ func NewCmdValidateDns() *cobra.Command {
 
 			logger.Warn(ctx, "Using region: %s", config.region)
 			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, "", nil)
+			// The use of t3.micro here is arbitrary; we just need to provide any valid machine type
+			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, "t3.micro", nil)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)

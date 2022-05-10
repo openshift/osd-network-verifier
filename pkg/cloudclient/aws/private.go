@@ -424,7 +424,40 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 // - ask AWS API for VPC attributes
 // - ensure they're set correctly
 func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
-	c.logger.Warn(ctx, "Testing DNS for VPC %s", vpcID)
+	c.logger.Info(ctx, "Testing DNS for VPC %s", vpcID)
+	// Request boolean values from AWS API
+	dnsSprtInput := &ec2.DescribeVpcAttributeInput{
+		Attribute: "enableDnsSupport",
+		VpcId:     aws.String(vpcID),
+	}
+	dnsHostInput := &ec2.DescribeVpcAttributeInput{
+		Attribute: "enableDnsHostnames",
+		VpcId:     aws.String(vpcID),
+	}
+
+	dnsSprtResult, dnsSprtErr := c.ec2Client.DescribeVpcAttribute(ctx, dnsSprtInput)
+	dnsHostResult, dnsHostErr := c.ec2Client.DescribeVpcAttribute(ctx, dnsHostInput)
+
+	if dnsSprtErr != nil {
+		c.output.AddError(dnsSprtErr)
+	}
+	if dnsHostErr != nil {
+		c.output.AddError(dnsHostErr)
+	}
+	// Verify results
+	verificationFailed := false
+	if !*dnsSprtResult.EnableDnsSupport.Value {
+		verificationFailed = true
+		c.logger.Error(ctx, "DNS support is disabled for VPC %s", vpcID)
+	}
+	if !*dnsHostResult.EnableDnsHostnames.Value {
+		verificationFailed = true
+		c.logger.Error(ctx, "DNS hostnames are disabled for VPC %s", vpcID)
+	}
+	// Report final result
+	if verificationFailed {
+		c.logger.Error(ctx, "VPC %s's DNS configuration is incompatible with OSD. Please correct the errors above and try again.", vpcID)
+	}
 
 	return &c.output
 }
