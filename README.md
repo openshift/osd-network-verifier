@@ -2,7 +2,7 @@
 
 A cli tool and set of libraries that 
 verify the pre-configured networking components
-for non-STS OSD CCS clusters.
+for ROSA and OSD CCS clusters.
 
 ## Overview
 
