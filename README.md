@@ -6,7 +6,7 @@ for ROSA and OSD CCS clusters.
 
 ## Overview
 
-osd-network-verifier can be used prior to the installation 
+osd-network-verifier can be used prior to or after the installation 
 of osd/rosa clusters to ensure the network configuration 
 is correctly set up per [OSD requirements] listed on https://docs.openshift.com/container-platform/4.6/installing/installing_aws/installing-aws-vpc.html#installation-custom-aws-vpc-requirements_installing-aws-vpc
 
