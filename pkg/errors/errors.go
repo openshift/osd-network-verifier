@@ -1,7 +1,6 @@
 package errors
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 )
