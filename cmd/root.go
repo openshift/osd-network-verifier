@@ -6,6 +6,7 @@ import (
 	"os"
 
 	byovpc "github.com/openshift/osd-network-verifier/cmd/byovpc"
+	"github.com/openshift/osd-network-verifier/cmd/dns"
 	"github.com/openshift/osd-network-verifier/cmd/egress"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +33,7 @@ func NewCmdRoot() *cobra.Command {
 	// add sub commands
 	rootCmd.AddCommand(byovpc.NewCmdByovpc())
 	rootCmd.AddCommand(egress.NewCmdValidateEgress())
+	rootCmd.AddCommand(dns.NewCmdValidateDns())
 
 	return rootCmd
 }
