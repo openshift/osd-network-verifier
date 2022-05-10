@@ -25,6 +25,7 @@ endpoints:
   - host: cert-api.access.redhat.com
     ports:
       - 443
+    tlsDisabled: true
   - host: api.access.redhat.com
     ports:
       - 443
@@ -95,5 +96,11 @@ endpoints:
     ports:
       - 443
   - host: events.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: tagging.us-east-1.amazonaws.com
+    ports:
+      - 443
+  - host: route53domains.us-east-1.amazonaws.com
     ports:
       - 443
