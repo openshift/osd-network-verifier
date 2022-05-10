@@ -57,6 +57,7 @@ Ensure that the AWS credentials being used have the following permissions.
         "ec2:GetConsoleOutput",
         "ec2:TerminateInstances",
         "ec2:DescribeVpcAttribute" 
+        "ec2:TerminateInstances"
       ],
       "Resource": "*"
     }

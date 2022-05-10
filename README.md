@@ -34,8 +34,5 @@ Version ID [required for IAM support role](README_AWS.md#iam-support-role) may n
 ##### To Contribute #####
 Fork the main repository and create pull requests against the `main` branch.
 
-
-
-
 ## Other Subcommands
 Take a look at <https://github.com/openshift/osd-network-verifier/tree/main/cmd>
