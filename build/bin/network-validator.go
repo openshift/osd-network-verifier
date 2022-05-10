@@ -4,13 +4,17 @@ package main
 // $ network-validator --timeout=1s --config=config/config.yaml
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 
 	"gopkg.in/yaml.v2"
 )
@@ -39,8 +43,9 @@ func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
 }
 
 type endpoint struct {
-	Host  string `yaml:"host"`
-	Ports []int  `yaml:"ports"`
+	Host        string `yaml:"host"`
+	Ports       []int  `yaml:"ports"`
+	TLSDisabled bool   `yaml:"tlsDisabled"`
 }
 
 func main() {
@@ -68,13 +73,13 @@ func TestEndpoints(config reachabilityConfig) {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
 			// Validate the endpoints in parallel
-			go func(host string, port int, failures chan<- error) {
+			go func(host string, port int, tlsDisabled bool, failures chan<- error) {
 				defer waitGroup.Done()
-				err := ValidateReachability(host, port)
+				err := ValidateReachability(host, port, tlsDisabled)
 				if err != nil {
 					failures <- err
 				}
-			}(e.Host, port, failures)
+			}(e.Host, port, e.TLSDisabled, failures)
 		}
 	}
 	waitGroup.Wait()
@@ -95,12 +100,39 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func ValidateReachability(host string, port int) error {
+func ValidateReachability(host string, port int, tlsDisabled bool) error {
+	var err error
 	endpoint := fmt.Sprintf("%s:%d", host, port)
+	httpClient := http.Client{
+		Timeout: *timeout,
+	}
+
+	if tlsDisabled {
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	fmt.Printf("Validating %s\n", endpoint)
-	_, err := net.DialTimeout("tcp", endpoint, *timeout)
+
+	switch port {
+	case 80:
+		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "http", host))
+	case 443:
+		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "https", host))
+	case 22:
+		_, err = ssh.Dial("tcp", endpoint, &ssh.ClientConfig{HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: *timeout})
+		if err.Error() == "ssh: handshake failed: EOF" {
+			// at this point, connectivity is available
+			err = nil
+		}
+	default:
+		_, err = net.DialTimeout("tcp", endpoint, *timeout)
+	}
+
 	if err != nil {
 		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)
 	}
+
 	return nil
 }
