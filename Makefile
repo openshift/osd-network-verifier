@@ -3,6 +3,8 @@ include project.mk
 
 # Include shared Makefiles
 include boilerplate/generated-includes.mk
+default: build
+
 
 default: build
 
