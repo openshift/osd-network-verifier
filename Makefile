@@ -1,8 +1,10 @@
-default: build
+
 include project.mk
 
 # Include shared Makefiles
 include boilerplate/generated-includes.mk
+default: build
+
 
 # REMOVE FOLLOWING AFTER OSD-11306 IS MERGED
 include hack/standard.mk
