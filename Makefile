@@ -5,10 +5,6 @@ include project.mk
 include boilerplate/generated-includes.mk
 default: build
 
-
-default: build
-
-
 # REMOVE FOLLOWING AFTER OSD-11306 IS MERGED ----
 include hack/standard.mk
 .PHONY: build-push
