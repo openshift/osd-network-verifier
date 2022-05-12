@@ -19,11 +19,11 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS builder
 WORKDIR /app
 COPY --from=golang /golang/go /usr/local
 COPY . .
-RUN pushd bin; go mod init validator; go get ./...; go build network-validator.go; popd;
+RUN ls; pushd build/bin; go mod init validator; go get ./...; go build network-validator.go; ls; popd;
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 WORKDIR /app
-COPY --from=builder /app/bin/network-validator /usr/bin/network-validator
-COPY --from=builder /app/config/ /app/config/
+COPY --from=builder /app/build/bin/network-validator /usr/build/bin/network-validator
+COPY --from=builder /app/build/config/ /app/build/config/
 
-ENTRYPOINT ["network-validator", "--config=/app/config/config.yaml"]
+ENTRYPOINT ["network-validator", "--config=/app/build/config/config.yaml"]

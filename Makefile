@@ -1,16 +1,17 @@
 default: build
+
 include project.mk
 
 # Include shared Makefiles
 include boilerplate/generated-includes.mk
 
-# REMOVE FOLLOWING AFTER OSD-11306 IS MERGED
+
+# REMOVE FOLLOWING AFTER OSD-11306 IS MERGED ----
 include hack/standard.mk
 .PHONY: build-push
 build-push:
 	hack/app_sre_build_push.sh $(IMAGE_URI_VERSION)
-# END REMOVE
-
+# END REMOVE ----
 
 GOFLAGS=-mod=mod
 
@@ -37,6 +38,3 @@ test:
 .PHONY: boilerplate-update
 boilerplate-update:
 	@boilerplate/update
-
-
-
