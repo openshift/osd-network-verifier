@@ -1,11 +1,10 @@
 default: build
-IMAGE_NAME?=osd-network-verifier
+include project.mk
 
 # Include shared Makefiles
 include boilerplate/generated-includes.mk
 
 # REMOVE FOLLOWING AFTER OSD-11306 IS MERGED
-include hack/project.mk
 include hack/standard.mk
 .PHONY: build-push
 build-push:
