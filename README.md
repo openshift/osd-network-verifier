@@ -16,8 +16,8 @@ It currently verifies:
 
 
 ## Cloud Provider Specific READMEs
--  [AWS](README_AWS.md)
--  [GCP](README_GCP.md)
+-  [AWS](AWS.md)
+-  [GCP](GCP.md)
 
 
 ## Makefile Targets
@@ -30,7 +30,7 @@ It currently verifies:
 ##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
 ##### IAM Permission Requirement List #####
-Version ID [required for IAM support role](README_AWS.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html). 
+Version ID [required for IAM support role](AWS.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html). 
 ##### To Contribute #####
 Fork the main repository and create pull requests against the `main` branch.
 
