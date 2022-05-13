@@ -15,6 +15,10 @@ It currently verifies:
 - BYOVPC config requirements
 
 
+The recommended workflow of diagnostic use of ONV is shown in the following flow diagram:
+
+< drag drop diagram on github>
+
 ## Cloud Provider Specific READMEs
 -  [AWS](AWS.md)
 -  [GCP](GCP.md)
