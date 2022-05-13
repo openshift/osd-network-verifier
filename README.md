@@ -21,11 +21,16 @@ It currently verifies:
 
 
 ## Makefile Targets
-- `make build`: Builds executable
-- `make test`: `go test $(GOFLAGS)`
-- `make build-push`: Builds and pushes image from build/ to ` quay.io/app-sre/osd-network-verifier:$(IMAGE_URI_VERSION)`
-- `make skopeo-push`: (TODO add)
-- 
+ONV uses openshift/boilerplate https://github.com/openshift/boilerplate
+
+Some useful targets
+- `make osd-container-image-build` : Build the default container at build/Dockerfile and tag it based on the commit. Specify DOCKERFILE and IMAGE_URI to build other containers.
+- `make osd-container-image-push` : Push the default container. 
+  - To run locally, `make REGISTRY_USER=<quay-username> REGISTRY_TOKEN=<quay-token>  osd-container-image-build-push`
+- `make prow-config` : Updates the corresponding Prow config file in openshift/release to run make test on merge requests. This test make target should be defined by the consumer. If this is a new repository it should be onboarded to openshift/release first before this is run.
+  - To run locally, clone [release](https://github.com/openshift/release) repo. Run `make RELEASE_PATH=your/local/clone/of/release  prow-config`
+
+ 
 ### Contributing and Maintenance ####
 ##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
