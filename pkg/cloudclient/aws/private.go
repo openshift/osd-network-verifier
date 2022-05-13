@@ -23,6 +23,14 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
+type createEC2InstanceInput struct {
+	amiID         string
+	vpcSubnetID   string
+	userdata      string
+	ebsKmsKeyID   string
+	instanceCount int
+}
+
 var (
 	instanceCount int = 1
 	defaultAmi        = map[string]string{
@@ -50,7 +58,7 @@ var (
 		"me-south-1":     "",
 	}
 	// TODO find a location for future docker images
-	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v81-bf8360e"
+	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v133-83e266c"
 	userdataEndVerifier   string = "USERDATA END"
 )
 
@@ -141,32 +149,38 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) createEC2Instance(ctx context.Context, amiID, vpcSubnetID, userdata string, instanceCount int) (ec2.RunInstancesOutput, error) {
+func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceInput) (ec2.RunInstancesOutput, error) {
+	ebsBlockDevice := &ec2Types.EbsBlockDevice{
+		DeleteOnTermination: aws.Bool(true),
+		Encrypted:           aws.Bool(true),
+	}
+	// Check if KMS key was specified for root volume encryption
+	if input.ebsKmsKeyID != "" {
+		ebsBlockDevice.KmsKeyId = aws.String(input.ebsKmsKeyID)
+	}
+
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
-		ImageId:      aws.String(amiID),
-		MaxCount:     aws.Int32(int32(instanceCount)),
-		MinCount:     aws.Int32(int32(instanceCount)),
+		ImageId:      aws.String(input.amiID),
+		MaxCount:     aws.Int32(int32(input.instanceCount)),
+		MinCount:     aws.Int32(int32(input.instanceCount)),
 		InstanceType: ec2Types.InstanceType(c.instanceType),
 		// Because we're making this VPC aware, we also have to include a network interface specification
 		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{
 			{
 				AssociatePublicIpAddress: aws.Bool(true),
 				DeviceIndex:              aws.Int32(0),
-				SubnetId:                 aws.String(vpcSubnetID),
+				SubnetId:                 aws.String(input.vpcSubnetID),
 			},
 		},
 		// We specify block devices mainly to enable EBS encryption
 		BlockDeviceMappings: []ec2Types.BlockDeviceMapping{
 			{
 				DeviceName: aws.String("/dev/xvda"),
-				Ebs: &ec2Types.EbsBlockDevice{
-					DeleteOnTermination: aws.Bool(true),
-					Encrypted:           aws.Bool(true),
-				},
+				Ebs:        ebsBlockDevice,
 			},
 		},
-		UserData:          aws.String(userdata),
+		UserData:          aws.String(input.userdata),
 		TagSpecifications: buildTags(c.tags),
 	}
 	// Finally, we make our request
@@ -223,39 +237,26 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (i
 
 func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
 	//wait for the instance to run
-	totalWait := 25 * 60
-	currentWait := 1
-	// Double the wait time until we reach totalWait seconds
-	for totalWait > 0 {
-		currentWait = currentWait * 2
-		if currentWait > totalWait {
-			currentWait = totalWait
-		}
-		totalWait -= currentWait
-		time.Sleep(time.Duration(currentWait) * time.Second)
+	err := helpers.PollImmediate(15*time.Second, 2*time.Minute, func() (bool, error) {
 		code, descError := c.describeEC2Instances(ctx, instanceID)
-		if code == 16 { // 16 represents a successful region initialization
+		switch code {
+		case 401:
+			return false, fmt.Errorf("missing required permissions for account: %s", descError)
+		case 16:
+			c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
+			// 16 represents a successful region initialization
 			// Instance is running, break
-			break
-		} else if code == 401 { // 401 represents an UnauthorizedOperation error
-			// Missing permission to perform operations, account needs to fail
-			return fmt.Errorf("missing required permissions for account: %s", descError)
+			return true, nil
 		}
 
 		if descError != nil {
-			// Log an error and make sure that instance is terminated
-			descErrorMsg := fmt.Sprintf("Could not get EC2 instance state, terminating instance %s", instanceID)
-
-			if descError, ok := descError.(awserr.Error); ok {
-				descErrorMsg = fmt.Sprintf("Could not get EC2 instance state: %s, terminating instance %s", descError.Code(), instanceID)
-			}
-
-			return fmt.Errorf("%s: %s", descError, descErrorMsg)
+			return false, descError // unhandled
 		}
-	}
 
-	c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
-	return nil
+		return false, nil // continue loop
+	})
+
+	return err
 }
 
 func generateUserData(variables map[string]string) (string, error) {
@@ -281,7 +282,10 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	// getConsoleOutput then parse, use c.output to store result of the execution
 	err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
-		if err == nil && output.Output != nil {
+		if err != nil {
+			return false, err
+		}
+		if output.Output != nil {
 			// First, gather the ec2 console output
 			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
 			if err != nil {
@@ -296,7 +300,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 				return false, nil
 			}
 
-			// Check for the specific string we output in the gerated userdata file at the end to verify the userdata script has run
+			// Check for the specific string we output in the generated userdata file at the end to verify the userdata script has run
 			// It is possible we get EC2 console output, but the userdata script has not yet completed.
 			verifyMatch := reVerify.FindString(string(scriptOutput))
 			if len(verifyMatch) < 1 {
@@ -308,9 +312,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 			if len(notFoundMatch) > 0 {
-				for _, v := range notFoundMatch {
-					c.output.AddException(handledErrors.NewEgressURLError(v[0]))
-				}
+				c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
@@ -356,7 +358,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `c.output` which stores the execution results
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, timeout time.Duration) *output.Output {
+func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
@@ -379,7 +381,13 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		return c.output.AddError(err) // fatal
 	}
 
-	instance, err := c.createEC2Instance(ctx, cloudImageID, vpcSubnetID, userData, instanceCount)
+	instance, err := c.createEC2Instance(ctx, createEC2InstanceInput{
+		amiID:         cloudImageID,
+		vpcSubnetID:   vpcSubnetID,
+		userdata:      userData,
+		ebsKmsKeyID:   kmsKeyID,
+		instanceCount: instanceCount,
+	})
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}

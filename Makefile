@@ -1,6 +1,8 @@
-SHELL := /usr/bin/env bash
-
 default: build
+
+include boilerplate/generated-includes.mk
+
+SHELL := /usr/bin/env bash
 
 # Include shared Makefiles
 include project.mk
@@ -16,6 +18,16 @@ build:
 	go mod tidy
 	go build $(GOFLAGS) .
 
+.PHONY: fmt
+fmt:
+	go fmt ./...
+	go mod tidy
+
+.PHONY: check-fmt
+check-fmt: fmt
+	git status --porcelain
+	@(test 0 -eq $$(git status --porcelain | wc -l)) || (echo "Local git checkout is not clean, commit changes and try again." >&2 && exit 1)
+
 .PHONY: test
 test:
 	go test $(GOFLAGS) ./...
@@ -24,13 +36,6 @@ test:
 build-push:
 	hack/app_sre_build_push.sh $(IMAGE_URI_VERSION)
 
-.PHONY: skopeo-push
-skopeo-push: containerbuild
-	skopeo copy \
-		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-		"docker-daemon:${IMAGE_URI_VERSION}" \
-		"docker://${IMAGE_URI_VERSION}"
-	skopeo copy \
-		--dest-creds "${QUAY_USER}:${QUAY_TOKEN}" \
-		"docker-daemon:${IMAGE_URI_LATEST}" \
-		"docker://${IMAGE_URI_LATEST}"
+.PHONY: boilerplate-update
+boilerplate-update:
+	@boilerplate/update
