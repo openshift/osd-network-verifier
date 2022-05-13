@@ -17,7 +17,9 @@ It currently verifies:
 
 The recommended workflow of diagnostic use of ONV is shown in the following flow diagram:
 
-< drag drop diagram on github>
+![shift](https://user-images.githubusercontent.com/87340776/168323039-ec5269a8-2cf9-44db-ab5f-e490c88d4342.jpg)
+
+ 
 
 ## Cloud Provider Specific READMEs
 -  [AWS](README_AWS.md)
