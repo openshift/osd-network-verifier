@@ -1,4 +1,4 @@
-package main
+package aws
 
 import (
 	"flag"
@@ -23,6 +23,7 @@ type Client struct {
 	firewallClient networkfirewalliface.NetworkFirewallAPI
 }
 
+// README Doc https://github.com/openshift/osd-network-verifier/blob/main/docs/aws/firewall.md
 func main() {
 	var profile string
 	var region string

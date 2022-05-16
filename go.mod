@@ -20,4 +20,6 @@ require (
 	google.golang.org/api v0.44.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.4.0
+	k8s.io/apimachinery v0.24.0
+
 )
