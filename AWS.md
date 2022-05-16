@@ -15,8 +15,11 @@
 
 ## Setup ##
 ### AWS Environment ###
-Set up your environment to use the correct credentials for the AWS account for the target cluster. 
-- Obtain a valid set of AWS secret and key for the target account.
+Set up your environment to use the correct credentials for the AWS account for the target cluster.
+- If this is an existing cluster, use [this SOP](https://github.com/openshift/ops-sop/blob/master/v4/howto/aws/aws.md#via-ocm-the-quickest-way-1) to get AWS credentials.
+- If this cluster is not installed yet:
+    - If cluster is STS, customer should provide credentials for support role.
+    - If cluster is non-STS, creds are created by AWS account operator on hive shard. Obtain them using [this SOP](https://github.com/openshift/ops-sop/blob/master/v4/howto/aws/aws.md#on-hive-shard).
 - Export these AWS credentials:
    ```shell
    export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
@@ -30,7 +33,6 @@ Set up your environment to use the correct credentials for the AWS account for t
     ```shell
     export AWS_REGION=<VPC_AWS_REGION>
     ````
-  
 ### VPC ###
 - Any VPC for a ROSA/OSD CCS cluster can be tested using this tool.
 - Apart from the AWS credentials, you will need to know the following information about the VPC to be verified.
