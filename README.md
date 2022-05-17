@@ -24,6 +24,7 @@ It currently verifies:
 ONV uses openshift/boilerplate https://github.com/openshift/boilerplate
 
 Some useful targets
+- `make build`: Builds `osd-network-verifier` executable in base directory
 - `make osd-container-image-build` : Build the default container at build/Dockerfile and tag it based on the commit. Specify DOCKERFILE and IMAGE_URI to build other containers.
 - `make osd-container-image-push` : Push the default container. 
   - To run locally, `make REGISTRY_USER=<quay-username> REGISTRY_TOKEN=<quay-token>  osd-container-image-build-push`
