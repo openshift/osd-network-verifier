@@ -15,22 +15,32 @@ It currently verifies:
 - BYOVPC config requirements
 
 
+The recommended workflow of diagnostic use of ONV is shown in the following flow diagram:
+
+![shift](https://user-images.githubusercontent.com/87340776/168323039-ec5269a8-2cf9-44db-ab5f-e490c88d4342.jpg)
+
+ 
+
 ## Cloud Provider Specific READMEs
--  [AWS](README_AWS.md)
--  [GCP](README_GCP.md)
+-  [AWS](AWS.md)
+-  [GCP](GCP.md)
 
 
 ## Makefile Targets
-- `make build`: Builds executable
-- `make test`: `go test $(GOFLAGS)`
-- `make build-push`: Builds and pushes image from build/ to ` quay.io/app-sre/osd-network-verifier:$(IMAGE_URI_VERSION)`
-- `make skopeo-push`: (TODO add)
-- 
+ONV uses openshift/boilerplate https://github.com/openshift/boilerplate
+
+Some useful targets
+- `make build`: Builds `osd-network-verifier` executable in base directory
+- `make osd-container-image-build` : Build the default container at build/Dockerfile and tag it based on the commit. Specify DOCKERFILE and IMAGE_URI to build other containers.
+- `make osd-container-image-push` : Push the default container. 
+  - To run locally, `make REGISTRY_USER=<quay-username> REGISTRY_TOKEN=<quay-token>  osd-container-image-build-push`
+
+ 
 ### Contributing and Maintenance ####
 ##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
 ##### IAM Permission Requirement List #####
-Version ID [required for IAM support role](README_AWS.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html). 
+Version ID [required for IAM support role](AWS.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html). 
 ##### To Contribute #####
 Fork the main repository and create pull requests against the `main` branch.
 

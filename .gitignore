@@ -4,9 +4,13 @@ network-validator
 
 # ide
 .vscode/
+.idea/
 
 # Ignore temporary *.swp files
 *.swp
 
 # Ignore coverage reports
 coverage.out
+
+# Docker temp dir
+.docker

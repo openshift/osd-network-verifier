@@ -129,6 +129,13 @@ repeat the verification process for each subnet ID.
 (TODO: add errors)
 
 #### 1.3 Workflow ####
+Pictorial representation of workflow of the egress test tool:
+
+ ![egress](https://user-images.githubusercontent.com/87340776/168323176-af0c8a37-2bdc-4747-82f0-f464970d5373.jpg)
+
+
+Description:
+
 1. AWS client creates a test ec2 instance in the target vpc/subnet and wait till the instance gets ready
 2. The actual network verification is automated by using the `USERDATA` param [available for ec2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) which is run by ec2 on the instance on creation. 
 3. The [`USERDATA`](pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
