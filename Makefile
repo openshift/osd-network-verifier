@@ -1,14 +1,7 @@
-default: build
-
-include boilerplate/generated-includes.mk
-
-SHELL := /usr/bin/env bash
+include project.mk
 
 # Include shared Makefiles
-include project.mk
-include standard.mk
-
-# Extend Makefile after here
+include boilerplate/generated-includes.mk
 
 GOFLAGS=-mod=mod
 
@@ -31,10 +24,6 @@ check-fmt: fmt
 .PHONY: test
 test:
 	go test $(GOFLAGS) ./...
-
-.PHONY: build-push
-build-push:
-	hack/app_sre_build_push.sh $(IMAGE_URI_VERSION)
 
 .PHONY: boilerplate-update
 boilerplate-update:
