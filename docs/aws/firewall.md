@@ -44,7 +44,7 @@ Ensure that the AWS credentials being used have the following permissions.
 
 ## How to run the script
 
--`go build firewallConfig.go`: create the binary
+- Under ./examples/aws/firewall, run `go build firewallConfig.go` to create the binary
 - Currently the script supports 3 ways of passing in the aws credentials:
 1. ./firewallConfig -p $your-profile -r $region
 2. ./firewallConfig AWS_PROFILE=$profile AWS_REGION=$region
