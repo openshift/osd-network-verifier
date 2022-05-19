@@ -23,7 +23,7 @@ RUN pushd build/bin; go mod init validator; go get ./...; go build network-valid
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 WORKDIR /app
-COPY --from=builder /app/build/bin/network-validator /usr/build/bin/network-validator
+COPY --from=builder /app/build/bin/network-validator /usr/bin/network-validator
 COPY --from=builder /app/build/config/ /app/build/config/
 
 ENTRYPOINT ["network-validator", "--config=/app/build/config/config.yaml"]
