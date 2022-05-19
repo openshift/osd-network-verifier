@@ -11,7 +11,11 @@
       - [1.1.2 Go Implementation Examples](#112-go-implementation-examples)
     - [1.2 Interpreting Output](#12-interpreting-output)
     - [1.3 Workflow](#13-workflow)
-  - [2. BYOVPC Configurations Verification](#2-byovpc-configurations-verification)
+  - [2. VPC DNS Verification](#2-vpc-dns-verification)
+    - [2.1 Usage](#21-usage)
+      - [2.1.1 CLI Executable](#211-cli-executable)
+      - [2.1.2 Golang API](#212-golang-api)
+  - [3. BYOVPC Configurations Verification](#3-byovpc-configurations-verification)
 
 ## Setup ##
 ### AWS Environment ###
@@ -36,6 +40,7 @@ Set up your environment to use the correct credentials for the AWS account for t
 - Apart from the AWS credentials, you will need to know the following information about the VPC to be verified.
     - Subnet IDs
     - AWS region
+    - VPC ID (if verifying DNS)
   
 ### IAM permissions ###
 Ensure that the AWS credentials being used have the following permissions.
@@ -50,6 +55,8 @@ Ensure that the AWS credentials being used have the following permissions.
         "ec2:DescribeInstanceStatus",
         "ec2:DescribeInstanceTypes",
         "ec2:GetConsoleOutput",
+        "ec2:TerminateInstances",
+        "ec2:DescribeVpcAttribute" 
         "ec2:TerminateInstances"
       ],
       "Resource": "*"
@@ -149,5 +156,24 @@ Description:
 4. `USERDATA` script then redirects the instance's console output to the AWS cloud client SDK. The end of this output message is signified with a special End Verification string.
 5. If debug logging is enabled, this output is printed in full, otherwise only errors are printed, if any.
 
-### 2. BYOVPC Configurations Verification ###
+### 2. VPC DNS Verification ###
+#### 2.1 Usage ####
+Verifying that a given VPC's DNS configuration is correct is fairly straightforward: we
+just need to ensure that the VPC attributes `enableDnsHostnames` and `enableDnsSupport`
+are both set to `true`. This tool automates that process
+
+##### 2.1.1 CLI Executable #####
+Build the `osd-network-verifier` executable as shown the egress documentation above.
+Then run:
+```shell
+AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier dns --vpc-id=vpc-0123456789deadbeef
+```
+
+##### 2.1.2 Golang API #####
+See the egress golang examples above, and replace the line starting with `out := cli.ValidateEgress(...` with:
+```go
+out := cli.VerifyDns(context.TODO(), "vpcID")
+```
+
+### 3. BYOVPC Configurations Verification ###
 (TODO: add doc)

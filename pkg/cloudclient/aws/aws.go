@@ -34,6 +34,7 @@ type EC2Client interface {
 	DescribeInstanceTypes(ctx context.Context, input *ec2.DescribeInstanceTypesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceTypesOutput, error)
 	GetConsoleOutput(ctx context.Context, input *ec2.GetConsoleOutputInput, optFns ...func(*ec2.Options)) (*ec2.GetConsoleOutputOutput, error)
 	TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput, optFns ...func(*ec2.Options)) (*ec2.TerminateInstancesOutput, error)
+	DescribeVpcAttribute(ctx context.Context, input *ec2.DescribeVpcAttributeInput, optFns ...func(*ec2.Options)) (*ec2.DescribeVpcAttributeOutput, error)
 }
 
 func (c *Client) ByoVPCValidator(ctx context.Context) error {
@@ -43,6 +44,10 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 
 func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
+}
+
+func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
+	return c.verifyDns(ctx, vpcID)
 }
 
 // NewClient creates a new CloudClient for use with AWS.

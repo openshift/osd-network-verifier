@@ -26,6 +26,11 @@ type CloudClient interface {
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
 	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output
+
+	// VerifyDns verifies that a given VPC meets the DNS requirements specified in:
+	// https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html
+	// Expected return value is *output.Output that's storing failures, exceptions and errors
+	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {

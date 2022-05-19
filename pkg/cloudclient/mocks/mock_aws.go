@@ -6,96 +6,35 @@ package mocks
 
 import (
 	context "context"
-	reflect "reflect"
-
 	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
-// MockEC2Client is a mock of EC2Client interface.
+// MockEC2Client is a mock of EC2Client interface
 type MockEC2Client struct {
 	ctrl     *gomock.Controller
 	recorder *MockEC2ClientMockRecorder
 }
 
-// MockEC2ClientMockRecorder is the mock recorder for MockEC2Client.
+// MockEC2ClientMockRecorder is the mock recorder for MockEC2Client
 type MockEC2ClientMockRecorder struct {
 	mock *MockEC2Client
 }
 
-// NewMockEC2Client creates a new mock instance.
+// NewMockEC2Client creates a new mock instance
 func NewMockEC2Client(ctrl *gomock.Controller) *MockEC2Client {
 	mock := &MockEC2Client{ctrl: ctrl}
 	mock.recorder = &MockEC2ClientMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockEC2Client) EXPECT() *MockEC2ClientMockRecorder {
 	return m.recorder
 }
 
-// DescribeInstanceStatus mocks base method.
-func (m *MockEC2Client) DescribeInstanceStatus(ctx context.Context, input *ec2.DescribeInstanceStatusInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceStatusOutput, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, input}
-	for _, a := range optFns {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "DescribeInstanceStatus", varargs...)
-	ret0, _ := ret[0].(*ec2.DescribeInstanceStatusOutput)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DescribeInstanceStatus indicates an expected call of DescribeInstanceStatus.
-func (mr *MockEC2ClientMockRecorder) DescribeInstanceStatus(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, input}, optFns...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeInstanceStatus", reflect.TypeOf((*MockEC2Client)(nil).DescribeInstanceStatus), varargs...)
-}
-
-// DescribeInstanceTypes mocks base method.
-func (m *MockEC2Client) DescribeInstanceTypes(ctx context.Context, input *ec2.DescribeInstanceTypesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceTypesOutput, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, input}
-	for _, a := range optFns {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "DescribeInstanceTypes", varargs...)
-	ret0, _ := ret[0].(*ec2.DescribeInstanceTypesOutput)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DescribeInstanceTypes indicates an expected call of DescribeInstanceTypes.
-func (mr *MockEC2ClientMockRecorder) DescribeInstanceTypes(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, input}, optFns...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeInstanceTypes", reflect.TypeOf((*MockEC2Client)(nil).DescribeInstanceTypes), varargs...)
-}
-
-// GetConsoleOutput mocks base method.
-func (m *MockEC2Client) GetConsoleOutput(ctx context.Context, input *ec2.GetConsoleOutputInput, optFns ...func(*ec2.Options)) (*ec2.GetConsoleOutputOutput, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, input}
-	for _, a := range optFns {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "GetConsoleOutput", varargs...)
-	ret0, _ := ret[0].(*ec2.GetConsoleOutputOutput)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetConsoleOutput indicates an expected call of GetConsoleOutput.
-func (mr *MockEC2ClientMockRecorder) GetConsoleOutput(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, input}, optFns...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConsoleOutput", reflect.TypeOf((*MockEC2Client)(nil).GetConsoleOutput), varargs...)
-}
-
-// RunInstances mocks base method.
+// RunInstances mocks base method
 func (m *MockEC2Client) RunInstances(ctx context.Context, params *ec2.RunInstancesInput, optFns ...func(*ec2.Options)) (*ec2.RunInstancesOutput, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, params}
@@ -108,14 +47,74 @@ func (m *MockEC2Client) RunInstances(ctx context.Context, params *ec2.RunInstanc
 	return ret0, ret1
 }
 
-// RunInstances indicates an expected call of RunInstances.
+// RunInstances indicates an expected call of RunInstances
 func (mr *MockEC2ClientMockRecorder) RunInstances(ctx, params interface{}, optFns ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, params}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunInstances", reflect.TypeOf((*MockEC2Client)(nil).RunInstances), varargs...)
 }
 
-// TerminateInstances mocks base method.
+// DescribeInstanceStatus mocks base method
+func (m *MockEC2Client) DescribeInstanceStatus(ctx context.Context, input *ec2.DescribeInstanceStatusInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceStatusOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeInstanceStatus", varargs...)
+	ret0, _ := ret[0].(*ec2.DescribeInstanceStatusOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeInstanceStatus indicates an expected call of DescribeInstanceStatus
+func (mr *MockEC2ClientMockRecorder) DescribeInstanceStatus(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeInstanceStatus", reflect.TypeOf((*MockEC2Client)(nil).DescribeInstanceStatus), varargs...)
+}
+
+// DescribeInstanceTypes mocks base method
+func (m *MockEC2Client) DescribeInstanceTypes(ctx context.Context, input *ec2.DescribeInstanceTypesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceTypesOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeInstanceTypes", varargs...)
+	ret0, _ := ret[0].(*ec2.DescribeInstanceTypesOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeInstanceTypes indicates an expected call of DescribeInstanceTypes
+func (mr *MockEC2ClientMockRecorder) DescribeInstanceTypes(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeInstanceTypes", reflect.TypeOf((*MockEC2Client)(nil).DescribeInstanceTypes), varargs...)
+}
+
+// GetConsoleOutput mocks base method
+func (m *MockEC2Client) GetConsoleOutput(ctx context.Context, input *ec2.GetConsoleOutputInput, optFns ...func(*ec2.Options)) (*ec2.GetConsoleOutputOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetConsoleOutput", varargs...)
+	ret0, _ := ret[0].(*ec2.GetConsoleOutputOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetConsoleOutput indicates an expected call of GetConsoleOutput
+func (mr *MockEC2ClientMockRecorder) GetConsoleOutput(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConsoleOutput", reflect.TypeOf((*MockEC2Client)(nil).GetConsoleOutput), varargs...)
+}
+
+// TerminateInstances mocks base method
 func (m *MockEC2Client) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput, optFns ...func(*ec2.Options)) (*ec2.TerminateInstancesOutput, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, input}
@@ -128,9 +127,29 @@ func (m *MockEC2Client) TerminateInstances(ctx context.Context, input *ec2.Termi
 	return ret0, ret1
 }
 
-// TerminateInstances indicates an expected call of TerminateInstances.
+// TerminateInstances indicates an expected call of TerminateInstances
 func (mr *MockEC2ClientMockRecorder) TerminateInstances(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, input}, optFns...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TerminateInstances", reflect.TypeOf((*MockEC2Client)(nil).TerminateInstances), varargs...)
+}
+
+// DescribeVpcAttribute mocks base method
+func (m *MockEC2Client) DescribeVpcAttribute(ctx context.Context, input *ec2.DescribeVpcAttributeInput, optFns ...func(*ec2.Options)) (*ec2.DescribeVpcAttributeOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, input}
+	for _, a := range optFns {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeVpcAttribute", varargs...)
+	ret0, _ := ret[0].(*ec2.DescribeVpcAttributeOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DescribeVpcAttribute indicates an expected call of DescribeVpcAttribute
+func (mr *MockEC2ClientMockRecorder) DescribeVpcAttribute(ctx, input interface{}, optFns ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, input}, optFns...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeVpcAttribute", reflect.TypeOf((*MockEC2Client)(nil).DescribeVpcAttribute), varargs...)
 }
