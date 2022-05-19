@@ -45,17 +45,17 @@ var (
 		"eu-west-1":      "ami-04dd4500af104442f",
 		"eu-west-2":      "ami-0d37e07bd4ff37148",
 		"eu-west-3":      "ami-0d3c032f5934e1b41",
-		"eu-south-1":     "",
-		"ap-northeast-1": "",
-		"ap-northeast-2": "",
-		"ap-northeast-3": "",
-		"ap-east-1":      "",
-		"ap-south-1":     "",
-		"ap-southeast-1": "",
-		"ap-southeast-2": "",
-		"sa-east-1":      "",
-		"af-south-1":     "",
-		"me-south-1":     "",
+		"eu-south-1":     "ami-08d64ae428dd09b2a",
+		"ap-northeast-1": "ami-0218d08a1f9dac831",
+		"ap-northeast-2": "ami-0eb14fe5735c13eb5",
+		"ap-northeast-3": "ami-0f1ffb565070e6947",
+		"ap-east-1":      "ami-026e94842bffe7c42",
+		"ap-south-1":     "ami-052cef05d01020f1d",
+		"ap-southeast-1": "ami-0dc5785603ad4ff54",
+		"ap-southeast-2": "ami-0bd2230cfb28832f7",
+		"sa-east-1":      "ami-0056d4296b1120bc3",
+		"af-south-1":     "ami-060867d58b989c6be",
+		"me-south-1":     "ami-0483952b6a5997b06",
 	}
 	// TODO find a location for future docker images
 	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v133-83e266c"
@@ -405,6 +405,39 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		c.output.AddError(err)
 	}
 	c.terminateEC2Instance(ctx, instanceID)
+
+	return &c.output
+}
+
+// verifyDns performs verification process for VPC's DNS
+// Basic workflow is:
+// - ask AWS API for VPC attributes
+// - ensure they're set correctly
+func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
+	c.logger.Info(ctx, "Verifying DNS config for VPC %s", vpcID)
+	// Request boolean values from AWS API
+	dnsSprtResult, dnsSprtErr := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
+		Attribute: "enableDnsSupport",
+		VpcId:     aws.String(vpcID),
+	})
+	dnsHostResult, dnsHostErr := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
+		Attribute: "enableDnsHostnames",
+		VpcId:     aws.String(vpcID),
+	})
+
+	if dnsSprtErr != nil {
+		c.output.AddError(dnsSprtErr)
+	}
+	if dnsHostErr != nil {
+		c.output.AddError(dnsHostErr)
+	}
+	// Verify results
+	c.logger.Info(ctx, "DNS Support for VPC %s: %t", vpcID, *dnsSprtResult.EnableDnsSupport.Value)
+	c.logger.Info(ctx, "DNS Hostnames for VPC %s: %t", vpcID, *dnsHostResult.EnableDnsHostnames.Value)
+	if !(*dnsSprtResult.EnableDnsSupport.Value && *dnsHostResult.EnableDnsHostnames.Value) {
+		c.logger.Error(ctx, "Both DNS support and DNS hostnames must be enabled on VPC %s in order to be compatible with OSD.", vpcID)
+		c.output.SetFailures([]string{"VPC DNS verification failed"})
+	}
 
 	return &c.output
 }
