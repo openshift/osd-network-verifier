@@ -90,9 +90,9 @@ repeat the verification process for each subnet ID.
       1. subnet_id: Obtain the subnet id to be verified. 
       2. image_id: Select an optional image id parameter (ami-xxxxxxxxxxxx) to run on ec2 instance. 
       
-         You may use the following public image-id:
+         You may use the following public image ID as :
          ```bash
-          resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2`
+          --image-id=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
          ```
           If the image id is not provided, it is defaulted to an image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
