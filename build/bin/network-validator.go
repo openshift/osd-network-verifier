@@ -1,13 +1,17 @@
 package main
 
 // Usage
-// $ network-validator --timeout=1s --config=config/config.yaml
+// $ AWS_REGION=us-east-1  ./network-validator --timeout=3s --config=config/config.yaml --no-tls
+// validations under proxy:
+// $ HTTP_PROXY=http://user:pass@x.x.x.x:8888 HTTPS_PROXY=https://user:pass@x.x.x.x:8888 AWS_REGION=us-east-1 ./network-validator --timeout=3s --config=../config/config.yaml --cacert mitmproxy-ca.pem
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -22,6 +26,8 @@ import (
 var (
 	timeout        = flag.Duration("timeout", 1000*time.Millisecond, "Timeout for each dial request made")
 	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
+	cacertFilePath = flag.String("cacert", "", "Path to cacert file to be used upon https requests")
+	tlsDisabled    = flag.Bool("no-tls", false, "option to ignore all ssl certificate validations on client-side. Proxy can still be passed alongside")
 )
 
 type reachabilityConfig struct {
@@ -43,9 +49,8 @@ func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
 }
 
 type endpoint struct {
-	Host        string `yaml:"host"`
-	Ports       []int  `yaml:"ports"`
-	TLSDisabled bool   `yaml:"tlsDisabled"`
+	Host  string `yaml:"host"`
+	Ports []int  `yaml:"ports"`
 }
 
 func main() {
@@ -73,13 +78,13 @@ func TestEndpoints(config reachabilityConfig) {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
 			// Validate the endpoints in parallel
-			go func(host string, port int, tlsDisabled bool, failures chan<- error) {
+			go func(host string, port int, tlsDisabled bool, cacertFilePath string, failures chan<- error) {
 				defer waitGroup.Done()
-				err := ValidateReachability(host, port, tlsDisabled)
+				err := ValidateReachability(host, port, tlsDisabled, cacertFilePath)
 				if err != nil {
 					failures <- err
 				}
-			}(e.Host, port, e.TLSDisabled, failures)
+			}(e.Host, port, *tlsDisabled, *cacertFilePath, failures)
 		}
 	}
 	waitGroup.Wait()
@@ -100,17 +105,55 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func ValidateReachability(host string, port int, tlsDisabled bool) error {
+func embedProxyCertificate(cacertFile string) (*x509.CertPool, error) {
+	// Get the SystemCertPool, continue with an empty pool on error
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	if cacertFile == "" {
+		return rootCAs, nil
+	}
+
+	// Read in the cert file
+	certs, err := ioutil.ReadFile(cacertFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Append our cert to the system pool
+	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+		log.Println("No certs appended, using system certs only")
+	}
+
+	return rootCAs, nil
+}
+
+func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile string) error {
 	var err error
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 	httpClient := http.Client{
 		Timeout: *timeout,
 	}
 
-	if tlsDisabled {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+	// Setup Certs
+	rootCAs, err := embedProxyCertificate(cacertFile)
+	if err != nil {
+		log.Fatalf("Failed to append %q to RootCAs: %v", cacertFile, err)
+		return err
+	}
+
+	// Trust the augmented cert pool in our client
+	// ProxyFromEnvironment enables reading configuration from env
+	// such as export HTTP_PROXY='http://us:pass@prox-server:8888' / export HTTPS_PROXY='http://us:pass@prox-server:8888'
+	// Insecure mod would be enabled if tlsDisabled was put as true in yaml
+	httpClient.Transport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: tlsDisabled,
+			RootCAs:            rootCAs,
+		},
 	}
 
 	fmt.Printf("Validating %s\n", endpoint)
