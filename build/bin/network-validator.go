@@ -147,7 +147,7 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 	// Trust the augmented cert pool in our client
 	// ProxyFromEnvironment enables reading configuration from env
 	// such as export HTTP_PROXY='http://us:pass@prox-server:8888' / export HTTPS_PROXY='http://us:pass@prox-server:8888'
-	// Insecure mod would be enabled if tlsDisabled was put as true in yaml
+	// Insecure mod would be enabled if tlsDisabled was put as true. This is for dev purposes: e.g when the certificate is not known by certificate authorities.
 	httpClient.Transport = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{
