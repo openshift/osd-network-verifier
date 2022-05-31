@@ -53,13 +53,13 @@ Ensure that the AWS credentials being used have the following permissions.
     {
       "Effect": "Allow",
       "Action": [
+        "ec2:CreateTags",
         "ec2:RunInstances",
         "ec2:DescribeInstanceStatus",
         "ec2:DescribeInstanceTypes",
         "ec2:GetConsoleOutput",
         "ec2:TerminateInstances",
-        "ec2:DescribeVpcAttribute" 
-        "ec2:TerminateInstances"
+        "ec2:DescribeVpcAttribute"
       ],
       "Resource": "*"
     }
