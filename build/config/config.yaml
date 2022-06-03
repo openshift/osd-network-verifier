@@ -38,9 +38,6 @@ endpoints:
   - host: storage.googleapis.com
     ports:
       - 443
-  - host: quay-registry.s3.amazonaws.com
-    ports:
-      - 443
   - host: api.openshift.com
     ports:
       - 443
@@ -77,9 +74,6 @@ endpoints:
   - host: nosnch.in
     ports:
       - 443
-  - host: sftp.access.redhat.com
-    ports:
-      - 22
   - host: inputs1.osdsecuritylogs.splunkcloud.com
     ports:
       - 9997
