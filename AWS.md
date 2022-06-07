@@ -43,7 +43,7 @@ Set up your environment to use the correct credentials for the AWS account for t
     - VPC ID (if verifying DNS)
   
 ### IAM permissions ###
-Ensure that the AWS credentials being used have the following permissions. (This list is maintained in the doc here https://github.com/openshift/osd-network-verifier/blob/main/AWS.md#iam-permissions)
+Ensure that the AWS credentials being used have the following permissions. (This list is a subset of permissions documented in the Support role and Support policy sections [in this doc.](https://docs.openshift.com/rosa/rosa_architecture/rosa-sts-about-iam-resources.html#rosa-sts-account-wide-roles-and-policies_rosa-sts-about-iam-resources))
 ```json
 {
   "Version": "2012-10-17",
