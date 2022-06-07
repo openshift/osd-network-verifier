@@ -62,15 +62,25 @@ var (
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region, instanceType string, tags map[string]string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-			Value: aws.Credentials{
-				AccessKeyID: accessID, SecretAccessKey: accessSecret, SessionToken: sessiontoken,
-			},
-		}),
-	)
+func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region,
+	instanceType string, tags map[string]string, profile string) (*Client, error) {
+	var cfg aws.Config
+	var err error
+	if profile != "" {
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithSharedConfigProfile(profile),
+			config.WithRegion(region),
+		)
+	} else {
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(region),
+			config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+				Value: aws.Credentials{
+					AccessKeyID: accessID, SecretAccessKey: accessSecret, SessionToken: sessiontoken,
+				},
+			}),
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -91,35 +101,6 @@ func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret
 	}
 
 	return c, nil
-}
-
-func newClientFromProfile(ctx context.Context, logger ocmlog.Logger, profile, region, instanceType string, tags map[string]string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithSharedConfigProfile(profile),
-		config.WithRegion(region),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	c := &Client{
-		ec2Client:    ec2.NewFromConfig(cfg),
-		region:       region,
-		instanceType: instanceType,
-		tags:         tags,
-		logger:       logger,
-		output:       output.Output{},
-	}
-
-	// Validates the provided instance type will work with the verifier
-	// NOTE a "nitro" EC2 instance type is required to be used
-	if err := c.validateInstanceType(ctx); err != nil {
-		return nil, fmt.Errorf("Instance type %s is invalid: %s", c.instanceType, err)
-	}
-
-	return c, nil
-
 }
 
 func buildTags(tags map[string]string) []ec2Types.TagSpecification {
