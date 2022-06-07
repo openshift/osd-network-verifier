@@ -35,7 +35,7 @@ type CloudClient interface {
 
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {
 	switch c := creds.(type) {
-	case awscredsv1.Credentials, awscredsv2.StaticCredentialsProvider:
+	case awscredsv1.Credentials, awscredsv2.StaticCredentialsProvider, string:
 		return awsCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
 	case *google.Credentials:
 		return gcpCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
