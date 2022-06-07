@@ -22,8 +22,8 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
  
 
 ## Cloud Provider Specific READMEs
--  [AWS](AWS.md)
--  [GCP](GCP.md)
+-  [AWS](docs/AWS/AWS.md)
+-  [GCP](docs/GCP/GCP.md)
 
 
 ## Makefile Targets
@@ -40,7 +40,7 @@ Some useful targets
 ##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
 ##### IAM Permission Requirement List #####
-Version ID [required for IAM support role](AWS.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html). 
+Version ID [required for IAM support role](docs/AWS/AWS.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html). 
 ##### To Contribute #####
 Fork the main repository and create pull requests against the `main` branch.
 
