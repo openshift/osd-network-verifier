@@ -53,6 +53,15 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 // NewClient creates a new CloudClient for use with AWS.
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (client *Client, err error) {
 	switch c := creds.(type) {
+	case string:
+		client, err = newClientFromProfile(
+			ctx,
+			logger,
+			c,
+			region,
+			instanceType,
+			tags,
+		)
 	case awscredsv1.Credentials:
 		var value awscredsv1.Value
 		if value, err = c.Get(); err == nil {
