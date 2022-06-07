@@ -92,6 +92,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 			tags,
 			"",
 		)
+
 	default:
 		err = fmt.Errorf("unsupported credentials type %T", c)
 	}
