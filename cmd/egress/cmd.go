@@ -63,6 +63,7 @@ are set correctly before execution.
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
+
 			logger.Warn(ctx, "Using region: %s", config.region)
 			var creds interface{}
 			if config.awsProfile != "" {
@@ -94,7 +95,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
-	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "aws Profile")
+	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
