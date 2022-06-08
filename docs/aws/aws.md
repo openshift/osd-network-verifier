@@ -37,6 +37,8 @@ Set up your environment to use the correct credentials for the AWS account for t
   
 ### VPC ###
 - Any VPC for a ROSA/OSD CCS cluster can be tested using this tool.
+- You should get the VPC set up by the customer.  
+- To set up your own VPC and firewall for testing and development, [check out this example](firewall.md).
 - Apart from the AWS credentials, you will need to know the following information about the VPC to be verified.
     - Subnet IDs
     - AWS region
@@ -122,8 +124,8 @@ repeat the verification process for each subnet ID.
         ```
 
 ##### 1.1.2 Go implementation Examples #####
-- [AWS Go SDK v1](examples/aws/verify_egressv1.go)  
-- [AWS Go SDK v2](examples/aws/verify_egressv2.go)
+- [AWS Go SDK v1](../../examples/aws/verify_egressv1.go)  
+- [AWS Go SDK v2](../../examples/aws/verify_egressv2.go)
  
 #### 1.2 Interpreting Output ###
 (TODO: add errors)
@@ -138,7 +140,7 @@ Description:
 
 1. AWS client creates a test ec2 instance in the target vpc/subnet and wait till the instance gets ready
 2. The actual network verification is automated by using the `USERDATA` param [available for ec2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) which is run by ec2 on the instance on creation. 
-3. The [`USERDATA`](pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
+3. The [`USERDATA`](../../pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
 
    1. installs docker
    2. runs the [osd-network-verifier docker image](https://github.com/openshift/osd-network-verifier/tree/main/build) included with this source.
@@ -147,7 +149,7 @@ Description:
       ```shell
       network-validator --timeout=1s --config=config/config.yaml
        ```
-      - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the [egress list](README.md#egress-list) (i.e. list of all essential domains for OSD clusters).
+      - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the [egress list](../../README.md#egress-list) (i.e. list of all essential domains for OSD clusters).
       - During development, the verifier docker image can be tested locally as:
          ```shell
          docker run --env "AWS_REGION=us-east-1" quay.io/app-sre/osd-network-verifier:latest --timeout=2s
