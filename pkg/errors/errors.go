@@ -5,30 +5,38 @@ import (
 	"fmt"
 )
 
+var ErrWaitTimeout = errors.New("timed out waiting for the condition")
+
 type EgressURLError struct {
 	e string
 }
 
-var ErrWaitTimeout = errors.New("timed out waiting for the condition")
-
-func (e *GenericError) ErrWaitTimeout() string { return e.e }
-
 func (e *EgressURLError) Error() string { return e.e }
-
 func NewEgressURLError(failure string) error {
 	return &EgressURLError{
 		e: fmt.Sprintf("egressURL error: %s", failure),
 	}
 }
 
-type GenericError struct {
+type UnhandledError struct {
 	e string
 }
 
-func (e *GenericError) Error() string { return e.e }
-
+func (e *UnhandledError) Error() string          { return e.e }
+func (e *UnhandledError) ErrWaitTimeout() string { return e.e }
 func NewGenericError(err error) error {
-	return &GenericError{
-		e: fmt.Sprintf("generic(unhandled) error: %s ", err.Error()),
+	return &UnhandledError{
+		e: fmt.Sprintf("Unhandled error: %s ", err.Error()),
+	}
+}
+
+type GenericNetworkVerifierError struct {
+	e string
+}
+
+func (e *GenericNetworkVerifierError) Error() string { return e.e }
+func NewGenericNetworkVerifierError(failure string) error {
+	return &EgressURLError{
+		e: fmt.Sprintf("Generic Network Verifier error: %s", failure),
 	}
 }

@@ -88,3 +88,47 @@ func TestValidateEgress(t *testing.T) {
 		t.Errorf("validateEgress(): should pass")
 	}
 }
+
+func TestValidateEgressError(t *testing.T) {
+	testID := "aws-docs-example-instanceID"
+	vpcSubnetID, cloudImageID := "dummy-id", "dummy-id"
+	consoleOut := `[   48.062407] cloud-init[2472]: Cloud-init v. 19.3-44.amzn2 running 'modules:final' at Mon, 07 Feb 2022 12:30:22 +0000. Up 48.00 seconds.
+	[   48.077429] cloud-init[2472]: USERDATA BEGIN
+	[   48.138248] cloud-init[2472]: USERDATA END`
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	FakeEC2Cli := mocks.NewMockEC2Client(ctrl)
+
+	FakeEC2Cli.EXPECT().RunInstances(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.RunInstancesOutput{
+		Instances: []types.Instance{{
+			InstanceId: aws.String(testID),
+		}},
+	}, nil)
+
+	FakeEC2Cli.EXPECT().DescribeInstanceStatus(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.DescribeInstanceStatusOutput{
+		InstanceStatuses: []types.InstanceStatus{{
+			InstanceId: aws.String(testID),
+			InstanceState: &types.InstanceState{
+				Code: aws.Int32(16),
+			},
+		},
+		},
+	}, nil)
+
+	encodedconsoleOut := base64.StdEncoding.EncodeToString([]byte(consoleOut))
+	FakeEC2Cli.EXPECT().GetConsoleOutput(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.GetConsoleOutputOutput{
+		Output: aws.String(encodedconsoleOut),
+	}, nil)
+
+	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
+
+	cli := Client{
+		ec2Client: FakeEC2Cli,
+		logger:    &logging.GlogLogger{},
+	}
+
+	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
+		t.Errorf("validateEgress(): should pass")
+	}
+}

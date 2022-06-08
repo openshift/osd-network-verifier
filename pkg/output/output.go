@@ -33,7 +33,7 @@ func (o *Output) AddException(message error) {
 // SetFailures sets failures as a bulk update
 func (o *Output) SetFailures(failures []string) {
 	for _, f := range failures {
-		o.failures = append(o.failures, handledErrors.NewEgressURLError(f))
+		o.failures = append(o.failures, handledErrors.NewGenericNetworkVerifierError(f))
 	}
 }
 

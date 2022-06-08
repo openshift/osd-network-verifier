@@ -312,7 +312,8 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 			if len(notFoundMatch) > 0 {
-				c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
+				c.output.AddException(handledErrors.NewGenericNetworkVerifierError(
+					"internet connectivity problem: please ensure there's internet access in given vpc subnets"))
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
