@@ -27,7 +27,7 @@ var (
 	timeout        = flag.Duration("timeout", 1000*time.Millisecond, "Timeout for each dial request made")
 	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
 	cacertFilePath = flag.String("cacert", "", "Path to cacert file to be used upon https requests")
-	tlsDisabled    = flag.Bool("no-tls", false, "option to ignore all ssl certificate validations on client-side. Proxy can still be passed alongside")
+	noTls          = flag.Bool("no-tls", false, "option to ignore all ssl certificate validations on client-side. Proxy can still be passed alongside")
 )
 
 type reachabilityConfig struct {
@@ -49,8 +49,9 @@ func (c *reachabilityConfig) LoadFromYaml(filePath string) error {
 }
 
 type endpoint struct {
-	Host  string `yaml:"host"`
-	Ports []int  `yaml:"ports"`
+	Host        string `yaml:"host"`
+	Ports       []int  `yaml:"ports"`
+	TLSDisabled bool   `yaml:"tlsDisabled"`
 }
 
 func main() {
@@ -77,6 +78,8 @@ func TestEndpoints(config reachabilityConfig) {
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
+			// tls decision
+			tls := *noTls || e.TLSDisabled
 			// Validate the endpoints in parallel
 			go func(host string, port int, tlsDisabled bool, cacertFilePath string, failures chan<- error) {
 				defer waitGroup.Done()
@@ -84,7 +87,7 @@ func TestEndpoints(config reachabilityConfig) {
 				if err != nil {
 					failures <- err
 				}
-			}(e.Host, port, *tlsDisabled, *cacertFilePath, failures)
+			}(e.Host, port, tls, *cacertFilePath, failures)
 		}
 	}
 	waitGroup.Wait()
@@ -112,10 +115,6 @@ func embedProxyCertificate(cacertFile string) (*x509.CertPool, error) {
 		rootCAs = x509.NewCertPool()
 	}
 
-	if cacertFile == "" {
-		return rootCAs, nil
-	}
-
 	// Read in the cert file
 	certs, err := ioutil.ReadFile(cacertFile)
 	if err != nil {
@@ -138,13 +137,15 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 	}
 
 	// Setup Certs
-	rootCAs, err := embedProxyCertificate(cacertFile)
-	if err != nil {
-		log.Fatalf("Failed to append %q to RootCAs: %v", cacertFile, err)
-		return err
+	var rootCAs *x509.CertPool
+	if cacertFile != "" {
+		rootCAs, err = embedProxyCertificate(cacertFile)
+		if err != nil {
+			log.Fatalf("Failed to append %q to RootCAs: %v", cacertFile, err)
+			return err
+		}
 	}
 
-	// Trust the augmented cert pool in our client
 	// ProxyFromEnvironment enables reading configuration from env
 	// such as export HTTP_PROXY='http://us:pass@prox-server:8888' / export HTTPS_PROXY='http://us:pass@prox-server:8888'
 	// Insecure mod would be enabled if tlsDisabled was put as true. This is for dev purposes: e.g when the certificate is not known by certificate authorities.
@@ -152,7 +153,9 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 		Proxy: http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: tlsDisabled,
-			RootCAs:            rootCAs,
+			// RootCAs defines the set of root certificate authorities that clients use when verifying server certificates.
+			// If RootCAs is nil, TLS uses the host's root CA set.
+			RootCAs: rootCAs,
 		},
 	}
 
