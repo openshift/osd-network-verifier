@@ -93,35 +93,6 @@ func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret
 	return c, nil
 }
 
-func newClientFromProfile(ctx context.Context, logger ocmlog.Logger, profile, region, instanceType string, tags map[string]string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithSharedConfigProfile(profile),
-		config.WithRegion(region),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	c := &Client{
-		ec2Client:    ec2.NewFromConfig(cfg),
-		region:       region,
-		instanceType: instanceType,
-		tags:         tags,
-		logger:       logger,
-		output:       output.Output{},
-	}
-
-	// Validates the provided instance type will work with the verifier
-	// NOTE a "nitro" EC2 instance type is required to be used
-	if err := c.validateInstanceType(ctx); err != nil {
-		return nil, fmt.Errorf("Instance type %s is invalid: %s", c.instanceType, err)
-	}
-
-	return c, nil
-
-}
-
 func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 	tagList := []ec2Types.Tag{}
 	for k, v := range tags {
