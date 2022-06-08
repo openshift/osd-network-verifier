@@ -1,9 +1,9 @@
 package main
 
 // Usage
-// $ AWS_REGION=us-east-1  ./network-validator --timeout=3s --config=config/config.yaml --no-tls
+// $ AWS_REGION=us-east-1  ./network-validator --timeout=3s --config=config/config.yaml
 // validations under proxy:
-// $ HTTP_PROXY=http://user:pass@x.x.x.x:8888 HTTPS_PROXY=https://user:pass@x.x.x.x:8888 AWS_REGION=us-east-1 ./network-validator --timeout=3s --config=../config/config.yaml --cacert mitmproxy-ca.pem
+// $ HTTP_PROXY=http://user:pass@x.x.x.x:8888 HTTPS_PROXY=https://user:pass@x.x.x.x:8888 AWS_REGION=us-east-1 ./network-validator --timeout=3s --config=../config/config.yaml --cacert mitmproxy-ca.pem  --no-tls
 
 import (
 	"crypto/tls"
@@ -59,7 +59,7 @@ func main() {
 	config := reachabilityConfig{}
 	err := config.LoadFromYaml(*configFilePath)
 	if err != nil {
-		err = fmt.Errorf("unable to reach config file %v: %v", configFilePath, err)
+		err = fmt.Errorf("Unable to reach config file %v: %v", configFilePath, err)
 		fmt.Println(err)
 		os.Exit(1)
 	}
