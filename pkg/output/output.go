@@ -19,7 +19,7 @@ type Output struct {
 // AddError adds error as generic to the list of errors
 func (o *Output) AddError(err error) *Output {
 	if err != nil {
-		o.errors = append(o.errors, handledErrors.NewGenericError(err))
+		o.errors = append(o.errors, handledErrors.NewGenericError(err.Error()))
 	}
 
 	return o
@@ -30,10 +30,10 @@ func (o *Output) AddException(message error) {
 	o.exceptions = append(o.exceptions, message)
 }
 
-// SetFailures sets failures as a bulk update
-func (o *Output) SetFailures(failures []string) {
+// SetFailures sets egress endpoint failures as a bulk update
+func (o *Output) SetEgressFailures(failures []string) {
 	for _, f := range failures {
-		o.failures = append(o.failures, handledErrors.NewGenericNetworkVerifierError(f))
+		o.failures = append(o.failures, handledErrors.NewEgressURLError(f))
 	}
 }
 
