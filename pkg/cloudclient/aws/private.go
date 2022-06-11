@@ -64,7 +64,7 @@ var (
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-func getAwsConfigFromInput(input ClientInput) (ec2.Client, error) {
+func getEc2ClientFromInput(input ClientInput) (ec2.Client, error) {
 	var cfg aws.Config
 	var err error
 	var ec2Client ec2.Client
