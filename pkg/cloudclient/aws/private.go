@@ -94,6 +94,9 @@ func getEc2ClientFromInput(input ClientInput) (ec2.Client, error) {
 						},
 					}),
 				)
+				if err != nil {
+					return ec2Client, fmt.Errorf("can not get AWS config from access key")
+				}
 			}
 		case awscredsv2.StaticCredentialsProvider:
 			cfg, err = config.LoadDefaultConfig(input.Ctx,
@@ -105,6 +108,9 @@ func getEc2ClientFromInput(input ClientInput) (ec2.Client, error) {
 					},
 				}),
 			)
+			if err != nil {
+				return ec2Client, fmt.Errorf("can not get AWS config from access key")
+			}
 		default:
 			return ec2Client, fmt.Errorf("unsupported access key type `%T`", cr)
 		}
@@ -133,7 +139,7 @@ func newClient(input *ClientInput) (*Client, error) {
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := cl.validateInstanceType(input.Ctx); err != nil {
-		return nil, fmt.Errorf("Instance type %s is invalid: %s", cl.instanceType, err)
+		return nil, fmt.Errorf("Instance type %s can not be validated: %s", cl.instanceType, err)
 	}
 
 	return cl, nil
