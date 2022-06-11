@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
@@ -17,9 +16,10 @@ var (
 )
 
 type dnsConfig struct {
-	vpcID  string
-	debug  bool
-	region string
+	vpcID      string
+	debug      bool
+	region     string
+	awsProfile string
 }
 
 func getDefaultRegion() string {
@@ -49,9 +49,8 @@ func NewCmdValidateDns() *cobra.Command {
 			}
 
 			logger.Warn(ctx, "Using region: %s", config.region)
-			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 			// The use of t3.micro here is arbitrary; we just need to provide any valid machine type
-			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, "t3.micro", nil)
+			cli, err := cloudclient.NewClient(ctx, logger, config.region, "t3.micro", nil, "", config.awsProfile)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)

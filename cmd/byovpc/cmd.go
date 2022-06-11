@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
@@ -29,15 +28,13 @@ func NewCmdByovpc() *cobra.Command {
 
 			ctx := context.TODO()
 
-			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-
 			// TODO when this command is actually used, most if not all of the following should be command line options
 			region := os.Getenv("AWS_REGION")
 			instanceType := "t3.micro"
 			tags := map[string]string{}
 
 			var cli cloudclient.CloudClient
-			cli, err = cloudclient.NewClient(ctx, logger, creds, region, instanceType, tags)
+			cli, err = cloudclient.NewClient(ctx, logger, region, instanceType, tags, "aws", "")
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)

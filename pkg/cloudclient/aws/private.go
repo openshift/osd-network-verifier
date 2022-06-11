@@ -13,10 +13,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
+
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 
@@ -62,45 +64,79 @@ var (
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region,
-	instanceType string, tags map[string]string, profile string) (*Client, error) {
+func getAwsConfigFromInput(input ClientInput) (ec2.Client, error) {
 	var cfg aws.Config
 	var err error
-	if profile != "" {
-		cfg, err = config.LoadDefaultConfig(ctx,
-			config.WithSharedConfigProfile(profile),
-			config.WithRegion(region),
+	var ec2Client ec2.Client
+	//Get config from profile if provided
+	if input.Profile != "" {
+		cfg, err = config.LoadDefaultConfig(input.Ctx,
+			config.WithSharedConfigProfile(input.Profile),
+			config.WithRegion(input.Region),
 		)
+		if err != nil {
+			return ec2Client, fmt.Errorf("can not get AWS config from profile `%s`", input.Profile)
+		}
+
 	} else {
-		cfg, err = config.LoadDefaultConfig(ctx,
-			config.WithRegion(region),
-			config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-				Value: aws.Credentials{
-					AccessKeyID: accessID, SecretAccessKey: accessSecret, SessionToken: sessiontoken,
-				},
-			}),
-		)
+		//Get config from access keys if provided
+		cred := credentials.NewStaticCredentialsProvider(input.AccessKeyId,
+			input.SecretAccessKey, input.SessionToken)
+		switch cr := interface{}(cred).(type) {
+		case awscredsv1.Credentials:
+			var value awscredsv1.Value
+			if value, err = cr.Get(); err == nil {
+				cfg, err = config.LoadDefaultConfig(input.Ctx,
+					config.WithRegion(input.Region),
+					config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+						Value: aws.Credentials{
+							AccessKeyID: value.AccessKeyID, SecretAccessKey: value.SecretAccessKey, SessionToken: value.SessionToken,
+						},
+					}),
+				)
+			}
+		case awscredsv2.StaticCredentialsProvider:
+			cfg, err = config.LoadDefaultConfig(input.Ctx,
+				config.WithRegion(input.Region),
+				config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+					Value: aws.Credentials{
+						AccessKeyID: cr.Value.AccessKeyID, SecretAccessKey: cr.Value.SecretAccessKey,
+						SessionToken: cr.Value.SessionToken,
+					},
+				}),
+			)
+		default:
+			return ec2Client, fmt.Errorf("unsupported access key type `%T`", cr)
+		}
 	}
+	ec2Client = *ec2.NewFromConfig(cfg)
+	return ec2Client, err
+}
+
+// Get AWS cloud client from input
+func newClient(input *ClientInput) (*Client, error) {
+
+	ec2Client, err := GetEc2ClientFromInput(input)
 	if err != nil {
-		return nil, err
+		err = fmt.Errorf("error creating EC2 client: %s", err.Error())
 	}
 
-	c := &Client{
-		ec2Client:    ec2.NewFromConfig(cfg),
-		region:       region,
-		instanceType: instanceType,
-		tags:         tags,
-		logger:       logger,
+	cl := &Client{
+		ec2Client:    &ec2Client,
+		region:       input.Region,
+		instanceType: input.InstanceType,
+		tags:         input.Tags,
+		logger:       input.Logger,
 		output:       output.Output{},
 	}
 
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
-	if err := c.validateInstanceType(ctx); err != nil {
-		return nil, fmt.Errorf("Instance type %s is invalid: %s", c.instanceType, err)
+	if err := cl.validateInstanceType(input.Ctx); err != nil {
+		return nil, fmt.Errorf("Instance type %s is invalid: %s", cl.instanceType, err)
 	}
 
-	return c, nil
+	return cl, nil
 }
 
 func buildTags(tags map[string]string) []ec2Types.TagSpecification {

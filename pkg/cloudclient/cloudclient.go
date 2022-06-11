@@ -3,16 +3,13 @@ package cloudclient
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
-	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
-	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-
-	"golang.org/x/oauth2/google"
 )
 
 // CloudClient defines the interface for a cloud agnostic implementation
@@ -33,14 +30,26 @@ type CloudClient interface {
 	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {
-	switch c := creds.(type) {
-	case awscredsv1.Credentials, awscredsv2.StaticCredentialsProvider, string:
-		return awsCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
-	case *google.Credentials:
-		return gcpCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
+func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType string,
+	tags map[string]string, cloudType string, profile string) (CloudClient, error) {
+	switch cloudType {
+	case "aws":
+		clientInput := &awsCloudClient.ClientInput{
+			Ctx:             ctx,
+			Logger:          logger,
+			Region:          region,
+			InstanceType:    instanceType,
+			Tags:            tags,
+			Profile:         profile,
+			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
+			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
+		}
+		return awsCloudClient.NewClient(clientInput)
+	case "gcp":
+		return gcpCloudClient.NewClient(ctx, logger, region, instanceType, tags)
 	default:
-		return nil, fmt.Errorf("unsupported credentials type %T", c)
+		return nil, fmt.Errorf("unsupported cloud client type")
 	}
 
 }

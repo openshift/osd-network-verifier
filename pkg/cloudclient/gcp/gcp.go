@@ -25,6 +25,15 @@ type Client struct {
 	output         output.Output
 }
 
+type ClientInput struct {
+	Ctx          context.Context
+	Logger       ocmlog.Logger
+	Creds        *google.Credentials
+	Region       string
+	InstanceType string
+	Tags         map[string]string
+}
+
 func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	c.logger.Info(ctx, "interface executed: %s", ClientIdentifier)
 	return nil
@@ -38,23 +47,34 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 	return &c.output
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
+func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType string,
+	tags map[string]string) (*Client, error) {
 	// initialize actual client
-	return newClient(ctx, logger, credentials, region, instanceType, tags)
+	// todo implement credentials = getGcpCredsFromInput()
+	var credentials *google.Credentials
+	clientInput := &ClientInput{
+		Ctx:          ctx,
+		Logger:       logger,
+		Region:       region,
+		InstanceType: instanceType,
+		Tags:         tags,
+		Creds:        credentials,
+	}
+	return newClient(*clientInput)
 }
 
-func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
-	computeService, err := computev1.NewService(ctx, option.WithCredentials(credentials))
+func newClient(input ClientInput) (*Client, error) {
+	computeService, err := computev1.NewService(input.Ctx, option.WithCredentials(input.Creds))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		projectID:      credentials.ProjectID,
-		region:         region,
-		instanceType:   instanceType,
+		projectID:      input.Creds.ProjectID,
+		region:         input.Region,
+		instanceType:   input.InstanceType,
 		computeService: computeService,
-		tags:           tags,
-		logger:         logger,
+		tags:           input.Tags,
+		logger:         input.Logger,
 	}, nil
 }

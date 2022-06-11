@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
@@ -64,16 +63,9 @@ are set correctly before execution.
 				os.Exit(1)
 			}
 			logger.Info(ctx, "Using region: %s", config.region)
-			var creds interface{}
-			if config.awsProfile != "" {
-				creds = config.awsProfile
-				logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
-			} else {
-				creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-			}
-			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
+			cli, err := NewClient(ctx, logger, config)
 			if err != nil {
-				logger.Error(ctx, err.Error())
+				logger.Error(ctx, "Error creating cloud client: %s", err.Error())
 				os.Exit(1)
 			}
 			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout)
@@ -104,4 +96,21 @@ are set correctly before execution.
 
 	return validateEgressCmd
 
+}
+
+func NewClient(ctx context.Context, logger ocmlog.Logger, config egressConfig) (cloudclient.CloudClient, error) {
+	if config.awsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		// For AWS type
+		if config.awsProfile != "" {
+			logger.Info(ctx, "Using AWS profile: %s.", config.awsProfile)
+		} else {
+			logger.Info(ctx, "Using provided AWS credentials")
+		}
+		return cloudclient.NewClient(ctx, logger, config.region, "t3.micro", nil, "", config.awsProfile)
+
+	} else {
+		//	todo after GCP is implemented, check GCP type
+		logger.Info(ctx, "GCP cloud credentials found.")
+		return cloudclient.NewClient(ctx, logger, config.region, "", nil, "", "")
+	}
 }

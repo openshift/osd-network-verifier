@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
@@ -23,6 +21,18 @@ type Client struct {
 	tags         map[string]string
 	logger       ocmlog.Logger
 	output       output.Output
+}
+
+type ClientInput struct {
+	Ctx             context.Context
+	Logger          ocmlog.Logger
+	Region          string
+	InstanceType    string
+	Tags            map[string]string
+	Profile         string
+	AccessKeyId     string
+	SessionToken    string
+	SecretAccessKey string
 }
 
 // Extend EC2Client so that we can mock them all for testing
@@ -51,55 +61,18 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 }
 
 // NewClient creates a new CloudClient for use with AWS.
-func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (client *Client, err error) {
-	switch c := creds.(type) {
-	case string:
-		client, err = newClient(
-			ctx,
-			logger,
-			"",
-			"",
-			"",
-			region,
-			instanceType,
-			tags,
-			fmt.Sprintf("%v", creds),
-		)
-	case awscredsv1.Credentials:
-		var value awscredsv1.Value
-		if value, err = c.Get(); err == nil {
-			client, err = newClient(
-				ctx,
-				logger,
-				value.AccessKeyID,
-				value.SecretAccessKey,
-				value.SessionToken,
-				region,
-				instanceType,
-				tags,
-				"",
-			)
-		}
-	case awscredsv2.StaticCredentialsProvider:
-		client, err = newClient(
-			ctx,
-			logger,
-			c.Value.AccessKeyID,
-			c.Value.SecretAccessKey,
-			c.Value.SessionToken,
-			region,
-			instanceType,
-			tags,
-			"",
-		)
-
-	default:
-		err = fmt.Errorf("unsupported credentials type %T", c)
-	}
-
+func NewClient(input *ClientInput) (client *Client, err error) {
+	client, err = newClient(input)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create AWS client: %w", err)
 	}
-
 	return
+}
+
+func GetEc2ClientFromInput(input *ClientInput) (ec2.Client, error) {
+	ec2Client, err := getAwsConfigFromInput(*input)
+	if err != nil {
+		return ec2Client, fmt.Errorf("Unable to create EC2 Client: %w", err)
+	}
+	return ec2Client, nil
 }
