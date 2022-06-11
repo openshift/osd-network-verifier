@@ -106,11 +106,12 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, config egressConfig) (
 		} else {
 			logger.Info(ctx, "Using provided AWS credentials")
 		}
-		return cloudclient.NewClient(ctx, logger, config.region, "t3.micro", nil, "aws", config.awsProfile)
+		return cloudclient.NewClient(ctx, logger, config.region, config.instanceType, config.cloudTags, "aws",
+			config.awsProfile)
 
 	} else {
 		//	todo after GCP is implemented, check GCP type
 		logger.Info(ctx, "GCP cloud credentials found.")
-		return cloudclient.NewClient(ctx, logger, config.region, "", nil, "gcp", "")
+		return cloudclient.NewClient(ctx, logger, config.region, config.instanceType, config.cloudTags, "gcp", "")
 	}
 }

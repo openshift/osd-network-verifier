@@ -15,6 +15,7 @@ var debug bool
 type byovpcConfig struct {
 	awsProfile string
 }
+
 func NewCmdByovpc() *cobra.Command {
 	config := byovpcConfig{}
 	byovpcCmd := &cobra.Command{
