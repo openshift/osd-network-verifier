@@ -47,11 +47,9 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 	return &c.output
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType string,
-	tags map[string]string) (*Client, error) {
+func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	// initialize actual client
 	// todo implement credentials = getGcpCredsFromInput()
-	var credentials *google.Credentials
 	clientInput := &ClientInput{
 		Ctx:          ctx,
 		Logger:       logger,

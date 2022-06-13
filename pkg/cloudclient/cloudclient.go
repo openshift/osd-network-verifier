@@ -10,6 +10,7 @@ import (
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"golang.org/x/oauth2/google"
 )
 
 // CloudClient defines the interface for a cloud agnostic implementation
@@ -30,8 +31,9 @@ type CloudClient interface {
 	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
+//todo remove gcpCreds arg once getGcpCredsFromInput is implemented in GCP NewClient
 func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType string,
-	tags map[string]string, cloudType string, profile string) (CloudClient, error) {
+	tags map[string]string, cloudType string, profile string, gcpCreds *google.Credentials) (CloudClient, error) {
 	switch cloudType {
 	case "aws":
 		clientInput := &awsCloudClient.ClientInput{
@@ -47,7 +49,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType s
 		}
 		return awsCloudClient.NewClient(clientInput)
 	case "gcp":
-		return gcpCloudClient.NewClient(ctx, logger, region, instanceType, tags)
+		return gcpCloudClient.NewClient(ctx, logger, gcpCreds, region, instanceType, tags)
 	default:
 		return nil, fmt.Errorf("unsupported cloud client type")
 	}
