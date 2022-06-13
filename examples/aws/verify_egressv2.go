@@ -17,10 +17,10 @@ func extendValidateEgressV2() {
 	region := "us-east-1"
 	instanceType := "m5.2xlarge"
 	tags := map[string]string{"key1": "val1"}
+	awsProfile := "yourAwsProfile"
 
 	//---------ONV egress verifier usage---------
-	cli, _ := cloudclient.NewClient(context.TODO(), logger, region, instanceType, tags, "aws",
-		"")
+	cli, _ := cloudclient.NewClient(context.TODO(), logger, region, instanceType, tags, "aws", awsProfile)
 	// Call egress validator
 	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 3*time.Second)
 	if !out.IsSuccessful() {
