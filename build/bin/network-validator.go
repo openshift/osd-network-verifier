@@ -68,7 +68,14 @@ func TestEndpoints(config reachabilityConfig) {
 
 	var waitGroup sync.WaitGroup
 
-	failures := make(chan error, len(config.Endpoints))
+	endpointPortCount := 0
+	for _, e := range config.Endpoints {
+		for range e.Ports {
+			endpointPortCount++
+		}
+	}
+
+	failures := make(chan error, endpointPortCount)
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
