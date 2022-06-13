@@ -31,9 +31,8 @@ type CloudClient interface {
 	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
-//todo remove gcpCreds arg once getGcpCredsFromInput is implemented in GCP NewClient
 func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType string,
-	tags map[string]string, cloudType string, profile string, gcpCreds *google.Credentials) (CloudClient, error) {
+	tags map[string]string, cloudType string, profile string) (CloudClient, error) {
 	switch cloudType {
 	case "aws":
 		clientInput := &awsCloudClient.ClientInput{
@@ -49,6 +48,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType s
 		}
 		return awsCloudClient.NewClient(clientInput)
 	case "gcp":
+		var gcpCreds *google.Credentials //todo remove gcpCreds arg once getGcpCredsFromInput is implemented in GCP NewClient
 		return gcpCloudClient.NewClient(ctx, logger, gcpCreds, region, instanceType, tags)
 	default:
 		return nil, fmt.Errorf("unsupported cloud client type")
