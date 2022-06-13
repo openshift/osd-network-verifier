@@ -30,19 +30,19 @@ func (o *Output) AddException(message error) {
 	o.exceptions = append(o.exceptions, message)
 }
 
-// SetFailures sets egress endpoint failures as a bulk update
+// SetEgressFailures sets egress endpoint failures as a bulk update
 func (o *Output) SetEgressFailures(failures []string) {
 	for _, f := range failures {
 		o.failures = append(o.failures, handledErrors.NewEgressURLError(f))
 	}
 }
 
-// gets egress endpoint failures 
+// GetEgressFailures gets egress endpoint failures
 func (o *Output) GetEgressFailures() (failures []error) {
 	return o.failures
 }
 
-// gets generic errors 
+// GetExceptions gets generic errors
 func (o *Output) GetExceptions() (errors []error) {
 	return o.exceptions
 }
