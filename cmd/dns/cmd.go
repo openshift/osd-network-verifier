@@ -61,7 +61,7 @@ func NewCmdValidateDns() *cobra.Command {
 				cli, err = cloudclient.NewClient(ctx, logger, config.region, "t3.micro", nil, "aws", config.awsProfile)
 
 			} else {
-				//	todo after GCP is implemented, check GCP type
+				//	todo after GCP is implemented, check GCP type using creds
 				logger.Info(ctx, "GCP cloud credentials found.")
 				cli, err = cloudclient.NewClient(ctx, logger, config.region, "", nil, "gcp", config.awsProfile)
 			}

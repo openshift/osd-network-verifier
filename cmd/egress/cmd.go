@@ -110,7 +110,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, config egressConfig) (
 			config.awsProfile)
 
 	} else {
-		//	todo after GCP is implemented, check GCP type
+		//	todo after GCP is implemented, check GCP type using creds
 		logger.Info(ctx, "GCP cloud credentials found.")
 		return cloudclient.NewClient(ctx, logger, config.region, config.instanceType, config.cloudTags, "gcp", "")
 	}
