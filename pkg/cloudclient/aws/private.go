@@ -271,7 +271,7 @@ func generateUserData(variables map[string]string) (string, error) {
 func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string) error {
 	// Compile the regular expressions once
 	reVerify := regexp.MustCompile(userdataEndVerifier)
-	reUnreachableErrors := regexp.MustCompile(`((\bUnable to reach\s)(\w+))`)
+	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 
 	latest := true
 	input := ec2.GetConsoleOutputInput{
