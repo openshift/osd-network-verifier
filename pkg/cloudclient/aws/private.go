@@ -139,7 +139,7 @@ func newClient(input *ClientInput) (*Client, error) {
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := cl.validateInstanceType(input.Ctx); err != nil {
-		return nil, fmt.Errorf("Instance type %s can not be validated: %s", cl.instanceType, err)
+		return nil, fmt.Errorf("instance type %s can not be validated: %s", cl.instanceType, err)
 	}
 
 	return cl, nil
@@ -176,9 +176,9 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 		// Check for invalid instance type error and return a cleaner error
 		re := regexp.MustCompile("400.*api error InvalidInstanceType")
 		if re.Match([]byte(err.Error())) {
-			err = fmt.Errorf("Instance type %s does not exist", c.instanceType)
+			err = fmt.Errorf("instance type %s does not exist", c.instanceType)
 		}
-		return fmt.Errorf("Unable to gather list of supported instance types from EC2: %s", err)
+		return fmt.Errorf("unable to gather list of supported instance types from EC2: %s", err)
 	}
 	c.logger.Debug(ctx, "Full describe instance types output contains %d instance types", len(descOut.InstanceTypes))
 
@@ -187,7 +187,8 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 		if string(t.InstanceType) == c.instanceType {
 			found = true
 			if t.Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
-				return fmt.Errorf("Instance type must use hypervisor type 'nitro' to support reliable result collection")
+				return fmt.Errorf("instance type must use hypervisor type 'nitro' to support reliable result" +
+					" collection")
 			}
 			c.logger.Debug(ctx, "Instance type %s has hypervisor %s", c.instanceType, t.Hypervisor)
 			break
@@ -195,7 +196,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	}
 
 	if !found {
-		return fmt.Errorf("Instance type %s not found in EC2 API", c.instanceType)
+		return fmt.Errorf("instance type %s not found in EC2 API", c.instanceType)
 	}
 
 	return nil

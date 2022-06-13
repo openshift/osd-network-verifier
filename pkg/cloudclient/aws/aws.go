@@ -64,7 +64,7 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 func NewClient(input *ClientInput) (client *Client, err error) {
 	client, err = newClient(input)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create AWS client: %w", err)
+		return nil, fmt.Errorf("unable to create AWS client: %w", err)
 	}
 	return
 }
@@ -72,7 +72,7 @@ func NewClient(input *ClientInput) (client *Client, err error) {
 func GetEc2ClientFromInput(input *ClientInput) (ec2.Client, error) {
 	ec2Client, err := getEc2ClientFromInput(*input)
 	if err != nil {
-		return ec2Client, fmt.Errorf("Unable to create EC2 Client: %w", err)
+		return ec2Client, fmt.Errorf("unable to create EC2 Client: %w", err)
 	}
 	return ec2Client, nil
 }
