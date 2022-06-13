@@ -36,7 +36,7 @@ type GenericError struct {
 
 func (e *GenericError) Error() string { return e.message }
 func NewGenericError(message string) error {
-	return &EgressURLError{
-		e: fmt.Sprintf("network verifier error: %s", message),
+	return &GenericError{
+		message: fmt.Sprintf("network verifier error: %s", message),
 	}
 }

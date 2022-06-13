@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
+	"github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
 )
@@ -94,6 +96,7 @@ func TestValidateEgressError(t *testing.T) {
 	vpcSubnetID, cloudImageID := "dummy-id", "dummy-id"
 	consoleOut := `[   48.062407] cloud-init[2472]: Cloud-init v. 19.3-44.amzn2 running 'modules:final' at Mon, 07 Feb 2022 12:30:22 +0000. Up 48.00 seconds.
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
+egressURL error: Unable to reach inputs1.osdsecuritylogs.splunkcloud.com:9997
 	[   48.138248] cloud-init[2472]: USERDATA END`
 
 	ctrl := gomock.NewController(t)
@@ -128,7 +131,61 @@ func TestValidateEgressError(t *testing.T) {
 		logger:    &logging.GlogLogger{},
 	}
 
-	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
-		t.Errorf("validateEgress(): should pass")
+	if cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
+		t.Errorf("validateEgress(): should fail")
+	}
+	endptErrors := cli.output.GetEgressFailures()
+	assert.NotEmpty(t, endptErrors)
+	for _, e := range endptErrors {
+		assert.IsType(t, errors.NewEgressURLError(""), e)
+	}
+
+}
+
+//Test generic type errors
+func TestValidateGenericError(t *testing.T) {
+	vpcSubnetID, cloudImageID := "dummy-id", "dummy-id"
+	consoleOut := `[   48.062407] cloud-init[2472]: Cloud-init v. 19.3-44.amzn2 running 'modules:final' at Mon, 
+07 Feb 2022 12:30:22 +0000. Up 48.00 seconds.
+	[   48.077429] cloud-init[2472]: USERDATA BEGIN
+Could not do X.
+	[   48.138248] cloud-init[2472]: USERDATA END`
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	testID := "aws-docs-example-instanceID"
+
+	encodedconsoleOut := base64.StdEncoding.EncodeToString([]byte(consoleOut))
+	FakeEC2Cli := mocks.NewMockEC2Client(ctrl)
+	FakeEC2Cli.EXPECT().GetConsoleOutput(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.GetConsoleOutputOutput{
+		Output: aws.String(encodedconsoleOut),
+	}, nil)
+	FakeEC2Cli.EXPECT().RunInstances(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.RunInstancesOutput{
+		Instances: []types.Instance{{
+			InstanceId: aws.String(testID),
+		}},
+	}, nil)
+
+	FakeEC2Cli.EXPECT().DescribeInstanceStatus(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.DescribeInstanceStatusOutput{
+		InstanceStatuses: []types.InstanceStatus{{
+			InstanceId: aws.String(testID),
+			InstanceState: &types.InstanceState{
+				Code: aws.Int32(16),
+			},
+		},
+		},
+	}, nil)
+
+	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
+	cli := Client{
+		ec2Client: FakeEC2Cli,
+		logger:    &logging.GlogLogger{},
+	}
+	if cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
+		t.Errorf("validateEgress(): should fail")
+	}
+	allErrors := cli.output.GetExceptions()
+	assert.NotEmpty(t, allErrors)
+	for _, e := range allErrors {
+		assert.IsType(t, errors.NewGenericError(""), e)
 	}
 }
