@@ -124,7 +124,7 @@ func newClient(input *ClientInput) (*Client, error) {
 
 	ec2Client, err := GetEc2ClientFromInput(input)
 	if err != nil {
-		err = fmt.Errorf("error creating EC2 client: %s", err.Error())
+		return nil, fmt.Errorf("error creating EC2 client: %s", err.Error())
 	}
 
 	cl := &Client{
