@@ -17,7 +17,6 @@ import (
 	"github.com/golang/mock/gomock"
 )
 
-const err string = "error"
 const exc string = "exception"
 const fail string = "failure"
 
@@ -106,7 +105,7 @@ func TestValidateOutputErrors(t *testing.T) {
 		cloudImageID    string
 		testID          string
 		expectError     error
-		expectErrorType string
+		expectErrorType string // "error" is default. Specify "exc" or "fail" for "exception" or "failure".
 	}{
 		{
 			name: "testGenericError",
@@ -118,7 +117,7 @@ Could not do X.
 			vpcSubnetID:     "dummy-id",
 			cloudImageID:    "dummy-id",
 			testID:          "aws-docs-example-instanceID",
-			expectError:     (errors.NewGenericError("")),
+			expectError:     errors.NewGenericError(""),
 			expectErrorType: exc,
 		},
 		{
@@ -187,9 +186,3 @@ Unable to reach somesample.endpoint
 
 	}
 }
-
-	 
- 
- 
-
- 
