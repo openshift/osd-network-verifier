@@ -162,13 +162,9 @@ Unable to reach somesample.endpoint
 		var allErrors []error
 		switch test.expectErrorType {
 		case failure:
-			{
-				allErrors, _, _ = cli.output.Parse()
-			}
+			allErrors, _, _ = cli.output.Parse()
 		case exception:
-			{
-				_, allErrors, _ = cli.output.Parse()
-			}
+			_, allErrors, _ = cli.output.Parse()
 		default:
 			_, _, allErrors = cli.output.Parse()
 		}
