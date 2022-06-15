@@ -17,8 +17,8 @@ import (
 	"github.com/golang/mock/gomock"
 )
 
-const exc string = "exception"
-const fail string = "failure"
+const exception string = "exception"
+const failure string = "failure"
 
 func TestCreateEC2Instance(t *testing.T) {
 	testID := "aws-docs-example-instanceID"
@@ -98,14 +98,13 @@ func TestValidateOutputErrors(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	testID := "aws-docs-example-instanceID"
+	vpcSubnetID := "dummy-id"
+	cloudImageID := "dummy-id"
 	tests := []struct {
 		name            string
 		consoleOut      string
-		vpcSubnetID     string
-		cloudImageID    string
-		testID          string
 		expectError     error
-		expectErrorType string // "error" is default. Specify "exc" or "fail" for "exception" or "failure".
+		expectErrorType string // "error" is default. Specify "exception" or "failure" when applicable.
 	}{
 		{
 			name: "testGenericError",
@@ -114,31 +113,24 @@ func TestValidateOutputErrors(t *testing.T) {
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
 Could not do X.
 	[   48.138248] cloud-init[2472]: USERDATA END`,
-			vpcSubnetID:     "dummy-id",
-			cloudImageID:    "dummy-id",
-			testID:          "aws-docs-example-instanceID",
 			expectError:     errors.NewGenericError(""),
-			expectErrorType: exc,
+			expectErrorType: exception,
 		},
 		{
-			name:         "testEgressError",
-			vpcSubnetID:  "dummy-id",
-			cloudImageID: "dummy-id",
+			name: "testEgressURLError",
 			consoleOut: `[   48.062407] cloud-init[2472]: Cloud-init v. 19.3-44.amzn2 running 'modules:final' at Mon, 07 Feb 2022 12:30:22 +0000. Up 48.00 seconds.
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
 Unable to reach somesample.endpoint
 	[   48.138248] cloud-init[2472]: USERDATA END`,
-			testID:          "aws-docs-example-instanceID",
 			expectError:     errors.NewEgressURLError(""),
-			expectErrorType: fail,
+			expectErrorType: failure,
 		},
 	}
 	for _, test := range tests {
-
-		encodedconsoleOut := base64.StdEncoding.EncodeToString([]byte(test.consoleOut))
+		encodedConsoleOut := base64.StdEncoding.EncodeToString([]byte(test.consoleOut))
 		FakeEC2Cli := mocks.NewMockEC2Client(ctrl)
 		FakeEC2Cli.EXPECT().GetConsoleOutput(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.GetConsoleOutputOutput{
-			Output: aws.String(encodedconsoleOut),
+			Output: aws.String(encodedConsoleOut),
 		}, nil)
 		FakeEC2Cli.EXPECT().RunInstances(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.RunInstancesOutput{
 			Instances: []types.Instance{{
@@ -161,27 +153,28 @@ Unable to reach somesample.endpoint
 			ec2Client: FakeEC2Cli,
 			logger:    &logging.GlogLogger{},
 		}
-		if cli.validateEgress(context.TODO(), test.vpcSubnetID, test.cloudImageID, "",
+		if cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "",
 			time.Duration(1*time.Second)).IsSuccessful() {
 			t.Errorf("failed %s: validateEgress(): should fail", test.name)
 		}
+
+		// Assert errors
 		var allErrors []error
 		switch test.expectErrorType {
-		case fail:
+		case failure:
 			{
 				allErrors, _, _ = cli.output.Parse()
 			}
-		case exc:
+		case exception:
 			{
 				_, allErrors, _ = cli.output.Parse()
 			}
 		default:
 			_, _, allErrors = cli.output.Parse()
 		}
-
-		assert.NotEmpty(t, allErrors)
+		assert.NotEmpty(t, allErrors, "Errors must be thrown for "+test.name)
 		for _, e := range allErrors {
-			assert.IsType(t, test.expectError, e, "Failed "+test.name)
+			assert.IsType(t, test.expectError, e, "Error types must match for "+test.name)
 		}
 
 	}
