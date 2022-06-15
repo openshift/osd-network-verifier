@@ -15,9 +15,9 @@ func (e *GenericError) ErrWaitTimeout() string { return e.message }
 
 func (e *EgressURLError) Error() string { return e.e }
 
-func NewEgressURLError(failure string) error {
+func NewEgressURLError(message string) error {
 	return &EgressURLError{
-		e: fmt.Sprintf("egressURL error: %s", failure),
+		e: fmt.Sprintf("egressURL error: %s", message),
 	}
 }
 
@@ -34,13 +34,13 @@ func NewGenericError(message string) error {
 }
 
 type UnhandledError struct {
-	e string
+	message string
 }
 
-func (e *UnhandledError) Error() string          { return e.e }
-func (e *UnhandledError) ErrWaitTimeout() string { return e.e }
+func (e *UnhandledError) Error() string          { return e.message }
+func (e *UnhandledError) ErrWaitTimeout() string { return e.message }
 func NewGenericUnhandledError(err error) error {
 	return &UnhandledError{
-		e: fmt.Sprintf("generic unhandled error: %s ", err.Error()),
+		message: fmt.Sprintf("generic unhandled error: %s ", err.Error()),
 	}
 }
