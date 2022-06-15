@@ -168,7 +168,7 @@ Unable to reach somesample.endpoint
 		default:
 			_, _, allErrors = cli.output.Parse()
 		}
-		assert.NotEmpty(t, allErrors, "Errors must be thrown for "+test.name)
+		assert.NotEmpty(t, allErrors, test.expectErrorType+" must be thrown for "+test.name)
 		for _, e := range allErrors {
 			assert.IsType(t, test.expectError, e, "Error types must match for "+test.name)
 		}
