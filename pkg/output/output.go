@@ -36,6 +36,7 @@ func (o *Output) SetEgressFailures(failures []string) {
 		o.failures = append(o.failures, handledErrors.NewEgressURLError(f))
 	}
 }
+
 // IsSuccessful checks whether the output contains any item, returns false if there's any
 func (o *Output) IsSuccessful() bool {
 	if len(o.errors) > 0 || len(o.exceptions) > 0 || len(o.failures) > 0 {
