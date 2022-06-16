@@ -6,6 +6,7 @@ import (
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"golang.org/x/oauth2/google"
 )
 
@@ -25,7 +26,7 @@ func TestValidateEgress(t *testing.T) {
 	cloudImageID := "image-id"
 	cli := Client{}
 	timeout := 1 * time.Second
-	if !cli.ValidateEgress(ctx, subnetID, cloudImageID, "", timeout).IsSuccessful() {
+	if !cli.ValidateEgress(ctx, subnetID, cloudImageID, "", timeout, proxy.ProxyConfig{}).IsSuccessful() {
 		t.Errorf("validation should have been successful")
 	}
 }

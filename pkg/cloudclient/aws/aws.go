@@ -10,6 +10,7 @@ import (
 	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	proxy "github.com/openshift/osd-network-verifier/pkg/proxy"
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
@@ -42,8 +43,8 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
+	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
 }
 
 func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {

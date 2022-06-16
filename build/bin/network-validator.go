@@ -2,8 +2,11 @@ package main
 
 // Usage
 // $ AWS_REGION=us-east-1  ./network-validator --timeout=3s --config=config/config.yaml
+
 // validations under proxy:
-// $ HTTP_PROXY=http://user:pass@x.x.x.x:8888 HTTPS_PROXY=https://user:pass@x.x.x.x:8888 AWS_REGION=us-east-1 ./network-validator --timeout=3s --config=../config/config.yaml --cacert mitmproxy-ca.pem  --no-tls
+// - assuming you have proxy server & https tls certs:
+// export CACERT=`cat mitmproxy-ca.pem`
+// $ CACERT=${CACERT} HTTP_PROXY=http://user:pass@x.x.x.x:8888 HTTPS_PROXY=https://user:pass@x.x.x.x:8888 AWS_REGION=us-east-1 ./network-validator --timeout=3s --config=../config/config.yaml --no-tls
 
 import (
 	"crypto/tls"
@@ -26,7 +29,6 @@ import (
 var (
 	timeout        = flag.Duration("timeout", 1000*time.Millisecond, "Timeout for each dial request made")
 	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
-	cacertFilePath = flag.String("cacert", "", "Path to cacert file to be used upon https requests")
 	noTls          = flag.Bool("no-tls", false, "option to ignore all ssl certificate validations on client-side. Proxy can still be passed alongside")
 )
 
@@ -81,13 +83,13 @@ func TestEndpoints(config reachabilityConfig) {
 			// tls decision
 			tls := *noTls || e.TLSDisabled
 			// Validate the endpoints in parallel
-			go func(host string, port int, tlsDisabled bool, cacertFilePath string, failures chan<- error) {
+			go func(host string, port int, tlsDisabled bool, failures chan<- error) {
 				defer waitGroup.Done()
-				err := ValidateReachability(host, port, tlsDisabled, cacertFilePath)
+				err := ValidateReachability(host, port, tlsDisabled)
 				if err != nil {
 					failures <- err
 				}
-			}(e.Host, port, tls, *cacertFilePath, failures)
+			}(e.Host, port, tls, failures)
 		}
 	}
 	waitGroup.Wait()
@@ -108,28 +110,22 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func embedProxyCertificate(cacertFile string) (*x509.CertPool, error) {
+func embedProxyCertificate(cacert string) (*x509.CertPool, error) {
 	// Get the SystemCertPool, continue with an empty pool on error
 	rootCAs, _ := x509.SystemCertPool()
 	if rootCAs == nil {
 		rootCAs = x509.NewCertPool()
 	}
 
-	// Read in the cert file
-	certs, err := ioutil.ReadFile(cacertFile)
-	if err != nil {
-		return nil, err
-	}
-
 	// Append our cert to the system pool
-	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+	if ok := rootCAs.AppendCertsFromPEM([]byte(cacert)); !ok {
 		log.Println("No certs appended, using system certs only")
 	}
 
 	return rootCAs, nil
 }
 
-func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile string) error {
+func ValidateReachability(host string, port int, tlsDisabled bool) error {
 	var err error
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 	httpClient := http.Client{
@@ -137,11 +133,12 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 	}
 
 	// Setup Certs
+	cacert := os.Getenv("CACERT")
 	var rootCAs *x509.CertPool
-	if cacertFile != "" {
-		rootCAs, err = embedProxyCertificate(cacertFile)
+	if cacert != "" {
+		rootCAs, err = embedProxyCertificate(cacert)
 		if err != nil {
-			log.Fatalf("Failed to append %q to RootCAs: %v", cacertFile, err)
+			log.Fatalf("Failed to append %q to RootCAs: %v", cacert, err)
 			return err
 		}
 	}
