@@ -62,8 +62,7 @@ func NewCmdValidateDns() *cobra.Command {
 
 			} else {
 				//	todo after GCP is implemented, check GCP type using creds
-				logger.Info(ctx, "GCP cloud credentials found.")
-				cli, err = cloudclient.NewClient(ctx, logger, config.region, "", nil, "gcp", config.awsProfile)
+				logger.Error(ctx, "No AWS credentials found.")
 			}
 			if err != nil {
 				logger.Error(ctx, err.Error())
