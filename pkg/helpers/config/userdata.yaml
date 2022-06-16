@@ -5,6 +5,6 @@ runcmd:
   - echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
   - sudo docker pull ${VALIDATOR_IMAGE}
   # Use `|| true` to ignore failure exit codes, we want the script to continue either way
-  - sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${VALIDATOR_IMAGE} --timeout=${TIMEOUT}  >> /var/log/userdata-output || true
+  - sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${VALIDATOR_IMAGE} --timeout=${TIMEOUT}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
   - echo "${USERDATA_END}" >> /var/log/userdata-output
   - cat /var/log/userdata-output >/dev/console
