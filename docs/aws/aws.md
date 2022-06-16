@@ -171,7 +171,7 @@ are both set to `true`. This tool automates that process
 Build the `osd-network-verifier` executable as shown the egress documentation above.
 Then run:
 ```shell
-AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier dns --vpc-id=vpc-0123456789deadbeef
+./osd-network-verifier dns --vpc-id=vpc-0123456789deadbeef --profile <aws-profile-name>
 ```
 
 ##### 2.1.2 Golang API #####
