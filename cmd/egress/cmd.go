@@ -41,15 +41,18 @@ func NewCmdValidateEgress() *cobra.Command {
 	config := egressConfig{}
 
 	validateEgressCmd := &cobra.Command{
-		Use:   "egress",
-		Short: "Verify essential openshift domains are reachable from given subnet ID.",
-		Long:  `Verify essential openshift domains are reachable from given subnet ID.`,
+		Use:        "egress",
+		Aliases:    nil,
+		SuggestFor: nil,
+		Short:      "Verify essential openshift domains are reachable from given subnet ID.",
+		Long:       `Verify essential openshift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars 
 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credentials) 
 are set correctly before execution.
 
 # Verify that essential openshift domains are reachable from a given SUBNET_ID
-./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id $(IMAGE_ID)`,
+./osd-network-verifier egress --subnet-id $(SUBNET_ID) --profile $(AWS_PROFILE)`,
+
 		Run: func(cmd *cobra.Command, args []string) {
 			// ctx
 			ctx := context.TODO()
@@ -89,6 +92,10 @@ are set correctly before execution.
 
 			logger.Info(ctx, "Success")
 		},
+
+		FParseErrWhitelist: cobra.FParseErrWhitelist{},
+		CompletionOptions:  cobra.CompletionOptions{},
+		TraverseChildren:   false,
 	}
 
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
