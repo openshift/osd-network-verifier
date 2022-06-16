@@ -62,8 +62,20 @@ are set correctly before execution.
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
+			var cli cloudclient.CloudClient
 			logger.Info(ctx, "Using region: %s", config.region)
-			cli, err := NewClient(ctx, logger, config)
+			if config.awsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+				// For AWS type
+				if config.awsProfile != "" {
+					logger.Info(ctx, "Using AWS profile: %s.", config.awsProfile)
+				} else {
+					logger.Info(ctx, "Using provided AWS credentials")
+				}
+				cli, err = cloudclient.NewClient(ctx, logger, config.region, config.instanceType, config.cloudTags, "aws", config.awsProfile)
+			} else {
+				//	todo after GCP is implemented, check GCP type using creds
+				logger.Error(ctx, "No AWS credentials found.")
+			}
 			if err != nil {
 				logger.Error(ctx, "Error creating cloud client: %s", err.Error())
 				os.Exit(1)
@@ -96,21 +108,4 @@ are set correctly before execution.
 
 	return validateEgressCmd
 
-}
-
-func NewClient(ctx context.Context, logger ocmlog.Logger, config egressConfig) (cloudclient.CloudClient, error) {
-	if config.awsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" {
-		// For AWS type
-		if config.awsProfile != "" {
-			logger.Info(ctx, "Using AWS profile: %s.", config.awsProfile)
-		} else {
-			logger.Info(ctx, "Using provided AWS credentials")
-		}
-		return cloudclient.NewClient(ctx, logger, config.region, config.instanceType, config.cloudTags, "aws",
-			config.awsProfile)
-
-	} else {
-		//	todo after GCP is implemented, check GCP type using creds
-		return nil, fmt.Errorf("No AWS credentials found.")
-	}
 }
