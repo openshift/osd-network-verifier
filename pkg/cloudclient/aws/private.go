@@ -373,7 +373,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		"TIMEOUT":                  timeout.String(),
 		"HTTP_PROXY":               p.HttpProxy,
 		"HTTPS_PROXY":              p.HttpsProxy,
-		"CACERT":                   p.Cacert,
+		"CACERT":                   base64.StdEncoding.EncodeToString([]byte(p.Cacert)),
 		"NOTLS":                    strconv.FormatBool(p.NoTls),
 	}
 	userData, err := generateUserData(userDataVariables)

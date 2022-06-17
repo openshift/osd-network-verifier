@@ -9,6 +9,7 @@ runcmd:
   - [ sh, -c, echo "${USERDATA_BEGIN}"]
   - sudo service docker start
   - [ sh, -c, "sudo docker pull ${VALIDATOR_IMAGE}"]
+  - [ sh, -c, echo "${CACERT}" | base64 --decode > /proxy.pem]
   # Use `|| true` to ignore failure exit codes, we want the script to continue either way
-  - [ sh, -c, 'sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "HTTP_PROXY=${HTTP_PROXY}" -e "HTTPS_PROXY=${HTTPS_PROXY}" -e "CACERT=${CACERT}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${VALIDATOR_IMAGE} --timeout=${TIMEOUT} --no-tls=${NOTLS} || true' ]
+  - [ sh, -c, 'sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "HTTP_PROXY=${HTTP_PROXY}" -v /proxy.pem:/proxy.pem -e "HTTPS_PROXY=${HTTPS_PROXY}" -e "CACERT=${CACERT}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${VALIDATOR_IMAGE} --timeout=${TIMEOUT} --cacert=/proxy.pem --no-tls=${NOTLS} || true' ]
   - [ sh, -c, echo "${USERDATA_END}"]
