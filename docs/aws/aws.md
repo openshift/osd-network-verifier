@@ -37,13 +37,15 @@ Set up your environment to use the correct credentials for the AWS account for t
   
 ### VPC ###
 - Any VPC for a ROSA/OSD CCS cluster can be tested using this tool.
+- You should get the VPC set up by the customer.  
+- To set up your own VPC and firewall for testing and development, [check out this example](firewall.md).
 - Apart from the AWS credentials, you will need to know the following information about the VPC to be verified.
     - Subnet IDs
     - AWS region
     - VPC ID (if verifying DNS)
   
 ### IAM permissions ###
-Ensure that the AWS credentials being used have the following permissions.
+Ensure that the AWS credentials being used have the following permissions. (This list is a subset of permissions documented in the Support role and Support policy sections [in this doc.](https://docs.openshift.com/rosa/rosa_architecture/rosa-sts-about-iam-resources.html#rosa-sts-account-wide-roles-and-policies_rosa-sts-about-iam-resources))
 ```json
 {
   "Version": "2012-10-17",
@@ -90,9 +92,9 @@ repeat the verification process for each subnet ID.
       1. subnet_id: Obtain the subnet id to be verified. 
       2. image_id: Select an optional image id parameter (ami-xxxxxxxxxxxx) to run on ec2 instance. 
       
-         You may use the following public image-id:
+         You may use the following public image ID as :
          ```bash
-          resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2`
+          --image-id=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
          ```
           If the image id is not provided, it is defaulted to an image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
@@ -138,8 +140,8 @@ export CACERT=`cat mitmproxy-ca.pem`
 
 
 ##### 1.1.2 Go implementation Examples #####
-- [AWS Go SDK v1](examples/aws/verify_egressv1.go)  
-- [AWS Go SDK v2](examples/aws/verify_egressv2.go)
+- [AWS Go SDK v1](../../examples/aws/verify_egressv1.go)  
+- [AWS Go SDK v2](../../examples/aws/verify_egressv2.go)
  
 #### 1.2 Interpreting Output ###
 (TODO: add errors)
@@ -154,7 +156,7 @@ Description:
 
 1. AWS client creates a test ec2 instance in the target vpc/subnet and wait till the instance gets ready
 2. The actual network verification is automated by using the `USERDATA` param [available for ec2 instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html) which is run by ec2 on the instance on creation. 
-3. The [`USERDATA`](pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
+3. The [`USERDATA`](../../pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
 
    1. installs docker
    2. runs the [osd-network-verifier docker image](https://github.com/openshift/osd-network-verifier/tree/main/build) included with this source.
@@ -163,7 +165,7 @@ Description:
       ```shell
       network-validator --timeout=1s --config=config/config.yaml
        ```
-      - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the [egress list](README.md#egress-list) (i.e. list of all essential domains for OSD clusters).
+      - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the [egress list](../../README.md#egress-list) (i.e. list of all essential domains for OSD clusters).
       - During development, the verifier docker image can be tested locally as:
          ```shell
          docker run --env "AWS_REGION=us-east-1" quay.io/app-sre/osd-network-verifier:latest --timeout=2s

@@ -4,7 +4,7 @@ A Go script to create a VPC resources and a Firewall for osd-network-verifier te
 
 ## Overview
 
-firewallConfig.go will create the resources and networking required for a VPC and Firewall, which are
+[firewallConfig.go](../../examples/aws/firewall/firewallConfig.go) script will create the resources and networking required for a VPC and Firewall, which are
 1. VPC with CIDR range 10.0.0.0/16
 2. An Internet Gateway
 3. A Public Subnet, a Private Subnet, and a Firewall Subnet
@@ -44,7 +44,7 @@ Ensure that the AWS credentials being used have the following permissions.
 
 ## How to run the script
 
--`go build firewallConfig.go`: create the binary
+- Under ./examples/aws/firewall, run `go build firewallConfig.go` to create the binary
 - Currently the script supports 3 ways of passing in the aws credentials:
 1. ./firewallConfig -p $your-profile -r $region
 2. ./firewallConfig AWS_PROFILE=$profile AWS_REGION=$region
