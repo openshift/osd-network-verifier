@@ -153,7 +153,7 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 	// Setup Certs
 	rootCAs, err := embedProxyCertificate(cacertFile)
 	if err != nil {
-		log.Fatalf("Failed to append %q to RootCAs: %v", rootCAs, err)
+		log.Fatalf("Failed to append %v to RootCAs: %v", rootCAs, err)
 		return err
 	}
 
