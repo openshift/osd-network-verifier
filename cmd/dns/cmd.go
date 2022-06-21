@@ -32,6 +32,7 @@ func getDefaultRegion() string {
 }
 func NewCmdValidateDns() *cobra.Command {
 	config := dnsConfig{}
+	cmdOptions := cloudclient.CmdOptions{}
 
 	validateDnsCmd := &cobra.Command{
 		Use: "dns",
@@ -58,7 +59,7 @@ func NewCmdValidateDns() *cobra.Command {
 					logger.Info(ctx, "Using provided AWS credentials")
 				}
 				// The use of t3.micro here is arbitrary; we just need to provide any valid machine type
-				cli, err = cloudclient.NewClient(ctx, logger, config.region, "t3.micro", nil, "aws", config.awsProfile)
+				cli, err = cloudclient.NewClient(ctx, logger, "t3.micro", "aws", cmdOptions)
 
 			} else {
 				//	todo after GCP is implemented, check GCP type using creds

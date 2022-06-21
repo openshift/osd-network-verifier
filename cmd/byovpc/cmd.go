@@ -18,6 +18,8 @@ type byovpcConfig struct {
 
 func NewCmdByovpc() *cobra.Command {
 	config := byovpcConfig{}
+	cmdOptions := cloudclient.CmdOptions{}
+
 	byovpcCmd := &cobra.Command{
 		Use:   "byovpc",
 		Short: "Verify subnet configuration of a specific VPC",
@@ -33,11 +35,6 @@ func NewCmdByovpc() *cobra.Command {
 
 			ctx := context.TODO()
 
-			// TODO when this command is actually used, most if not all of the following should be command line options
-			region := os.Getenv("AWS_REGION")
-			instanceType := "t3.micro"
-			tags := map[string]string{}
-
 			var cli cloudclient.CloudClient
 			if config.awsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" {
 				// For AWS type
@@ -47,7 +44,7 @@ func NewCmdByovpc() *cobra.Command {
 					logger.Info(ctx, "Using provided AWS credentials")
 				}
 				// The use of t3.micro here is arbitrary; we just need to provide any valid machine type
-				cli, err = cloudclient.NewClient(ctx, logger, region, instanceType, tags, "aws", config.awsProfile)
+				cli, err = cloudclient.NewClient(ctx, logger, "t3.micro", "aws", cmdOptions)
 
 			} else {
 				//	todo after GCP is implemented, check GCP type using creds

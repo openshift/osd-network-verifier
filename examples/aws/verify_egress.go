@@ -10,19 +10,19 @@ import (
 )
 
 func extendValidateEgressV1() {
-	//---------Initialize required args---------
-
-	// Example values
-	logger, _ := ocmlog.NewStdLoggerBuilder().Debug(true).Build()
-	region := "us-east-1"
+	//---------Set commandline args---------
+	cmdOptions := cloudclient.CmdOptions{
+		Region:     "us-east-1",
+		CloudTags:  map[string]string{"key1": "val1"},
+		AwsProfile: "yourAwsProfile",
+	}
 	instanceType := "m5.2xlarge"
-	tags := map[string]string{"key1": "val1"}
-	awsProfile := "yourAwsProfile"
-
-	//---------ONV egress verifier usage---------
-	cli, _ := cloudclient.NewClient(context.TODO(), logger, region, instanceType, tags, "aws", awsProfile)
+	vpcSubnetId := "subnet-xxxxxxxxxxxxxx"
+	logger, _ := ocmlog.NewStdLoggerBuilder().Debug(true).Build()
+	//---------create ONV cloud client---------
+	cli, _ := cloudclient.NewClient(context.TODO(), logger, instanceType, "aws", cmdOptions)
 	// Call egress validator
-	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 3*time.Second)
+	out := cli.ValidateEgress(context.TODO(), vpcSubnetId, "cloudImageID", "kmsKeyID", 3*time.Second)
 	if !out.IsSuccessful() {
 		// Retrieve errors
 		failures, exceptions, errors := out.Parse()

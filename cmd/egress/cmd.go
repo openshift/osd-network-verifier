@@ -12,21 +12,16 @@ import (
 )
 
 var (
-	defaultTags            = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	regionEnvVarStr string = "AWS_REGION"
-	regionDefault   string = "us-east-2"
+	defaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	regionEnvVarStr = "AWS_REGION"
+	regionDefault   = "us-east-2"
 )
 
+//Test specific commandline args
 type egressConfig struct {
 	vpcSubnetID  string
 	cloudImageID string
 	instanceType string
-	cloudTags    map[string]string
-	debug        bool
-	region       string
-	timeout      time.Duration
-	kmsKeyID     string
-	awsProfile   string
 }
 
 func getDefaultRegion() string {
@@ -39,6 +34,7 @@ func getDefaultRegion() string {
 }
 func NewCmdValidateEgress() *cobra.Command {
 	config := egressConfig{}
+	cmdOptions := cloudclient.CmdOptions{}
 
 	validateEgressCmd := &cobra.Command{
 		Use:        "egress",
@@ -59,22 +55,23 @@ are set correctly before execution.
 
 			// Create logger
 			builder := ocmlog.NewStdLoggerBuilder()
-			builder.Debug(config.debug)
+			builder.Debug(cmdOptions.Debug)
 			logger, err := builder.Build()
 			if err != nil {
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
 			var cli cloudclient.CloudClient
-			logger.Info(ctx, "Using region: %s", config.region)
-			if config.awsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+			logger.Info(ctx, "Using region: %s", cmdOptions.Region)
+			if cmdOptions.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" {
 				// For AWS type
-				if config.awsProfile != "" {
-					logger.Info(ctx, "Using AWS profile: %s.", config.awsProfile)
+				if cmdOptions.AwsProfile != "" {
+					logger.Info(ctx, "Using AWS profile: %s.", cmdOptions.AwsProfile)
 				} else {
 					logger.Info(ctx, "Using provided AWS credentials")
 				}
-				cli, err = cloudclient.NewClient(ctx, logger, config.region, config.instanceType, config.cloudTags, "aws", config.awsProfile)
+				//cli, err = cloudclient.NewClient(ctx, logger, cmdOptions.region, config.instanceType, cmdOptions.cloudTags, "aws", config.awsProfile)
+				cli, err = cloudclient.NewClient(ctx, logger, config.instanceType, "aws", cmdOptions)
 			} else {
 				//	todo after GCP is implemented, check GCP type using creds
 				logger.Error(ctx, "No AWS credentials found.")
@@ -83,7 +80,7 @@ are set correctly before execution.
 				logger.Error(ctx, "Error creating cloud client: %s", err.Error())
 				os.Exit(1)
 			}
-			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout)
+			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, cmdOptions.KmsKeyID, cmdOptions.Timeout)
 			out.Summary()
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
@@ -101,12 +98,12 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "t3.micro", "(optional) compute instance type")
-	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", regionEnvVarStr, regionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
-	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
-	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "(optional) timeout for individual egress verification requests")
-	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
-	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
+	validateEgressCmd.Flags().StringVar(&cmdOptions.Region, "region", getDefaultRegion(), fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", regionEnvVarStr, regionDefault))
+	validateEgressCmd.Flags().StringToStringVar(&cmdOptions.CloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().BoolVar(&cmdOptions.Debug, "debug", false, "(optional) if true, enable additional debug-level logging")
+	validateEgressCmd.Flags().DurationVar(&cmdOptions.Timeout, "timeout", 1*time.Second, "(optional) timeout for individual egress verification requests")
+	validateEgressCmd.Flags().StringVar(&cmdOptions.KmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
+	validateEgressCmd.Flags().StringVar(&cmdOptions.AwsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)

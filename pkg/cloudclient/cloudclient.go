@@ -13,6 +13,16 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+//All most common commandline args 
+type CmdOptions struct {
+	CloudTags  map[string]string
+	Debug      bool
+	Region     string
+	Timeout    time.Duration
+	KmsKeyID   string
+	AwsProfile string
+}
+
 // CloudClient defines the interface for a cloud agnostic implementation
 // For mocking: mockgen -source=pkg/cloudclient/cloudclient.go -package mocks -destination=pkg/cloudclient/mocks/mock_cloudclient.go
 type CloudClient interface {
@@ -31,17 +41,17 @@ type CloudClient interface {
 	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType string,
-	tags map[string]string, cloudType string, profile string) (CloudClient, error) {
+func NewClient(ctx context.Context, logger ocmlog.Logger, instanceType string,
+	cloudType string, options CmdOptions) (CloudClient, error) {
 	switch cloudType {
 	case "aws":
 		clientInput := &awsCloudClient.ClientInput{
 			Ctx:             ctx,
 			Logger:          logger,
-			Region:          region,
+			Region:          options.Region,
 			InstanceType:    instanceType,
-			Tags:            tags,
-			Profile:         profile,
+			Tags:            options.CloudTags,
+			Profile:         options.AwsProfile,
 			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
 			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
@@ -49,7 +59,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, region, instanceType s
 		return awsCloudClient.NewClient(clientInput)
 	case "gcp":
 		var gcpCreds *google.Credentials //todo remove gcpCreds arg once getGcpCredsFromInput is implemented in GCP NewClient
-		return gcpCloudClient.NewClient(ctx, logger, gcpCreds, region, instanceType, tags)
+		return gcpCloudClient.NewClient(ctx, logger, gcpCreds, options.Region, instanceType, options.CloudTags)
 	default:
 		return nil, fmt.Errorf("unsupported cloud client type")
 	}
