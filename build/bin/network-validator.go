@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	timeout        = flag.Duration("timeout", 1000*time.Millisecond, "Timeout for each dial request made")
 	maxRetries     = flag.Int("max-retries", 3, "Maximum connection attempts per endpoint")
+	timeout        = flag.Duration("timeout", 2000*time.Millisecond, "Timeout for each dial request made")
 	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
 )
 

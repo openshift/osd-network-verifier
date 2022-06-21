@@ -115,7 +115,7 @@ repeat the verification process for each subnet ID.
       --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
       --region string               (optional) compute instance region. If absent, environment var AWS_DEFAULT_REGION will be used, if set (default "us-east-1")
       --subnet-id string            source subnet ID
-      --timeout duration            (optional) timeout for individual egress verification requests (default 1s)
+      --timeout duration            (optional) timeout for individual egress verification requests (default 2s). If timeout is less than 2s, it would likely cause false negatives test results.
        ```
        Get cli help:
     
@@ -147,7 +147,7 @@ Description:
       (The image is also published at: https://quay.io/repository/app-sre/osd-network-verifier)
    3. The entry point of the osd-network-verifier docker image then executes the main egress verification script
       ```shell
-      network-validator --timeout=1s --config=config/config.yaml
+      network-validator --timeout=2s --config=config/config.yaml
        ```
       - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the [egress list](../../README.md#egress-list) (i.e. list of all essential domains for OSD clusters).
       - During development, the verifier docker image can be tested locally as:
