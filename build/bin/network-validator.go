@@ -21,6 +21,7 @@ import (
 
 var (
 	timeout        = flag.Duration("timeout", 1000*time.Millisecond, "Timeout for each dial request made")
+	maxRetries     = flag.Int("max-retries", 3, "Maximum connection attempts per endpoint")
 	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
 )
 
@@ -122,23 +123,31 @@ func ValidateReachability(host string, port int, tlsDisabled bool) error {
 
 	fmt.Printf("Validating %s\n", endpoint)
 
-	switch port {
-	case 80:
-		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "http", host))
-	case 443:
-		_, err = httpClient.Get(fmt.Sprintf("%s://%s", "https", host))
-	case 22:
-		_, err = ssh.Dial("tcp", endpoint, &ssh.ClientConfig{HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: *timeout})
-		if err.Error() == "ssh: handshake failed: EOF" {
-			// at this point, connectivity is available
-			err = nil
+	// Retry up to maxRetries times
+	for i := 0; i < *maxRetries; i++ {
+		switch port {
+		case 80:
+			_, err = httpClient.Get(fmt.Sprintf("%s://%s", "http", host))
+		case 443:
+			_, err = httpClient.Get(fmt.Sprintf("%s://%s", "https", host))
+		case 22:
+			_, err = ssh.Dial("tcp", endpoint, &ssh.ClientConfig{HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: *timeout})
+			if err.Error() == "ssh: handshake failed: EOF" {
+				// at this point, connectivity is available
+				err = nil
+			}
+		default:
+			_, err = net.DialTimeout("tcp", endpoint, *timeout)
 		}
-	default:
-		_, err = net.DialTimeout("tcp", endpoint, *timeout)
+
+		// Only continue retrying if there's an error
+		if err == nil {
+			break
+		}
 	}
 
 	if err != nil {
-		return fmt.Errorf("Unable to reach %s within specified timeout: %s", endpoint, err)
+		return fmt.Errorf("Unable to reach %s within specified timeout after %d retries: %s", endpoint, *maxRetries, err)
 	}
 
 	return nil
