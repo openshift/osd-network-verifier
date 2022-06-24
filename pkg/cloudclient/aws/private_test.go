@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -47,7 +46,6 @@ func TestCreateEC2Instance(t *testing.T) {
 
 func TestValidateEgress(t *testing.T) {
 	testID := "aws-docs-example-instanceID"
-	vpcSubnetID, cloudImageID := "dummy-id", "dummy-id"
 	consoleOut := `[   48.062407] cloud-init[2472]: Cloud-init v. 19.3-44.amzn2 running 'modules:final' at Mon, 07 Feb 2022 12:30:22 +0000. Up 48.00 seconds.
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
 	[   48.138248] cloud-init[2472]: USERDATA END`
@@ -80,11 +78,13 @@ func TestValidateEgress(t *testing.T) {
 	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
 
 	cli := Client{
-		ec2Client: FakeEC2Cli,
-		logger:    &logging.GlogLogger{},
+		ec2Client:    FakeEC2Cli,
+		logger:       &logging.GlogLogger{},
+		VpcSubnetID:  "dummy-id",
+		CloudImageID: "dummy-id",
 	}
 
-	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
+	if !cli.validateEgress(context.TODO()).IsSuccessful() {
 		t.Errorf("validateEgress(): should pass")
 	}
 }

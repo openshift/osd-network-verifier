@@ -134,6 +134,8 @@ func newClient(input *ClientInput) (*Client, error) {
 		tags:         input.Tags,
 		logger:       input.Logger,
 		output:       output.Output{},
+		CloudImageID: input.CloudImageID,
+		KmsKeyID:     input.KmsKeyID,
 	}
 
 	// Validates the provided instance type will work with the verifier
@@ -334,13 +336,13 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 
 	// getConsoleOutput then parse, use c.output to store result of the execution
 	err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
-		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
+		consoleOutput, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err != nil {
 			return false, err
 		}
-		if output.Output != nil {
+		if consoleOutput.Output != nil {
 			// First, gather the ec2 console output
-			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
+			scriptOutput, err := base64.StdEncoding.DecodeString(*consoleOutput.Output)
 			if err != nil {
 				// unable to decode output. we will try again
 				c.logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
@@ -411,8 +413,8 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `c.output` which stores the execution results
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
-	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
+func (c *Client) validateEgress(ctx context.Context) *output.Output {
+	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", c.Timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
 		"AWS_REGION":               c.region,
@@ -421,7 +423,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
 		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
 		"VALIDATOR_IMAGE":          networkValidatorImage,
-		"TIMEOUT":                  timeout.String(),
+		"TIMEOUT":                  c.Timeout.String(),
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {
@@ -429,16 +431,16 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 	c.logger.Debug(ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
 
-	cloudImageID, err = c.setCloudImage(cloudImageID)
+	c.CloudImageID, err = c.setCloudImage(c.CloudImageID)
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}
 
 	instance, err := c.createEC2Instance(ctx, createEC2InstanceInput{
-		amiID:         cloudImageID,
-		vpcSubnetID:   vpcSubnetID,
+		amiID:         c.CloudImageID,
+		vpcSubnetID:   c.VpcSubnetID,
 		userdata:      userData,
-		ebsKmsKeyID:   kmsKeyID,
+		ebsKmsKeyID:   c.KmsKeyID,
 		instanceCount: instanceCount,
 	})
 	if err != nil {

@@ -15,6 +15,10 @@ const ClientIdentifier string = "AWS"
 
 // Client represents an AWS Client
 type Client struct {
+	VpcSubnetID  string
+	CloudImageID string
+	Timeout      time.Duration
+	KmsKeyID     string
 	ec2Client    EC2Client
 	region       string
 	instanceType string
@@ -24,6 +28,10 @@ type Client struct {
 }
 
 type ClientInput struct {
+	VpcSubnetID     string
+	CloudImageID    string
+	Timeout         time.Duration
+	KmsKeyID        string
 	Ctx             context.Context
 	Logger          ocmlog.Logger
 	Region          string
@@ -52,8 +60,8 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
+func (c *Client) ValidateEgress(ctx context.Context) *output.Output {
+	return c.validateEgress(ctx)
 }
 
 func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
@@ -64,7 +72,7 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 func NewClient(input *ClientInput) (client *Client, err error) {
 	client, err = newClient(input)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create AWS client: %w", err)
+		return nil, fmt.Errorf("Unable to create AWS client: %w", err)
 	}
 	return
 }

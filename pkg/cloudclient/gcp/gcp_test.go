@@ -3,7 +3,6 @@ package gcp
 import (
 	"context"
 	"testing"
-	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"golang.org/x/oauth2/google"
@@ -21,11 +20,11 @@ func TestByoVPCValidator(t *testing.T) {
 
 func TestValidateEgress(t *testing.T) {
 	ctx := context.TODO()
-	subnetID := "subnet-id"
-	cloudImageID := "image-id"
+	//subnetID := "subnet-id"
+	//cloudImageID := "image-id"
 	cli := Client{}
-	timeout := 1 * time.Second
-	if !cli.ValidateEgress(ctx, subnetID, cloudImageID, "", timeout).IsSuccessful() {
+	//timeout := 1 * time.Second
+	if !cli.ValidateEgress(ctx).IsSuccessful() {
 		t.Errorf("validation should have been successful")
 	}
 }
