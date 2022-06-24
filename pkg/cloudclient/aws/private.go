@@ -335,7 +335,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	}
 
 	// getConsoleOutput then parse, use c.output to store result of the execution
-	err := helpers.PollImmediate(30*time.Second, 2*time.Minute, func() (bool, error) {
+	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
 		consoleOutput, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err != nil {
 			return false, err
@@ -367,13 +367,14 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 			if len(notFoundMatch) > 0 {
-				c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
+				c.output.AddException(handledErrors.NewGenericError(
+					"internet connectivity problem: please ensure there's internet access in given vpc subnets"))
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
 			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
 
-			c.output.SetFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
+			c.output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
 			return true, nil
 		}
 		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
@@ -491,7 +492,7 @@ func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
 	c.logger.Info(ctx, "DNS Hostnames for VPC %s: %t", vpcID, *dnsHostResult.EnableDnsHostnames.Value)
 	if !(*dnsSprtResult.EnableDnsSupport.Value && *dnsHostResult.EnableDnsHostnames.Value) {
 		c.logger.Error(ctx, "Both DNS support and DNS hostnames must be enabled on VPC %s in order to be compatible with OSD.", vpcID)
-		c.output.SetFailures([]string{"VPC DNS verification failed"})
+		c.output.AddException(handledErrors.NewGenericError("VPC DNS verification failed"))
 	}
 
 	return &c.output

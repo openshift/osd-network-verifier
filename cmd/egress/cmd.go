@@ -101,7 +101,7 @@ are set correctly before execution.
 	// egress test config
 	validateEgressCmd.Flags().StringVar(&egressConfig.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&egressConfig.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
-	validateEgressCmd.Flags().DurationVar(&egressConfig.timeout, "timeout", 1*time.Second, "(optional) timeout for individual egress verification requests")
+	validateEgressCmd.Flags().DurationVar(&egressConfig.timeout, "timeout", 2*time.Second, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&egressConfig.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
 
 	// general command options
