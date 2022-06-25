@@ -98,8 +98,6 @@ func TestValidateOutputErrors(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	testID := "aws-docs-example-instanceID"
-	vpcSubnetID := "dummy-id"
-	cloudImageID := "dummy-id"
 	tests := []struct {
 		name            string
 		consoleOut      string
@@ -150,11 +148,19 @@ Unable to reach somesample.endpoint
 
 		FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
 		cli := Client{
-			ec2Client: FakeEC2Cli,
-			logger:    &logging.GlogLogger{},
+			ec2Client:    FakeEC2Cli,
+			logger:       &logging.GlogLogger{},
+			VpcSubnetID:  "dummy-id",
+			CloudImageID: "dummy-id",
 		}
-		if cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "",
-			time.Duration(1*time.Second)).IsSuccessful() {
+
+		ctx := context.TODO()
+		ctx = context.WithValue(ctx, "VpcSubnetID", "example-subnet-id")
+		ctx = context.WithValue(ctx, "CloudImageID", "example-cloudImageID")
+		ctx = context.WithValue(ctx, "Timeout", "example-timeout")
+		ctx = context.WithValue(ctx, "KmsKeyID", "example-kmsKeyID")
+
+		if cli.validateEgress(ctx).IsSuccessful() {
 			t.Errorf("failed %s: validateEgress(): should fail", test.name)
 		}
 
