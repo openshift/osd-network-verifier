@@ -16,19 +16,17 @@ func extendValidateEgressV1() {
 		AwsProfile: "yourAwsProfile",                  // optional
 		CloudType:  "aws",                             // optional
 	}
-	ctx := context.TODO()
-	ctx = context.WithValue(ctx, "VpcSubnetID", "example-subnet-id")
-	ctx = context.WithValue(ctx, "CloudImageID", "example-cloudImageID")
-	ctx = context.WithValue(ctx, "Timeout", "example-timeout")
-	ctx = context.WithValue(ctx, "KmsKeyID", "example-kmsKeyID")
 
 	logger, _ := ocmlog.NewStdLoggerBuilder().Debug(true).Build()
 
 	//---------create ONV cloud client---------
+	cli, err := cloudclient.NewClient(context.TODO(), logger, cmdOptions)
+	if err != nil {
+		fmt.Errorf("Error creating cloud client: %s", err.Error())
+	}
 
-	cli, _ := cloudclient.NewClient(ctx, logger, cmdOptions)
 	// Call egress validator
-	out := cli.ValidateEgress(ctx)
+	out := cli.ValidateEgress(context.TODO())
 	if !out.IsSuccessful() {
 		// Retrieve errors
 		failures, exceptions, errors := out.Parse()

@@ -75,9 +75,9 @@ func TestValidateEgress(t *testing.T) {
 		},
 	}, nil)
 
-	encodedconsoleOut := base64.StdEncoding.EncodeToString([]byte(consoleOut))
+	encodedConsoleOut := base64.StdEncoding.EncodeToString([]byte(consoleOut))
 	FakeEC2Cli.EXPECT().GetConsoleOutput(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.GetConsoleOutputOutput{
-		Output: aws.String(encodedconsoleOut),
+		Output: aws.String(encodedConsoleOut),
 	}, nil)
 
 	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
@@ -154,13 +154,7 @@ Unable to reach somesample.endpoint
 			CloudImageID: "dummy-id",
 		}
 
-		ctx := context.TODO()
-		ctx = context.WithValue(ctx, "VpcSubnetID", "example-subnet-id")
-		ctx = context.WithValue(ctx, "CloudImageID", "example-cloudImageID")
-		ctx = context.WithValue(ctx, "Timeout", "example-timeout")
-		ctx = context.WithValue(ctx, "KmsKeyID", "example-kmsKeyID")
-
-		if cli.validateEgress(ctx).IsSuccessful() {
+		if cli.validateEgress(context.TODO()).IsSuccessful() {
 			t.Errorf("failed %s: validateEgress(): should fail", test.name)
 		}
 

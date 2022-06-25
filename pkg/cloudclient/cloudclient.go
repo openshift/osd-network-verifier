@@ -8,10 +8,11 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
-	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	"golang.org/x/oauth2/google"
 )
+
+const GCP = "GCP"
+const AWS = "AWS"
 
 // common commandline args
 type CmdOptions struct {
@@ -21,6 +22,10 @@ type CmdOptions struct {
 	Region       string
 	AwsProfile   string
 	InstanceType string
+	VpcSubnetID  string
+	CloudImageID string
+	Timeout      time.Duration
+	KmsKeyID     string
 }
 
 // CloudClient defines the interface for a cloud agnostic implementation
@@ -41,32 +46,44 @@ type CloudClient interface {
 	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
+func getCloudClientType(options CmdOptions) string {
+	if options.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || options.CloudType == "aws" {
+		return AWS
+	}
+	if options.CloudType == GCP {
+		return GCP
+	}
+	return "unknown"
+}
+
 func NewClient(ctx context.Context, logger ocmlog.Logger,
 	options CmdOptions) (CloudClient, error) {
-	switch options.CloudType {
-
-	case "aws":
+	logger.Info(ctx, "Using region: %s", options.Region)
+	switch getCloudClientType(options) {
+	case AWS:
+		if options.AwsProfile != "" {
+			logger.Info(ctx, "Using AWS profile: %s.", options.AwsProfile)
+		} else {
+			logger.Info(ctx, "Using AWS secret key")
+		}
 		clientInput := &awsCloudClient.ClientInput{
 			Ctx:             ctx,
 			Logger:          logger,
+			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
+			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
+			VpcSubnetID:     options.VpcSubnetID,
+			CloudImageID:    options.CloudImageID,
+			Timeout:         options.Timeout,
+			KmsKeyID:        options.KmsKeyID,
 			Region:          options.Region,
 			InstanceType:    options.InstanceType,
 			Tags:            options.CloudTags,
 			Profile:         options.AwsProfile,
-			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
-			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
-			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
-			VpcSubnetID:     ctx.Value("VpcSubnetID").(string),
-			CloudImageID:    ctx.Value("CloudImageID").(string),
-			Timeout:         ctx.Value("Timeout").(time.Duration),
-			KmsKeyID:        ctx.Value("KmsKeyID").(string),
 		}
 		return awsCloudClient.NewClient(clientInput)
-	case "gcp":
-		var gcpCreds *google.Credentials //todo remove gcpCreds arg once getGcpCredsFromInput is implemented in GCP NewClient
-		return gcpCloudClient.NewClient(ctx, logger, gcpCreds, options.Region, options.InstanceType, options.CloudTags)
 	default:
-		return nil, fmt.Errorf("unsupported cloud client type")
+		return nil, fmt.Errorf("No AWS credentials found. Non-AWS cloud clients are currently not supported.")
 	}
 
 }

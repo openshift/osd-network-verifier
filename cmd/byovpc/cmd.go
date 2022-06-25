@@ -12,12 +12,7 @@ import (
 
 var debug bool
 
-type byovpcConfig struct {
-	awsProfile string
-}
-
 func NewCmdByovpc() *cobra.Command {
-	config := byovpcConfig{}
 	cmdOptions := cloudclient.CmdOptions{}
 
 	byovpcCmd := &cobra.Command{
@@ -35,24 +30,9 @@ func NewCmdByovpc() *cobra.Command {
 
 			ctx := context.TODO()
 
-			var cli cloudclient.CloudClient
-			if cmdOptions.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || cmdOptions.CloudType == "aws" {
-				cmdOptions.CloudType = "aws"
-				// For AWS type
-				if config.awsProfile != "" {
-					logger.Info(ctx, "Using AWS profile: %s.", config.awsProfile)
-				} else {
-					logger.Info(ctx, "Using provided AWS credentials")
-				}
-				// The use of t3.micro here is arbitrary; we just need to provide any valid machine type
-				cli, err = cloudclient.NewClient(ctx, logger, cmdOptions)
-
-			} else {
-				//	todo after GCP is implemented, check GCP type using creds
-				logger.Error(ctx, "No AWS credentials found.")
-			}
+			cli, err := cloudclient.NewClient(ctx, logger, cmdOptions)
 			if err != nil {
-				logger.Error(ctx, err.Error())
+				logger.Error(ctx, "Error creating %s cloud client: %s", cmdOptions.CloudType, err.Error())
 				os.Exit(1)
 			}
 

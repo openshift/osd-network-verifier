@@ -15,6 +15,8 @@ const ClientIdentifier string = "AWS"
 
 // Client represents an AWS Client
 type Client struct {
+	CloudTags    map[string]string
+	AwsProfile   string
 	VpcSubnetID  string
 	CloudImageID string
 	Timeout      time.Duration
