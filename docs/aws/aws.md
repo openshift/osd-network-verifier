@@ -114,8 +114,8 @@ repeat the verification process for each subnet ID.
       --image-id string             (optional) cloud image for the compute instance
       --instance-type string        (optional) compute instance type (default "t3.micro")
       --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
-      --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored.
       --region string               (optional) compute instance region. If absent, environment var AWS_REGION will be used, if set (default "us-east-2")
+      --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored.
       --subnet-id string            source subnet ID
       --timeout duration            (optional) timeout for individual egress verification requests (default 2s). If timeout is less than 2s, it would likely cause false negatives test results.
          ```

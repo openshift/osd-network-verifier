@@ -76,6 +76,7 @@ func NewClient(input *ClientInput) (client *Client, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create AWS client: %w", err)
 	}
+
 	return
 }
 
