@@ -13,11 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -77,43 +75,16 @@ func getEc2ClientFromInput(input ClientInput) (ec2.Client, error) {
 		if err != nil {
 			return ec2Client, fmt.Errorf("can not get AWS config from profile `%s`", input.Profile)
 		}
-
 	} else {
-		//Get config from access keys if provided
-		cred := credentials.NewStaticCredentialsProvider(input.AccessKeyId,
-			input.SecretAccessKey, input.SessionToken)
-		switch cr := interface{}(cred).(type) {
-		case awscredsv1.Credentials:
-			var value awscredsv1.Value
-			if value, err = cr.Get(); err == nil {
-				cfg, err = config.LoadDefaultConfig(input.Ctx,
-					config.WithRegion(input.Region),
-					config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-						Value: aws.Credentials{
-							AccessKeyID: value.AccessKeyID, SecretAccessKey: value.SecretAccessKey, SessionToken: value.SessionToken,
-						},
-					}),
-				)
-				if err != nil {
-					return ec2Client, fmt.Errorf("can not get AWS config from access key")
-				}
-			}
-		case awscredsv2.StaticCredentialsProvider:
-			cfg, err = config.LoadDefaultConfig(input.Ctx,
-				config.WithRegion(input.Region),
-				config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-					Value: aws.Credentials{
-						AccessKeyID: cr.Value.AccessKeyID, SecretAccessKey: cr.Value.SecretAccessKey,
-						SessionToken: cr.Value.SessionToken,
-					},
-				}),
-			)
-			if err != nil {
-				return ec2Client, fmt.Errorf("can not get AWS config from access key")
-			}
-		default:
-			return ec2Client, fmt.Errorf("unsupported access key type `%T`", cr)
-		}
+		cfg, err = config.LoadDefaultConfig(input.Ctx,
+			config.WithRegion(input.Region),
+			config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+				Value: aws.Credentials{
+					AccessKeyID: input.AccessKeyId, SecretAccessKey: input.SecretAccessKey,
+					SessionToken: input.SessionToken,
+				},
+			}),
+		)
 	}
 	ec2Client = *ec2.NewFromConfig(cfg)
 	return ec2Client, err
