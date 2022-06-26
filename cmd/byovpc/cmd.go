@@ -13,7 +13,7 @@ import (
 var debug bool
 
 func NewCmdByovpc() *cobra.Command {
-	cmdOptions := cloudclient.CmdOptions{}
+	config := cloudclient.CmdOptions{}
 
 	byovpcCmd := &cobra.Command{
 		Use:   "byovpc",
@@ -30,9 +30,9 @@ func NewCmdByovpc() *cobra.Command {
 
 			ctx := context.TODO()
 
-			cli, err := cloudclient.NewClient(ctx, logger, cmdOptions)
+			cli, err := cloudclient.NewClient(ctx, logger, config)
 			if err != nil {
-				logger.Error(ctx, "Error creating %s cloud client: %s", cmdOptions.CloudType, err.Error())
+				logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
 				os.Exit(1)
 			}
 

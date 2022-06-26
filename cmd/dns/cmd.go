@@ -24,7 +24,7 @@ func getDefaultRegion() string {
 	}
 }
 func NewCmdValidateDns() *cobra.Command {
-	cmdOptions := cloudclient.CmdOptions{}
+	config := cloudclient.CmdOptions{}
 
 	validateDnsCmd := &cobra.Command{
 		Use: "dns",
@@ -34,18 +34,18 @@ func NewCmdValidateDns() *cobra.Command {
 
 			// Create logger
 			builder := ocmlog.NewStdLoggerBuilder()
-			builder.Debug(cmdOptions.Debug)
+			builder.Debug(config.Debug)
 			logger, err := builder.Build()
 			if err != nil {
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
-			cli, err := cloudclient.NewClient(ctx, logger, cmdOptions)
+			cli, err := cloudclient.NewClient(ctx, logger, config)
 			if err != nil {
-				logger.Error(ctx, "Error creating %s cloud client: %s", cmdOptions.CloudType, err.Error())
+				logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
 				os.Exit(1)
 			}
-			out := cli.VerifyDns(ctx, cmdOptions.VpcSubnetID)
+			out := cli.VerifyDns(ctx, config.VpcSubnetID)
 			out.Summary()
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
@@ -56,9 +56,9 @@ func NewCmdValidateDns() *cobra.Command {
 		},
 	}
 
-	validateDnsCmd.Flags().StringVar(&cmdOptions.VpcSubnetID, "vpc-id", "", "ID of the VPC under test")
-	validateDnsCmd.Flags().StringVar(&cmdOptions.Region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
-	validateDnsCmd.Flags().BoolVar(&cmdOptions.Debug, "debug", false, "If true, enable additional debug-level logging")
+	validateDnsCmd.Flags().StringVar(&config.VpcSubnetID, "vpc-id", "", "ID of the VPC under test")
+	validateDnsCmd.Flags().StringVar(&config.Region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
+	validateDnsCmd.Flags().BoolVar(&config.Debug, "debug", false, "If true, enable additional debug-level logging")
 
 	if err := validateDnsCmd.MarkFlagRequired("vpc-id"); err != nil {
 		validateDnsCmd.PrintErr(err)
