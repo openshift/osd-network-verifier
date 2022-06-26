@@ -70,7 +70,6 @@ are set correctly before execution.
 		},
 	}
 
-	// egress test flags
 	validateEgressCmd.Flags().StringVar(&config.VpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.InstanceType, "instance-type", "t3.micro", "(optional) compute instance type")
