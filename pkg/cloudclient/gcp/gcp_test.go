@@ -20,10 +20,7 @@ func TestByoVPCValidator(t *testing.T) {
 
 func TestValidateEgress(t *testing.T) {
 	ctx := context.TODO()
-	//subnetID := "subnet-id"
-	//cloudImageID := "image-id"
 	cli := Client{}
-	//timeout := 1 * time.Second
 	if !cli.ValidateEgress(ctx).IsSuccessful() {
 		t.Errorf("validation should have been successful")
 	}
