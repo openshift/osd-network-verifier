@@ -1,35 +1,26 @@
-package main
+package aws
 
 import (
 	"context"
-	// "encoding/base64"
-	// "errors"
+	"encoding/base64"
+	"errors"
 	"fmt"
-	// "regexp"
+	"regexp"
 	"time"
-	// "io"
 
-	// "os"
-	compute "cloud.google.com/go/compute/apiv1"
-	computepb "google.golang.org/genproto/googleapis/cloud/compute/v1"
-	"google.golang.org/protobuf/proto"
-	// "cloud.google.com/go/storage"
-	"google.golang.org/api/option"
-	// "golang.org/x/oauth2/google"
-	
-	// "golang.org/x/net/context"
-	cli "google.golang.org/api/compute/v1"
-	// "github.com/aws/aws-sdk-go-v2/aws"
-	// "github.com/aws/aws-sdk-go-v2/config"
-	// "github.com/aws/aws-sdk-go-v2/credentials"
-	// "github.com/aws/aws-sdk-go-v2/service/ec2"
-	// ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	// "github.com/aws/aws-sdk-go/aws/awserr"
-	// ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	// "github.com/openshift/osd-network-verifier/pkg/helpers"
-	// "github.com/openshift/osd-network-verifier/pkg/output"
+	"os"
 
-	// handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
+	"github.com/openshift/osd-network-verifier/pkg/output"
+
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
 type createEC2InstanceInput struct {
@@ -40,42 +31,38 @@ type createEC2InstanceInput struct {
 	instanceCount int
 }
 
-//global variable ami image
 var (
 	instanceCount int = 1
 	defaultAmi        = map[string]string{
 		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
-		"us-east1":      "rhel-9-v20220524",
-		//other regions to add
+		"us-east-1":      "ami-0ed9277fb7eb570c9",
+		"us-east-2":      "ami-002068ed284fb165b",
+		"us-west-1":      "ami-03af6a70ccd8cb578",
+		"us-west-2":      "ami-00f7e5c52c0f43726",
+		"ca-central-1":   "ami-0bae7412735610274",
+		"eu-north-1":     "ami-06bfd6343550d4a29",
+		"eu-central-1":   "ami-05d34d340fb1d89e5",
+		"eu-west-1":      "ami-04dd4500af104442f",
+		"eu-west-2":      "ami-0d37e07bd4ff37148",
+		"eu-west-3":      "ami-0d3c032f5934e1b41",
+		"eu-south-1":     "ami-08d64ae428dd09b2a",
+		"ap-northeast-1": "ami-0218d08a1f9dac831",
+		"ap-northeast-2": "ami-0eb14fe5735c13eb5",
+		"ap-northeast-3": "ami-0f1ffb565070e6947",
+		"ap-east-1":      "ami-026e94842bffe7c42",
+		"ap-south-1":     "ami-052cef05d01020f1d",
+		"ap-southeast-1": "ami-0dc5785603ad4ff54",
+		"ap-southeast-2": "ami-0bd2230cfb28832f7",
+		"sa-east-1":      "ami-0056d4296b1120bc3",
+		"af-south-1":     "ami-060867d58b989c6be",
+		"me-south-1":     "ami-0483952b6a5997b06",
 	}
 	// TODO find a location for future docker images
 	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb"
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-// func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
-	/*func newClient() {
-		
-	// ctx
-			ctx := context.Background()
-			computeService, err := compute.NewService(ctx, option.WithAPIKey("AIza..."))
-			if err != nil {
-				return nil, err
-			}
-
-	projectID := "himanshub3"
-	zone := "us-east1-b"
-	instanceName := "weird-instance-test"
-	machineType := "e2-standard-2"
-	sourceImage := "projects/debian-cloud/global/images/family/debian-10"
-	networkName := "global/networks/default"
-
-
-	createE2Instance( "himanshub3",
-	"us-east1-b","weird-instance-test","e2-standard-2",
-	"projects/debian-cloud/global/images/family/debian-10","global/networks/default")
-
-	
+func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region, instanceType string, tags map[string]string) (*Client, error) {
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
@@ -95,15 +82,8 @@ var (
 		tags:         tags,
 		logger:       logger,
 		output:       output.Output{},
-		
+	}
 
-		client, err := storage.NewClient(ctx, option.WithCredentialsFile("~/Downloads/gcp-sa-private-key.json"))
-
-		if err != nil {
-			return nil, err
-		}
-	}*/
-/*
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := c.validateInstanceType(ctx); err != nil {
@@ -133,7 +113,7 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 
 func (c *Client) validateInstanceType(ctx context.Context) error {
 	// Describe the provided instance type only
-	//      https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
+	//     https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
 	descInput := ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.instanceType)},
 	}
@@ -216,63 +196,6 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 	return *instanceResp, nil
 }
 
-// createInstance sends an instance creation request to the Compute Engine API and waits for it to complete.
-func createE2Instance(w io.Writer, projectID, zone, instanceName, machineType, sourceImage, networkName string) error {
-	// projectID := "your_project_id"
-	// zone := "europe-central2-b"
-	// instanceName := "your_instance_name"
-	// machineType := "n1-standard-1"
-	// sourceImage := "projects/debian-cloud/global/images/family/debian-10"
-	// networkName := "global/networks/default"
-
-	//ctx := context.Background()
-	instancesClient, err := compute.NewInstancesRESTClient(ctx)
-	if err != nil {
-			return fmt.Errorf("NewInstancesRESTClient: %v", err)
-	}
-	defer instancesClient.Close()
-
-	req := &computepb.InsertInstanceRequest{
-			Project: projectID,
-			Zone:    zone,
-			InstanceResource: &computepb.Instance{
-					Name: proto.String(instanceName),
-					Disks: []*computepb.AttachedDisk{
-							{
-									InitializeParams: &computepb.AttachedDiskInitializeParams{
-											DiskSizeGb:  proto.Int64(10),
-											SourceImage: proto.String(sourceImage),
-									},
-									AutoDelete: proto.Bool(true),
-									Boot:       proto.Bool(true),
-									Type:       proto.String(computepb.AttachedDisk_PERSISTENT.String()),
-							},
-					},
-					MachineType: proto.String(fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType)),
-					NetworkInterfaces: []*computepb.NetworkInterface{
-							{
-									Name: proto.String(networkName),
-							},
-					},
-			},
-	}
-
-	op, err := instancesClient.Insert(ctx, req)
-	if err != nil {
-			return fmt.Errorf("unable to create instance: %v", err)
-	}
-
-	if err = op.Wait(ctx); err != nil {
-			return fmt.Errorf("unable to wait for the operation: %v", err)
-	}
-
-	fmt.Fprintf(w, "Instance created\n")
-
-	return nil
-}
-*/
-
-/*
 // Returns state code as int
 func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (int, error) {
 	// States and codes
@@ -428,8 +351,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 
 	return cloudImageID, nil
 }
-*/
-/*
+
 // validateEgress performs validation process for egress
 // Basic workflow is:
 // - prepare for ec2 instance creation
@@ -518,97 +440,4 @@ func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
 	}
 
 	return &c.output
-}
-*/
-func main() {
-	ctx := context.Background()
-			computeService, err := cli.NewService(ctx, option.WithAPIKey("2e4a74ef844dc347ce662bc7d0309728d47554b2"))
-			if err != nil {
-				fmt.Println( err)
-			}
-
-	projectID := "himanshub3"
-	zone := "us-east1-b"
-	instanceName := "weird-instance-test-cents"
-	machineType := "e2-standard-2" //https://cloud.google.com/compute/docs/general-purpose-machines#e2-standard
-	
-	// image code reference doc https://cloud.google.com/compute/docs/reference/rest/v1/instances
-	// https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel - image list
-	sourceImage := "projects/fedora-coreos-cloud/global/images/family/fedora-coreos-stable" //latest rhel image premium?
-	networkName := "projects/" + projectID + "global/networks/hb-g7kzw-network"
-	subnetworkName := "projects/" + projectID + "/regions/us-east1/subnetworks/hb-g7kzw-master-subnet"
-	// tags := "https-server"
-
-	
-	fmt.Println("working!", projectID, zone, instanceName, machineType, sourceImage, networkName, computeService)
-
-	instancesClient, err := compute.NewInstancesRESTClient(ctx)
-	if err != nil {
-			 fmt.Errorf("NewInstancesRESTClient: %v", err)
-	}
-	defer instancesClient.Close()
-
-	req := &computepb.InsertInstanceRequest{
-			Project: projectID,
-			Zone:    zone,
-			InstanceResource: &computepb.Instance{
-					Name: proto.String(instanceName),
-					// Tags: &computepb.Tags{
-					// 	items: [
-					// 		"https-server",
-					// 	],
-					// },
-					Disks: []*computepb.AttachedDisk{
-							{
-									InitializeParams: &computepb.AttachedDiskInitializeParams{
-											DiskSizeGb:  proto.Int64(10),
-											SourceImage: proto.String(sourceImage),
-									},
-									AutoDelete: proto.Bool(true),
-									Boot:       proto.Bool(true),
-									Type:       proto.String(computepb.AttachedDisk_PERSISTENT.String()),
-							},
-					},
-					MachineType: proto.String(fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType)),
-					NetworkInterfaces: []*computepb.NetworkInterface{
-							{
-									Name: proto.String(networkName),
-									Subnetwork: proto.String(subnetworkName),
-							},
-					},
-			},
-	}
-
-	op, err := instancesClient.Insert(ctx, req)
-	if err != nil {
-			 fmt.Errorf("unable to create instance: %v", err)
-	}
-
-	if err = op.Wait(ctx); err != nil {
-			fmt.Errorf("unable to wait for the operation: %v", err)
-	}
-
-	fmt.Println( "Instance created\n")
-
-
-	//stop instance after 120 seeconds
-	time.Sleep(120 * time.Second)
-	defer instancesClient.Close()
-
-	reqs := &computepb.StopInstanceRequest{
-			Project:  projectID,
-			Zone:     zone,
-			Instance: instanceName,
-	}
-
-	sp, err := instancesClient.Stop(ctx, reqs)
-	if err != nil {
-			fmt.Errorf("unable to stop instance: %v", err)
-	}
-
-	if err = op.Wait(ctx); err != nil {
-			fmt.Errorf("unable to wait for the operation: %v", err)
-	}
-
-	fmt.Println( sp, "Instance stopped\n")
 }
