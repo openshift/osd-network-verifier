@@ -62,19 +62,17 @@ var (
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-func getEc2ClientFromInput(input ClientInput) (ec2.Client, error) {
+func getEc2ClientFromInput(input ClientInput) (*ec2.Client, error) {
 	var cfg aws.Config
 	var err error
-	var ec2Client ec2.Client
+
 	//Get config from profile if provided
 	if input.Profile != "" {
 		cfg, err = config.LoadDefaultConfig(input.Ctx,
 			config.WithSharedConfigProfile(input.Profile),
 			config.WithRegion(input.Region),
 		)
-		if err != nil {
-			return ec2Client, fmt.Errorf("can not get AWS config from profile `%s`", input.Profile)
-		}
+
 	} else {
 		cfg, err = config.LoadDefaultConfig(input.Ctx,
 			config.WithRegion(input.Region),
@@ -86,8 +84,10 @@ func getEc2ClientFromInput(input ClientInput) (ec2.Client, error) {
 			}),
 		)
 	}
-	ec2Client = *ec2.NewFromConfig(cfg)
-	return ec2Client, err
+	if err != nil {
+		return nil, fmt.Errorf("can not get AWS config from profile `%s`", input.Profile)
+	}
+	return ec2.NewFromConfig(cfg), nil
 }
 
 // Get AWS cloud client from input
@@ -99,7 +99,7 @@ func newClient(input *ClientInput) (*Client, error) {
 	}
 
 	cl := &Client{
-		ec2Client:    &ec2Client,
+		ec2Client:    ec2Client,
 		region:       input.Region,
 		instanceType: input.InstanceType,
 		tags:         input.Tags,
