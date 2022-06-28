@@ -101,10 +101,14 @@ repeat the verification process for each subnet ID.
    for the same region where your subnet is.
 
    5. Execute:
-    
+
        ```shell        
-       ./osd-network-verifier egress \
-           --subnet-id <subnet_id> --profile <aws-profile-name>
+      # using AWS profile 
+      ./osd-network-verifier egress --subnet-id $SUBNET_ID --profile $AWS_PROFILE
+      
+      # using AWS secret 
+        AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY  \
+      ./osd-network-verifier egress --subnet-id $SUBNET_ID  
         ```
    
         Additional optional flags for overriding defaults:
@@ -169,8 +173,14 @@ are both set to `true`. This tool automates that process
 ##### 2.1.1 CLI Executable #####
 Build the `osd-network-verifier` executable as shown the egress documentation above.
 Then run:
+
 ```shell
-./osd-network-verifier dns --vpc-id=vpc-0123456789deadbeef --profile <aws-profile-name>
+ # using AWS profile    
+  ./osd-network-verifier dns --vpc-id=$VPC_ID --profile $AWS_PROFILE
+  
+ # using AWS secret
+  AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY  \
+  ./osd-network-verifier dns --vpc-id=$VPC_ID 
 ```
 
 ##### 2.1.2 Golang API #####
