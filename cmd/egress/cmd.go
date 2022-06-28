@@ -4,27 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
 )
 
-var (
-	defaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	regionEnvVarStr = "AWS_REGION"
-	regionDefault   = "us-east-2"
-)
-
-func getDefaultRegion() string {
-	val, present := os.LookupEnv(regionEnvVarStr)
-	if present {
-		return val
-	} else {
-		return regionDefault
-	}
-}
 func NewCmdValidateEgress() *cobra.Command {
 	config := cloudclient.CmdOptions{}
 
@@ -73,10 +58,10 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.VpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.InstanceType, "instance-type", "t3.micro", "(optional) compute instance type")
-	validateEgressCmd.Flags().StringVar(&config.Region, "region", getDefaultRegion(), fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", regionEnvVarStr, regionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&config.CloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().StringVar(&config.Region, "region", config.Region, fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", cloudclient.RegionEnvVarStr, cloudclient.RegionDefault))
+	validateEgressCmd.Flags().StringToStringVar(&config.CloudTags, "cloud-tags", cloudclient.DefaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.Debug, "debug", false, "(optional) if true, enable additional debug-level logging")
-	validateEgressCmd.Flags().DurationVar(&config.Timeout, "timeout", 2*time.Second, "(optional) timeout for individual egress verification requests")
+	validateEgressCmd.Flags().DurationVar(&config.Timeout, "timeout", cloudclient.DefaultTime, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.KmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
 	validateEgressCmd.Flags().StringVar(&config.AwsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 

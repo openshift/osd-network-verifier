@@ -28,6 +28,23 @@ type CmdOptions struct {
 	KmsKeyID     string
 }
 
+var (
+	DefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	RegionEnvVarStr = "AWS_REGION"
+	RegionDefault   = "us-east-1"
+	DefaultTime     = 2 * time.Second
+)
+
+// todo implement similar getter for AWS secrets and profile
+func getDefaultRegion() string {
+	val, present := os.LookupEnv(RegionEnvVarStr)
+	if present {
+		return val
+	} else {
+		return RegionDefault
+	}
+}
+
 // CloudClient defines the interface for a cloud agnostic implementation
 // For mocking: mockgen -source=pkg/cloudclient/cloudclient.go -package mocks -destination=pkg/cloudclient/mocks/mock_cloudclient.go
 type CloudClient interface {
@@ -76,7 +93,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger,
 			CloudImageID:    options.CloudImageID,
 			Timeout:         options.Timeout,
 			KmsKeyID:        options.KmsKeyID,
-			Region:          options.Region,
+			Region:          getDefaultRegion(),
 			InstanceType:    options.InstanceType,
 			Tags:            options.CloudTags,
 			Profile:         options.AwsProfile,
