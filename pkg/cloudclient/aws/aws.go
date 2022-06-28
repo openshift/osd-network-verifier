@@ -82,7 +82,7 @@ func NewClient(input *ClientInput) (client *Client, err error) {
 func GetEc2ClientFromInput(input *ClientInput) (*ec2.Client, error) {
 	ec2Client, err := getEc2ClientFromInput(*input)
 	if err != nil {
-		fmt.Errorf("unable to create EC2 Client: %w", err)
+		return nil, fmt.Errorf("unable to create EC2 Client: %w", err)
 	}
-	return ec2Client, err
+	return ec2Client, nil
 }
