@@ -75,7 +75,9 @@ func getCloudClientType(options CmdOptions) string {
 
 func NewClient(ctx context.Context, logger ocmlog.Logger,
 	options CmdOptions) (CloudClient, error) {
-	logger.Info(ctx, "Using region: %s", options.Region)
+	if options.Region != "" {
+		logger.Info(ctx, "Using region: %s", options.Region)
+	}
 	switch getCloudClientType(options) {
 	case AWS:
 		if options.AwsProfile != "" {
