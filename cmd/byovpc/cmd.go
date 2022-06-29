@@ -30,13 +30,13 @@ func NewCmdByovpc() *cobra.Command {
 
 			ctx := context.TODO()
 
-			cli, err := cloudclient.NewClient(ctx, logger, config)
+			client, err := cloudclient.NewClient(ctx, logger, config)
 			if err != nil {
 				logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
 				os.Exit(1)
 			}
 
-			err = cli.ByoVPCValidator(ctx)
+			err = client.ByoVPCValidator(ctx)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)

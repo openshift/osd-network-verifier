@@ -38,13 +38,13 @@ are set correctly before execution.
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
-			cli, err := cloudclient.NewClient(ctx, logger, config)
+			client, err := cloudclient.NewClient(ctx, logger, config)
 			if err != nil {
 				logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
 				os.Exit(1)
 			}
 
-			out := cli.ValidateEgress(ctx)
+			out := client.ValidateEgress(ctx)
 			out.Summary()
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
