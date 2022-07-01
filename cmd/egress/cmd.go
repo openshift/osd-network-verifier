@@ -6,10 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
+	// "github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2/google"
 )
 
 var (
@@ -27,6 +28,7 @@ type egressConfig struct {
 	region       string
 	timeout      time.Duration
 	kmsKeyID     string
+	gcp          string
 }
 
 func getDefaultRegion() string {
@@ -64,14 +66,26 @@ are set correctly before execution.
 			}
 
 			logger.Warn(ctx, "Using region: %s", config.region)
-			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
+			// creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+
+			//gcp creds....
+			//cred:=
+
+			// cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
+			credentials := &google.Credentials{ProjectID: "himanshub3"}
+
+			//gcp cli,err := ...NewClient... (..Credentials, google.credentials)
+			cli, err := cloudclient.NewClient(ctx, logger, credentials, config.region, config.instanceType, config.cloudTags)
+
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)
 			}
 
 			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout)
+
+			//gcp validate egress cloudclient.... out :=
+
 			out.Summary()
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
@@ -90,6 +104,8 @@ are set correctly before execution.
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
+	// Added gcp-key flag
+	validateEgressCmd.Flags().StringVar(&config.gcp, "gcp", "", "use GCP VPC. Pass GCP OAuth2.0 Json File")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
