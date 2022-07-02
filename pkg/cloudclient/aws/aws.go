@@ -31,6 +31,7 @@ type Client struct {
 
 type ClientInput struct {
 	VpcSubnetID     string
+	VpcID           string
 	CloudImageID    string
 	Timeout         time.Duration
 	KmsKeyID        string

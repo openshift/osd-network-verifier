@@ -22,10 +22,12 @@ type CmdOptions struct {
 	Region       string
 	AwsProfile   string
 	InstanceType string
-	VpcSubnetID  string
 	CloudImageID string
 	Timeout      time.Duration
 	KmsKeyID     string
+	//	test specific args
+	VpcSubnetID string
+	VpcID       string
 }
 
 var (
@@ -92,6 +94,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger,
 			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
 			VpcSubnetID:     options.VpcSubnetID,
+			VpcID:           options.VpcID,
 			CloudImageID:    options.CloudImageID,
 			Timeout:         options.Timeout,
 			KmsKeyID:        options.KmsKeyID,

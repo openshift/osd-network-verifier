@@ -10,19 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	regionEnvVarStr string = "AWS_DEFAULT_REGION"
-	regionDefault   string = "us-east-2"
-)
-
-func getDefaultRegion() string {
-	val, present := os.LookupEnv(regionEnvVarStr)
-	if present {
-		return val
-	} else {
-		return regionDefault
-	}
-}
 func NewCmdValidateDns() *cobra.Command {
 	config := cloudclient.CmdOptions{}
 
@@ -56,8 +43,8 @@ func NewCmdValidateDns() *cobra.Command {
 		},
 	}
 
-	validateDnsCmd.Flags().StringVar(&config.VpcSubnetID, "vpc-id", "", "ID of the VPC under test")
-	validateDnsCmd.Flags().StringVar(&config.Region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
+	validateDnsCmd.Flags().StringVar(&config.VpcID, "vpc-id", "", "ID of the VPC under test")
+	validateDnsCmd.Flags().StringVar(&config.Region, "region", cloudclient.RegionDefault, fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", cloudclient.RegionEnvVarStr, cloudclient.RegionDefault))
 	validateDnsCmd.Flags().BoolVar(&config.Debug, "debug", false, "If true, enable additional debug-level logging")
 
 	if err := validateDnsCmd.MarkFlagRequired("vpc-id"); err != nil {
