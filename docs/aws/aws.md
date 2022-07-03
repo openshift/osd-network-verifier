@@ -45,7 +45,7 @@ Set up your environment to use the correct credentials for the AWS account for t
     - VPC ID (if verifying DNS)
   
 ### IAM permissions ###
-Ensure that the AWS credentials being used have the following permissions.
+Ensure that the AWS credentials being used have the following permissions. (This list is a subset of permissions documented in the Support role and Support policy sections [in this doc.](https://docs.openshift.com/rosa/rosa_architecture/rosa-sts-about-iam-resources.html#rosa-sts-account-wide-roles-and-policies_rosa-sts-about-iam-resources))
 ```json
 {
   "Version": "2012-10-17",
@@ -92,9 +92,9 @@ repeat the verification process for each subnet ID.
       1. subnet_id: Obtain the subnet id to be verified. 
       2. image_id: Select an optional image id parameter (ami-xxxxxxxxxxxx) to run on ec2 instance. 
       
-         You may use the following public image-id:
+         You may use the following public image ID as :
          ```bash
-          resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2`
+          --image-id=resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
          ```
           If the image id is not provided, it is defaulted to an image id from [AWS account olm-artifacts-template.yaml](https://github.com/openshift/aws-account-operator/blob/17be7a41036e252d59ab19cc2ad1dcaf265758a2/hack/olm-registry/olm-artifacts-template.yaml#L75),
    for the same region where your subnet is.
@@ -115,7 +115,7 @@ repeat the verification process for each subnet ID.
       --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
       --region string               (optional) compute instance region. If absent, environment var AWS_DEFAULT_REGION will be used, if set (default "us-east-1")
       --subnet-id string            source subnet ID
-      --timeout duration            (optional) timeout for individual egress verification requests (default 1s)
+      --timeout duration            (optional) timeout for individual egress verification requests (default 2s). If timeout is less than 2s, it would likely cause false negatives test results.
        ```
        Get cli help:
     
@@ -147,7 +147,7 @@ Description:
       (The image is also published at: https://quay.io/repository/app-sre/osd-network-verifier)
    3. The entry point of the osd-network-verifier docker image then executes the main egress verification script
       ```shell
-      network-validator --timeout=1s --config=config/config.yaml
+      network-validator --timeout=2s --config=config/config.yaml
        ```
       - **This entrypoint is where the actual egress endpoint verification is performed.** `build/bin/network-validator.go` makes `curl` requests to each other endpoint in the [egress list](../../README.md#egress-list) (i.e. list of all essential domains for OSD clusters).
       - During development, the verifier docker image can be tested locally as:

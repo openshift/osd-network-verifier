@@ -11,24 +11,36 @@ type EgressURLError struct {
 
 var ErrWaitTimeout = errors.New("timed out waiting for the condition")
 
-func (e *GenericError) ErrWaitTimeout() string { return e.e }
+func (e *GenericError) ErrWaitTimeout() string { return e.message }
 
 func (e *EgressURLError) Error() string { return e.e }
 
-func NewEgressURLError(failure string) error {
+func NewEgressURLError(message string) error {
 	return &EgressURLError{
-		e: fmt.Sprintf("egressURL error: %s", failure),
+		e: fmt.Sprintf("egressURL error: %s", message),
 	}
 }
 
 type GenericError struct {
-	e string
+	message string
 }
 
-func (e *GenericError) Error() string { return e.e }
+func (e *GenericError) Error() string { return e.message }
 
-func NewGenericError(err error) error {
+func NewGenericError(message string) error {
 	return &GenericError{
-		e: fmt.Sprintf("generic(unhandled) error: %s ", err.Error()),
+		message: fmt.Sprintf("network verifier error: %s", message),
+	}
+}
+
+type UnhandledError struct {
+	message string
+}
+
+func (e *UnhandledError) Error() string          { return e.message }
+func (e *UnhandledError) ErrWaitTimeout() string { return e.message }
+func NewGenericUnhandledError(err error) error {
+	return &UnhandledError{
+		message: fmt.Sprintf("generic unhandled error: %s ", err.Error()),
 	}
 }
