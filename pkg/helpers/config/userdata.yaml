@@ -1,13 +1,13 @@
 #cloud-config
-repo_update: true
-package_update: true
-packages:
-  - docker 
 runcmd:
-  - sudo service docker start
+  # taking care manually of the packages to be able to make it non-blocking
+  - sudo yum -y update || echo "didn't update package"
+  - sudo yum -y install docker || echo "docker not installed by yum"
+  # Redirecting the output because of failed start with Golden AMI (should be improved in OSD-12345)
+  - sudo service docker start 2>1 > /dev/null || echo "docker not started by systemctl"
   - echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
   - sudo docker pull ${VALIDATOR_IMAGE}
-  # Use `|| true` to ignore failure exit codes, we want the script to continue either way
+  # Printing a message with 'Failed' in order to ensure the is detected as a failure by osd-network-verifier (OSD-12345 to improve this)
   - sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${VALIDATOR_IMAGE} --timeout=${TIMEOUT}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
   - echo "${USERDATA_END}" >> /var/log/userdata-output
   - cat /var/log/userdata-output >/dev/console
