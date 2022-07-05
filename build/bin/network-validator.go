@@ -14,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/crypto/ssh"
-
 	"gopkg.in/yaml.v2"
 )
 
@@ -130,12 +128,6 @@ func ValidateReachability(host string, port int, tlsDisabled bool) error {
 			_, err = httpClient.Get(fmt.Sprintf("%s://%s", "http", host))
 		case 443:
 			_, err = httpClient.Get(fmt.Sprintf("%s://%s", "https", host))
-		case 22:
-			_, err = ssh.Dial("tcp", endpoint, &ssh.ClientConfig{HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: *timeout})
-			if err.Error() == "ssh: handshake failed: EOF" {
-				// at this point, connectivity is available
-				err = nil
-			}
 		default:
 			_, err = net.DialTimeout("tcp", endpoint, *timeout)
 		}
