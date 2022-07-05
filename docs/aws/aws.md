@@ -130,8 +130,9 @@ repeat the verification process for each subnet ID.
         ./osd-network-verifier egress --help
         ```
 
-##### 1.1.2 Go implementation Example #####
-- [AWS SDK example](../../examples/aws/verify_egress.go)
+##### 1.1.2 Go implementation Examples #####
+- [AWS Go SDK v1](../../examples/aws/verify_egressv1.go)  
+- [AWS Go SDK v2](../../examples/aws/verify_egressv2.go)
  
 #### 1.2 Interpreting Output ###
 (TODO: add errors)
