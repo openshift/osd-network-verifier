@@ -12,154 +12,39 @@
     - [1.2 Interpreting Output](#12-interpreting-output)
     - [1.3 Workflow](#13-workflow)
   - [2. VPC DNS Verification](#2-vpc-dns-verification)
-      - [2.1 Usage](#21-usage)
-          - [2.1.1 CLI Executable](#211-cli-executable)
-          - [2.1.2 Golang API](#212-golang-api)
+    - [2.1 Usage](#21-usage)
+      - [2.1.1 CLI Executable](#211-cli-executable)
+      - [2.1.2 Golang API](#212-golang-api)
   - [3. BYOVPC Configurations Verification](#3-byovpc-configurations-verification)
 
 ## Setup ##
-
 ### AWS Environment ###
-
-Set up your environment to use the correct credentials for the AWS account for the target cluster.
--
-Obtain
-a
-valid
-set
-of
-AWS
-secret
-and
-key
-for
-the
-target
-account
-and
-use
-them
-in
-one
-of
-the
-following
-ways:
--
-Set
-them
-as
-an
-AWS
-profile
-in
-you ~
-/.aws/credentials
-file
-as
-prescribed
-in [this AWS doc.](https://docs.aws.amazon.com/sdk-for-php/v3/developer-guide/guide_credentials_profiles.html)
--
-Export
-these
-AWS
-credentials:
-```shell export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
-export AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY>
-```
-For
-STS
-credentials,
-also:
-```shell export AWS_SESSION_TOKEN=<YOUR_SESSION_TOKEN_STRING>
-```
-Export
-any
-other
-AWS
-environment
-vars:
-```
-shell
-export
-AWS_REGION=<
-VPC_AWS_REGION>
-````
-
+Set up your environment to use the correct credentials for the AWS account for the target cluster. 
+- Obtain a valid set of AWS secret and key for the target account and use them in one of the following ways:
+  - Set them as an AWS profile in you ~/.aws/credentials file as prescribed in [this AWS doc.](https://docs.aws.amazon.com/sdk-for-php/v3/developer-guide/guide_credentials_profiles.html)
+  - Export these AWS credentials:
+     ```shell
+     export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
+     export AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY>
+     ```
+    For STS credentials, also:
+      ```shell 
+      export AWS_SESSION_TOKEN=<YOUR_SESSION_TOKEN_STRING> 
+      ```
+    Export any other AWS environment vars:
+      ```shell
+      export AWS_REGION=<VPC_AWS_REGION>
+      ````
+  
 ### VPC ###
-
--
-Any
-VPC
-for
-a
-ROSA/OSD
-CCS
-cluster
-can
-be
-tested
-using
-this
-tool.
--
-You
-should
-get
-the
-VPC
-set
-up
-by
-the
-customer.
--
-To
-set
-up
-your
-own
-VPC
-and
-firewall
-for
-testing
-and
-development, [check out this example](firewall.md)
-.
--
-Apart
-from
-the
-AWS
-credentials,
-you
-will
-need
-to
-know
-the
-following
-information
-about
-the
-VPC
-to
-be
-verified.
-    -
-    Subnet
-    IDs
-    -
-    AWS
-    region
-    -
-    VPC
-    ID (
-    if
-    verifying
-    DNS)
-
+- Any VPC for a ROSA/OSD CCS cluster can be tested using this tool.
+- You should get the VPC set up by the customer.  
+- To set up your own VPC and firewall for testing and development, [check out this example](firewall.md).
+- Apart from the AWS credentials, you will need to know the following information about the VPC to be verified.
+    - Subnet IDs
+    - AWS region
+    - VPC ID (if verifying DNS)
+  
 ### IAM permissions ###
 Ensure that the AWS credentials being used have the following permissions. (This list is a subset of permissions documented in the Support role and Support policy sections [in this doc.](https://docs.openshift.com/rosa/rosa_architecture/rosa-sts-about-iam-resources.html#rosa-sts-account-wide-roles-and-policies_rosa-sts-about-iam-resources))
 ```json
@@ -238,18 +123,15 @@ repeat the verification process for each subnet ID.
       --subnet-id string            source subnet ID
       --timeout duration            (optional) timeout for individual egress verification requests (default 2s). If timeout is less than 2s, it would likely cause false negatives test results.
          ```
-
-      Get
-      cli
-      help:
-
+   
+       Get cli help:
+    
         ```shell
         ./osd-network-verifier egress --help
         ```
 
-##### 1.1.2 Go implementation Examples #####
-- [AWS Go SDK v1](../../examples/aws/verify_egressv1.go)  
-- [AWS Go SDK v2](../../examples/aws/verify_egressv2.go)
+##### 1.1.2 Go implementation Example #####
+- [AWS SDK example](../../examples/aws/verify_egress.go)
  
 #### 1.2 Interpreting Output ###
 (TODO: add errors)
