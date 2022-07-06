@@ -3,17 +3,49 @@ package cloudclient
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
-	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
-	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
-	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-
-	"golang.org/x/oauth2/google"
 )
+
+const GCP = "GCP"
+const AWS = "AWS"
+
+// common commandline args
+type CmdOptions struct {
+	CloudType    string // not required. if provided, currently only supports "aws".
+	CloudTags    map[string]string
+	Debug        bool
+	Region       string
+	AwsProfile   string
+	InstanceType string
+	CloudImageID string
+	Timeout      time.Duration
+	KmsKeyID     string
+	//	test specific args
+	VpcSubnetID string
+	VpcID       string
+}
+
+var (
+	DefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	RegionEnvVarStr = "AWS_REGION"
+	RegionDefault   = "us-east-1"
+	DefaultTime     = 2 * time.Second
+)
+
+// todo implement similar getter for AWS secrets and profile
+func getDefaultRegion() string {
+	val, present := os.LookupEnv(RegionEnvVarStr)
+	if present {
+		return val
+	} else {
+		return RegionDefault
+	}
+}
 
 // CloudClient defines the interface for a cloud agnostic implementation
 // For mocking: mockgen -source=pkg/cloudclient/cloudclient.go -package mocks -destination=pkg/cloudclient/mocks/mock_cloudclient.go
@@ -25,7 +57,7 @@ type CloudClient interface {
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output
+	ValidateEgress(ctx context.Context) *output.Output
 
 	// VerifyDns verifies that a given VPC meets the DNS requirements specified in:
 	// https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html
@@ -33,14 +65,47 @@ type CloudClient interface {
 	VerifyDns(ctx context.Context, vpcID string) *output.Output
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (CloudClient, error) {
-	switch c := creds.(type) {
-	case awscredsv1.Credentials, awscredsv2.StaticCredentialsProvider:
-		return awsCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
-	case *google.Credentials:
-		return gcpCloudClient.NewClient(ctx, logger, c, region, instanceType, tags)
+func getCloudClientType(options CmdOptions) string {
+	if options.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || options.CloudType == "aws" {
+		return AWS
+	}
+	if options.CloudType == GCP {
+		return GCP
+	}
+	return "unknown"
+}
+
+func NewClient(ctx context.Context, logger ocmlog.Logger,
+	options CmdOptions) (CloudClient, error) {
+
+	logger.Info(ctx, "Using region: %s", getDefaultRegion())
+
+	switch getCloudClientType(options) {
+	case AWS:
+		if options.AwsProfile != "" {
+			logger.Info(ctx, "Using AWS profile: %s.", options.AwsProfile)
+		} else {
+			logger.Info(ctx, "Using AWS secret key")
+		}
+		clientInput := &awsCloudClient.ClientInput{
+			Ctx:             ctx,
+			Logger:          logger,
+			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
+			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
+			VpcSubnetID:     options.VpcSubnetID,
+			VpcID:           options.VpcID,
+			CloudImageID:    options.CloudImageID,
+			Timeout:         options.Timeout,
+			KmsKeyID:        options.KmsKeyID,
+			Region:          getDefaultRegion(),
+			InstanceType:    options.InstanceType,
+			Tags:            options.CloudTags,
+			Profile:         options.AwsProfile,
+		}
+		return awsCloudClient.NewClient(clientInput)
 	default:
-		return nil, fmt.Errorf("unsupported credentials type %T", c)
+		return nil, fmt.Errorf("No AWS credentials found. Non-AWS cloud clients are currently not supported.")
 	}
 
 }

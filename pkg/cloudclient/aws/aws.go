@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	awscredsv2 "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	awscredsv1 "github.com/aws/aws-sdk-go/aws/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
@@ -17,12 +15,27 @@ const ClientIdentifier string = "AWS"
 
 // Client represents an AWS Client
 type Client struct {
-	ec2Client    EC2Client
-	region       string
-	instanceType string
-	tags         map[string]string
-	logger       ocmlog.Logger
-	output       output.Output
+	ec2Client   EC2Client
+	clientInput *ClientInput
+	output      output.Output
+}
+
+type ClientInput struct {
+	VpcSubnetID     string
+	VpcID           string
+	CloudImageID    string
+	Timeout         time.Duration
+	KmsKeyID        string
+	Ctx             context.Context
+	Logger          ocmlog.Logger
+	Region          string
+	InstanceType    string
+	Tags            map[string]string
+	Profile         string
+	AccessKeyId     string
+	SessionToken    string
+	SecretAccessKey string
+	Debug           string
 }
 
 // Extend EC2Client so that we can mock them all for testing
@@ -38,12 +51,12 @@ type EC2Client interface {
 }
 
 func (c *Client) ByoVPCValidator(ctx context.Context) error {
-	c.logger.Info(ctx, "interface executed: %s", ClientIdentifier)
+	c.clientInput.Logger.Info(ctx, "interface executed: %s", ClientIdentifier)
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
+func (c *Client) ValidateEgress(ctx context.Context) *output.Output {
+	return c.validateEgress(ctx)
 }
 
 func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
@@ -51,40 +64,18 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 }
 
 // NewClient creates a new CloudClient for use with AWS.
-func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (client *Client, err error) {
-	switch c := creds.(type) {
-	case awscredsv1.Credentials:
-		var value awscredsv1.Value
-		if value, err = c.Get(); err == nil {
-			client, err = newClient(
-				ctx,
-				logger,
-				value.AccessKeyID,
-				value.SecretAccessKey,
-				value.SessionToken,
-				region,
-				instanceType,
-				tags,
-			)
-		}
-	case awscredsv2.StaticCredentialsProvider:
-		client, err = newClient(
-			ctx,
-			logger,
-			c.Value.AccessKeyID,
-			c.Value.SecretAccessKey,
-			c.Value.SessionToken,
-			region,
-			instanceType,
-			tags,
-		)
-	default:
-		err = fmt.Errorf("unsupported credentials type %T", c)
-	}
-
+func NewClient(input *ClientInput) (client *Client, err error) {
+	client, err = newClient(input)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to create AWS client: %w", err)
 	}
+	return client, nil
+}
 
-	return
+func GetEc2ClientFromInput(input *ClientInput) (*ec2.Client, error) {
+	ec2Client, err := getEc2ClientFromInput(*input)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create EC2 Client: %w", err)
+	}
+	return ec2Client, nil
 }

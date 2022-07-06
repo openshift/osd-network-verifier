@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
@@ -14,6 +13,8 @@ import (
 var debug bool
 
 func NewCmdByovpc() *cobra.Command {
+	config := cloudclient.CmdOptions{}
+
 	byovpcCmd := &cobra.Command{
 		Use:   "byovpc",
 		Short: "Verify subnet configuration of a specific VPC",
@@ -29,21 +30,13 @@ func NewCmdByovpc() *cobra.Command {
 
 			ctx := context.TODO()
 
-			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-
-			// TODO when this command is actually used, most if not all of the following should be command line options
-			region := os.Getenv("AWS_REGION")
-			instanceType := "t3.micro"
-			tags := map[string]string{}
-
-			var cli cloudclient.CloudClient
-			cli, err = cloudclient.NewClient(ctx, logger, creds, region, instanceType, tags)
+			client, err := cloudclient.NewClient(ctx, logger, config)
 			if err != nil {
-				logger.Error(ctx, err.Error())
+				logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
 				os.Exit(1)
 			}
 
-			err = cli.ByoVPCValidator(ctx)
+			err = client.ByoVPCValidator(ctx)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)
