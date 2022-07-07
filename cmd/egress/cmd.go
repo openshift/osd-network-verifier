@@ -11,6 +11,7 @@ import (
 )
 
 var config = cloudclient.CmdOptions{}
+var vpcSubnetId string
 
 func NewCmdValidateEgress() *cobra.Command {
 
@@ -29,7 +30,10 @@ are set correctly before execution.
 		Run: run,
 	}
 
-	validateEgressCmd.Flags().StringVar(&config.VpcSubnetID, "subnet-id", "", "source subnet ID")
+	//test specific args
+	validateEgressCmd.Flags().StringVar(&vpcSubnetId, "subnet-id", "", "source subnet ID")
+
+	//client os.Args
 	validateEgressCmd.Flags().StringVar(&config.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.InstanceType, "instance-type", "t3.micro", "(optional) compute instance type")
 	validateEgressCmd.Flags().StringVar(&config.Region, "region", config.Region, fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", cloudclient.RegionEnvVarStr, cloudclient.RegionDefault))
@@ -59,13 +63,17 @@ func run(cmd *cobra.Command, args []string) {
 		fmt.Printf("Unable to build logger: %s\n", err.Error())
 		os.Exit(1)
 	}
+
 	client, err := cloudclient.NewClient(ctx, logger, config)
 	if err != nil {
 		logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
 		os.Exit(1)
 	}
 
-	out := client.ValidateEgress(ctx)
+	out := client.ValidateEgress(cloudclient.EgressOptions{
+		VpcSubnetID: vpcSubnetId, // provide this variable from any source
+	})
+
 	out.Summary()
 	if !out.IsSuccessful() {
 		logger.Error(ctx, "Failure!")

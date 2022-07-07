@@ -26,8 +26,13 @@ type CmdOptions struct {
 	Timeout      time.Duration
 	KmsKeyID     string
 	//	test specific args
+	VpcID string
+}
+
+// common commandline args
+type EgressOptions struct {
+	//	test specific args
 	VpcSubnetID string
-	VpcID       string
 }
 
 var (
@@ -57,7 +62,7 @@ type CloudClient interface {
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	ValidateEgress(ctx context.Context) *output.Output
+	ValidateEgress(options EgressOptions) *output.Output
 
 	// VerifyDns verifies that a given VPC meets the DNS requirements specified in:
 	// https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html
@@ -93,7 +98,6 @@ func NewClient(ctx context.Context, logger ocmlog.Logger,
 			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
 			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
-			VpcSubnetID:     options.VpcSubnetID,
 			VpcID:           options.VpcID,
 			CloudImageID:    options.CloudImageID,
 			Timeout:         options.Timeout,

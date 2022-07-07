@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
@@ -55,8 +56,8 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context) *output.Output {
-	return c.validateEgress(ctx)
+func (c *Client) ValidateEgress(client cloudclient.EgressOptions) *output.Output {
+	return c.validateEgress(client)
 }
 
 func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {

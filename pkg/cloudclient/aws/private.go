@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -370,8 +371,8 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return ` c.clientInput.output` which stores the execution results
-func (c *Client) validateEgress(ctx context.Context) *output.Output {
-	c.clientInput.Logger.Debug(ctx, "Using configured timeout of %s for each egress request", c.clientInput.Timeout.String())
+func (c *Client) validateEgress(options cloudclient.EgressOptions) *output.Output {
+	c.clientInput.Logger.Debug(context.TODO(), "Using configured timeout of %s for each egress request", c.clientInput.Timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
 		"AWS_REGION":               c.clientInput.Region,
@@ -386,16 +387,16 @@ func (c *Client) validateEgress(ctx context.Context) *output.Output {
 	if err != nil {
 		return c.output.AddError(err)
 	}
-	c.clientInput.Logger.Debug(ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
+	c.clientInput.Logger.Debug(context.TODO(), "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
 
 	c.clientInput.CloudImageID, err = c.setCloudImage(c.clientInput.CloudImageID)
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}
 
-	instance, err := c.createEC2Instance(ctx, createEC2InstanceInput{
+	instance, err := c.createEC2Instance(context.TODO(), createEC2InstanceInput{
 		amiID:         c.clientInput.CloudImageID,
-		vpcSubnetID:   c.clientInput.VpcSubnetID,
+		vpcSubnetID:   options.VpcSubnetID,
 		userdata:      userData,
 		ebsKmsKeyID:   c.clientInput.KmsKeyID,
 		instanceCount: instanceCount,
@@ -405,18 +406,18 @@ func (c *Client) validateEgress(ctx context.Context) *output.Output {
 	}
 
 	instanceID := *instance.Instances[0].InstanceId
-	c.clientInput.Logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
-	if instanceReadyErr := c.waitForEC2InstanceCompletion(ctx, instanceID); instanceReadyErr != nil {
-		c.terminateEC2Instance(ctx, instanceID)    // try to terminate the created instance
-		return c.output.AddError(instanceReadyErr) // fatal
+	c.clientInput.Logger.Debug(context.TODO(), "Waiting for EC2 instance %s to be running", instanceID)
+	if instanceReadyErr := c.waitForEC2InstanceCompletion(context.TODO(), instanceID); instanceReadyErr != nil {
+		c.terminateEC2Instance(context.TODO(), instanceID) // try to terminate the created instance
+		return c.output.AddError(instanceReadyErr)         // fatal
 	}
 
-	c.clientInput.Logger.Info(ctx, "Gathering and parsing console log output...")
-	err = c.findUnreachableEndpoints(ctx, instanceID)
+	c.clientInput.Logger.Info(context.TODO(), "Gathering and parsing console log output...")
+	err = c.findUnreachableEndpoints(context.TODO(), instanceID)
 	if err != nil {
 		c.output.AddError(err)
 	}
-	c.terminateEC2Instance(ctx, instanceID)
+	c.terminateEC2Instance(context.TODO(), instanceID)
 
 	return &c.output
 }
