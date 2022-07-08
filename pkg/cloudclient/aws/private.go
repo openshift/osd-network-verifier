@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/pkg/parameters"
 
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -94,6 +94,10 @@ func newClient(input *ClientInput) (*Client, error) {
 	cl := &Client{
 		ec2Client:   ec2Client,
 		clientInput: input,
+		// following are extracted from clientInput as using them with cl.clientInput.Logger causes "cannot create context from nil parent" error
+		// it seems that directly referencing them from client resolves it
+		logger: input.Logger,
+		ctx:    input.Ctx,
 	}
 
 	// Validates the provided instance type will work with the verifier
@@ -130,7 +134,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.clientInput.InstanceType)},
 	}
 
-	c.clientInput.Logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.clientInput.InstanceType)
+	//c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.clientInput.InstanceType)
 	descOut, err := c.ec2Client.DescribeInstanceTypes(ctx, &descInput)
 	if err != nil {
 		// Check for invalid instance type error and return a cleaner error
@@ -140,7 +144,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 		}
 		return fmt.Errorf("Unable to gather list of supported instance types from EC2: %s", err)
 	}
-	c.clientInput.Logger.Debug(ctx, "Full describe instance types output contains %d instance types", len(descOut.InstanceTypes))
+	c.logger.Debug(ctx, "Full describe instance types output contains %d instance types", len(descOut.InstanceTypes))
 
 	found := false
 	for _, t := range descOut.InstanceTypes {
@@ -149,7 +153,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 			if t.Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
 				return fmt.Errorf("Instance type must use hypervisor type 'nitro' to support reliable result collection")
 			}
-			c.clientInput.Logger.Debug(ctx, "Instance type %s has hypervisor %s", c.clientInput.InstanceType, t.Hypervisor)
+			c.logger.Debug(ctx, "Instance type %s has hypervisor %s", c.clientInput.InstanceType, t.Hypervisor)
 			break
 		}
 	}
@@ -193,7 +197,7 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 			},
 		},
 		UserData:          aws.String(input.userdata),
-		TagSpecifications: buildTags(c.clientInput.Tags),
+		TagSpecifications: buildTags(c.clientInput.CloudTags),
 	}
 	// Finally, we make our request
 	instanceResp, err := c.ec2Client.RunInstances(ctx, &instanceReq)
@@ -202,7 +206,7 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 	}
 
 	for _, i := range instanceResp.Instances {
-		c.clientInput.Logger.Info(ctx, "Created instance with ID: %s", *i.InstanceId)
+		c.logger.Info(ctx, "Created instance with ID: %s", *i.InstanceId)
 	}
 
 	return *instanceResp, nil
@@ -223,7 +227,7 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (i
 	})
 
 	if err != nil {
-		c.clientInput.Logger.Error(ctx, "Errors while describing the instance status: %s", err.Error())
+		c.logger.Error(ctx, "Errors while describing the instance status: %s", err.Error())
 		if aerr, ok := err.(awserr.Error); ok {
 			if aerr.Code() == "UnauthorizedOperation" {
 				return 401, err
@@ -240,7 +244,7 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (i
 		// Don't return an error here as if the instance is still too new, it may not be
 		// returned at all.
 		//return 0, errors.New("no EC2 instances found")
-		c.clientInput.Logger.Debug(ctx, "Instance %s has no status yet", instanceID)
+		c.logger.Debug(ctx, "Instance %s has no status yet", instanceID)
 		return 0, nil
 	}
 
@@ -255,7 +259,7 @@ func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID st
 		case 401:
 			return false, fmt.Errorf("missing required permissions for account: %s", descError)
 		case 16:
-			c.clientInput.Logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
+			c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
 			// 16 represents a successful region initialization
 			// Instance is running, break
 			return true, nil
@@ -302,13 +306,13 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
 			if err != nil {
 				// unable to decode output. we will try again
-				c.clientInput.Logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
+				c.logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
 				return false, nil
 			}
 
 			// In the early stages, an ec2 instance may be running but the console is not populated with any data, retry if that is the case
 			if len(scriptOutput) < 1 {
-				c.clientInput.Logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
+				c.logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
 				return false, nil
 			}
 
@@ -316,7 +320,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			// It is possible we get EC2 console output, but the userdata script has not yet completed.
 			verifyMatch := reVerify.FindString(string(scriptOutput))
 			if len(verifyMatch) < 1 {
-				c.clientInput.Logger.Debug(ctx, "EC2 console output contains data, but end of userdata script not seen, continuing to wait...")
+				c.logger.Debug(ctx, "EC2 console output contains data, but end of userdata script not seen, continuing to wait...")
 				return false, nil
 			}
 
@@ -329,12 +333,12 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
-			c.clientInput.Logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
+			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
 
 			c.output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
 			return true, nil
 		}
-		c.clientInput.Logger.Debug(ctx, "Waiting for UserData script to complete...")
+		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
 		return false, nil
 	})
 
@@ -344,7 +348,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 // terminateEC2Instance terminates target ec2 instance
 // uses  c.clientInput.output to store result of the execution
 func (c *Client) terminateEC2Instance(ctx context.Context, instanceID string) {
-	c.clientInput.Logger.Info(ctx, "Terminating ec2 instance with id %s", instanceID)
+	c.logger.Info(ctx, "Terminating ec2 instance with id %s", instanceID)
 	input := ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
@@ -371,8 +375,8 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return ` c.clientInput.output` which stores the execution results
-func (c *Client) validateEgress(options cloudclient.EgressOptions) *output.Output {
-	c.clientInput.Logger.Debug(context.TODO(), "Using configured timeout of %s for each egress request", c.clientInput.Timeout.String())
+func (c *Client) validateEgress(egressOptions parameters.ValidateEgress) *output.Output {
+	c.logger.Debug(c.ctx, "Using configured timeout of %s for each egress request", c.clientInput.Timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
 		"AWS_REGION":               c.clientInput.Region,
@@ -387,16 +391,16 @@ func (c *Client) validateEgress(options cloudclient.EgressOptions) *output.Outpu
 	if err != nil {
 		return c.output.AddError(err)
 	}
-	c.clientInput.Logger.Debug(context.TODO(), "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
+	c.logger.Debug(c.ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
 
 	c.clientInput.CloudImageID, err = c.setCloudImage(c.clientInput.CloudImageID)
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}
 
-	instance, err := c.createEC2Instance(context.TODO(), createEC2InstanceInput{
+	instance, err := c.createEC2Instance(c.ctx, createEC2InstanceInput{
 		amiID:         c.clientInput.CloudImageID,
-		vpcSubnetID:   options.VpcSubnetID,
+		vpcSubnetID:   egressOptions.VpcSubnetID,
 		userdata:      userData,
 		ebsKmsKeyID:   c.clientInput.KmsKeyID,
 		instanceCount: instanceCount,
@@ -406,18 +410,18 @@ func (c *Client) validateEgress(options cloudclient.EgressOptions) *output.Outpu
 	}
 
 	instanceID := *instance.Instances[0].InstanceId
-	c.clientInput.Logger.Debug(context.TODO(), "Waiting for EC2 instance %s to be running", instanceID)
-	if instanceReadyErr := c.waitForEC2InstanceCompletion(context.TODO(), instanceID); instanceReadyErr != nil {
-		c.terminateEC2Instance(context.TODO(), instanceID) // try to terminate the created instance
-		return c.output.AddError(instanceReadyErr)         // fatal
+	c.logger.Debug(c.ctx, "Waiting for EC2 instance %s to be running", instanceID)
+	if instanceReadyErr := c.waitForEC2InstanceCompletion(c.ctx, instanceID); instanceReadyErr != nil {
+		c.terminateEC2Instance(c.ctx, instanceID)  // try to terminate the created instance
+		return c.output.AddError(instanceReadyErr) // fatal
 	}
 
-	c.clientInput.Logger.Info(context.TODO(), "Gathering and parsing console log output...")
-	err = c.findUnreachableEndpoints(context.TODO(), instanceID)
+	c.logger.Info(c.ctx, "Gathering and parsing console log output...")
+	err = c.findUnreachableEndpoints(c.ctx, instanceID)
 	if err != nil {
 		c.output.AddError(err)
 	}
-	c.terminateEC2Instance(context.TODO(), instanceID)
+	c.terminateEC2Instance(c.ctx, instanceID)
 
 	return &c.output
 }
@@ -426,16 +430,16 @@ func (c *Client) validateEgress(options cloudclient.EgressOptions) *output.Outpu
 // Basic workflow is:
 // - ask AWS API for VPC attributes
 // - ensure they're set correctly
-func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
-	c.clientInput.Logger.Info(ctx, "Verifying DNS config for VPC %s", vpcID)
+func (c *Client) verifyDns(params parameters.ValidateDns) *output.Output {
+	c.logger.Info(c.ctx, "Verifying DNS config for VPC %s", params.VpcId)
 	// Request boolean values from AWS API
-	dnsSprtResult, dnsSprtErr := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
+	dnsSprtResult, dnsSprtErr := c.ec2Client.DescribeVpcAttribute(c.ctx, &ec2.DescribeVpcAttributeInput{
 		Attribute: "enableDnsSupport",
-		VpcId:     aws.String(vpcID),
+		VpcId:     aws.String(params.VpcId),
 	})
-	dnsHostResult, dnsHostErr := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
+	dnsHostResult, dnsHostErr := c.ec2Client.DescribeVpcAttribute(c.ctx, &ec2.DescribeVpcAttributeInput{
 		Attribute: "enableDnsHostnames",
-		VpcId:     aws.String(vpcID),
+		VpcId:     aws.String(params.VpcId),
 	})
 
 	if dnsSprtErr != nil {
@@ -445,10 +449,10 @@ func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
 		c.output.AddError(dnsHostErr)
 	}
 	// Verify results
-	c.clientInput.Logger.Info(ctx, "DNS Support for VPC %s: %t", vpcID, *dnsSprtResult.EnableDnsSupport.Value)
-	c.clientInput.Logger.Info(ctx, "DNS Hostnames for VPC %s: %t", vpcID, *dnsHostResult.EnableDnsHostnames.Value)
+	c.logger.Info(c.ctx, "DNS Support for VPC %s: %t", params.VpcId, *dnsSprtResult.EnableDnsSupport.Value)
+	c.logger.Info(c.ctx, "DNS Hostnames for VPC %s: %t", params.VpcId, *dnsHostResult.EnableDnsHostnames.Value)
 	if !(*dnsSprtResult.EnableDnsSupport.Value && *dnsHostResult.EnableDnsHostnames.Value) {
-		c.clientInput.Logger.Error(ctx, "Both DNS support and DNS hostnames must be enabled on VPC %s in order to be compatible with OSD.", vpcID)
+		c.logger.Error(c.ctx, "Both DNS support and DNS hostnames must be enabled on VPC %s in order to be compatible with OSD.", params.VpcId)
 		c.output.AddException(handledErrors.NewGenericError("VPC DNS verification failed"))
 	}
 

@@ -3,113 +3,82 @@ package cloudclient
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
+	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/parameters"
+	"github.com/openshift/osd-network-verifier/pkg/utils"
 )
-
-const GCP = "GCP"
-const AWS = "AWS"
 
 // common commandline args
 type CmdOptions struct {
-	CloudType    string // not required. if provided, currently only supports "aws".
-	CloudTags    map[string]string
-	Debug        bool
-	Region       string
-	AwsProfile   string
-	InstanceType string
-	CloudImageID string
-	Timeout      time.Duration
-	KmsKeyID     string
-	//	test specific args
-	VpcID string
-}
+	// AWS client options
+	KmsKeyID        string
+	CloudImageID    string
+	Region          string
+	InstanceType    string
+	CloudTags       map[string]string
+	AccessKeyId     string
+	SessionToken    string
+	SecretAccessKey string
+	AwsProfile      string
 
-// common commandline args
-type EgressOptions struct {
-	//	test specific args
-	VpcSubnetID string
+	// GCP options
+	// todo
+
+	// Operation options
+	Debug     bool
+	Timeout   time.Duration
+	CloudType string
+
+	// Following are passed to client to mitigate "cannot create context from nil parent" error
+	Ctx    context.Context
+	Logger ocmlog.Logger
 }
 
 var (
-	DefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	RegionEnvVarStr = "AWS_REGION"
-	RegionDefault   = "us-east-1"
-	DefaultTime     = 2 * time.Second
+	DefaultTime = 2 * time.Second
+	Debug       = false
 )
-
-// todo implement similar getter for AWS secrets and profile
-func getDefaultRegion() string {
-	val, present := os.LookupEnv(RegionEnvVarStr)
-	if present {
-		return val
-	} else {
-		return RegionDefault
-	}
-}
 
 // CloudClient defines the interface for a cloud agnostic implementation
 // For mocking: mockgen -source=pkg/cloudclient/cloudclient.go -package mocks -destination=pkg/cloudclient/mocks/mock_cloudclient.go
 type CloudClient interface {
 
 	// ByoVPCValidator validates the configuration given by the customer
-	ByoVPCValidator(ctx context.Context) error
+	ByoVPCValidator(params parameters.ValidateByoVpc) error
 
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	ValidateEgress(options EgressOptions) *output.Output
+	ValidateEgress(params parameters.ValidateEgress) *output.Output
 
 	// VerifyDns verifies that a given VPC meets the DNS requirements specified in:
 	// https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	VerifyDns(ctx context.Context, vpcID string) *output.Output
+	VerifyDns(params parameters.ValidateDns) *output.Output
 }
 
-func getCloudClientType(options CmdOptions) string {
-	if options.AwsProfile != "" || os.Getenv("AWS_ACCESS_KEY_ID") != "" || options.CloudType == "aws" {
-		return AWS
-	}
-	if options.CloudType == GCP {
-		return GCP
-	}
-	return "unknown"
+var controllerMapping = map[configv1.PlatformType]Factory{}
+
+type Factory func(options *CmdOptions) (CloudClient, error)
+
+func Register(name configv1.PlatformType, factoryFunc Factory) {
+	controllerMapping[name] = factoryFunc
 }
 
-func NewClient(ctx context.Context, logger ocmlog.Logger,
-	options CmdOptions) (CloudClient, error) {
+// GetClientFor returns the CloudClient for any cloud provider
 
-	logger.Info(ctx, "Using region: %s", getDefaultRegion())
+func GetClientFor(options *CmdOptions) (CloudClient, error) {
+	platformType := utils.PlatformType(options.CloudType, options.AwsProfile)
+	//if _, ok := controllerMapping[platformType]; ok {
+	cli, err := controllerMapping[platformType](options)
+	//}
+	if err != nil {
+		return nil, (fmt.Errorf("Couldn't create cloud client for %s: %s", platformType, err))
 
-	switch getCloudClientType(options) {
-	case AWS:
-		if options.AwsProfile != "" {
-			logger.Info(ctx, "Using AWS profile: %s.", options.AwsProfile)
-		} else {
-			logger.Info(ctx, "Using AWS secret key")
-		}
-		clientInput := &awsCloudClient.ClientInput{
-			Ctx:             ctx,
-			Logger:          logger,
-			AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),
-			SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
-			SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),
-			VpcID:           options.VpcID,
-			CloudImageID:    options.CloudImageID,
-			Timeout:         options.Timeout,
-			KmsKeyID:        options.KmsKeyID,
-			Region:          getDefaultRegion(),
-			InstanceType:    options.InstanceType,
-			Tags:            options.CloudTags,
-			Profile:         options.AwsProfile,
-		}
-		return awsCloudClient.NewClient(clientInput)
-	default:
-		return nil, fmt.Errorf("No AWS credentials found. Non-AWS cloud clients are currently not supported.")
 	}
-
+	return cli, nil
 }

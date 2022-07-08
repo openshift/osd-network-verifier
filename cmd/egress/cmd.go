@@ -7,6 +7,7 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/pkg/parameters"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +15,6 @@ var config = cloudclient.CmdOptions{}
 var vpcSubnetId string
 
 func NewCmdValidateEgress() *cobra.Command {
-
 	validateEgressCmd := &cobra.Command{
 		Use:        "egress",
 		Aliases:    nil,
@@ -27,13 +27,13 @@ are set correctly before execution.
 
 # Verify that essential openshift domains are reachable from a given SUBNET_ID
 ./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id $(IMAGE_ID)`,
-		Run: run,
+		RunE: rune,
 	}
 
-	//test specific args
+	//test specific args - required
 	validateEgressCmd.Flags().StringVar(&vpcSubnetId, "subnet-id", "", "source subnet ID")
 
-	//client os.Args
+	//client args - all these have defaults
 	validateEgressCmd.Flags().StringVar(&config.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.InstanceType, "instance-type", "t3.micro", "(optional) compute instance type")
 	validateEgressCmd.Flags().StringVar(&config.Region, "region", config.Region, fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", cloudclient.RegionEnvVarStr, cloudclient.RegionDefault))
@@ -50,36 +50,31 @@ are set correctly before execution.
 	return validateEgressCmd
 }
 
-func run(cmd *cobra.Command, args []string) {
-
-	// ctx
-	ctx := context.TODO()
+func rune(cmd *cobra.Command, args []string) error {
+	ctx := context.Background()
 
 	// Create logger
-	builder := ocmlog.NewStdLoggerBuilder()
-	builder.Debug(config.Debug)
-	logger, err := builder.Build()
+	logger, err := ocmlog.NewStdLoggerBuilder().Debug(config.Debug).Build()
 	if err != nil {
-		fmt.Printf("Unable to build logger: %s\n", err.Error())
-		os.Exit(1)
+		return fmt.Errorf("unable to build logger: %s\n", err.Error())
+	}
+	config.Logger = logger
+	config.Ctx = ctx
+
+	client, err := cloudclient.GetClientFor(&config)
+	if err != nil {
+		return fmt.Errorf("error creating cloud client: %s", err.Error())
 	}
 
-	client, err := cloudclient.NewClient(ctx, logger, config)
-	if err != nil {
-		logger.Error(ctx, "Error creating %s cloud client: %s", config.CloudType, err.Error())
-		os.Exit(1)
-	}
-
-	out := client.ValidateEgress(cloudclient.EgressOptions{
-		VpcSubnetID: vpcSubnetId, // provide this variable from any source
+	out := client.ValidateEgress(parameters.ValidateEgress{
+		VpcSubnetID: vpcSubnetId, // required downstream argument
 	})
 
 	out.Summary()
 	if !out.IsSuccessful() {
-		logger.Error(ctx, "Failure!")
-		os.Exit(1)
+		return fmt.Errorf("Failure!")
 	}
 
 	logger.Info(ctx, "Success")
-
+	return nil
 }

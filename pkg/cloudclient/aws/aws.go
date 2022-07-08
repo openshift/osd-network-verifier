@@ -7,20 +7,28 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/parameters"
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
-const ClientIdentifier string = "AWS"
+const ClientIdentifier = configv1.AWSPlatformType
 
 // Client represents an AWS Client
 type Client struct {
 	ec2Client   EC2Client
 	clientInput *ClientInput
 	output      output.Output
+	// the following are extracted from clientInput here to mitigate
+	// "cannot create context from nil parent" error
+	logger ocmlog.Logger
+	ctx    context.Context
 }
 
+// This struct is the intermediary between cloudclient config and AWS client
+// add_aws.go implementation of cloudclient converts the interface's CmdOptions struct into an AWS specific ClientInput
+// Cloudclient CmdOptions struct can't be used here due to cyclic import issues
 type ClientInput struct {
 	VpcSubnetID     string
 	VpcID           string
@@ -31,12 +39,11 @@ type ClientInput struct {
 	Logger          ocmlog.Logger
 	Region          string
 	InstanceType    string
-	Tags            map[string]string
+	CloudTags       map[string]string
 	Profile         string
 	AccessKeyId     string
 	SessionToken    string
 	SecretAccessKey string
-	Debug           string
 }
 
 // Extend EC2Client so that we can mock them all for testing
@@ -51,24 +58,24 @@ type EC2Client interface {
 	DescribeVpcAttribute(ctx context.Context, input *ec2.DescribeVpcAttributeInput, optFns ...func(*ec2.Options)) (*ec2.DescribeVpcAttributeOutput, error)
 }
 
-func (c *Client) ByoVPCValidator(ctx context.Context) error {
-	c.clientInput.Logger.Info(ctx, "interface executed: %s", ClientIdentifier)
+func (c *Client) ByoVPCValidator(params parameters.ValidateByoVpc) error {
+	c.logger.Info(context.TODO(), "interface executed: %s", ClientIdentifier)
 	return nil
 }
 
-func (c *Client) ValidateEgress(client cloudclient.EgressOptions) *output.Output {
-	return c.validateEgress(client)
+func (c *Client) ValidateEgress(params parameters.ValidateEgress) *output.Output {
+	return c.validateEgress(params)
 }
 
-func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
-	return c.verifyDns(ctx, vpcID)
+func (c *Client) VerifyDns(params parameters.ValidateDns) *output.Output {
+	return c.verifyDns(params)
 }
 
 // NewClient creates a new CloudClient for use with AWS.
-func NewClient(input *ClientInput) (client *Client, err error) {
-	client, err = newClient(input)
+func NewClient(input ClientInput) (*Client, error) {
+	client, err := newClient(&input)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create AWS client: %w", err)
+		return nil, fmt.Errorf("unable to create AWS client %w", err)
 	}
 	return client, nil
 }
