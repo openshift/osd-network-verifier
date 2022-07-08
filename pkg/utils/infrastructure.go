@@ -8,7 +8,12 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 )
 
-var IsExported = true
+type Infrastructure struct {
+}
+
+func (f Infrastructure) IsExported() bool {
+	return true
+}
 
 // PlatformType returns AWS if CLI input AWS profile is set/ or CLI input cloudType=AWS/ or env var AWS_ACCESS_KEY_ID or AWS_PROFILE are set
 // returns GCP if CLI input cloudType=GCP
