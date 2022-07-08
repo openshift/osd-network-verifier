@@ -11,6 +11,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/openshift/osd-network-verifier/pkg/parameters"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
@@ -34,6 +35,7 @@ func TestCreateEC2Instance(t *testing.T) {
 	cli := Client{
 		ec2Client:   FakeEC2Cli,
 		clientInput: &clientInput,
+		logger:      &logging.GlogLogger{},
 	}
 	out, err := cli.createEC2Instance(context.Background(), createEC2InstanceInput{
 		amiID:         "test-ami",
@@ -81,16 +83,19 @@ func TestValidateEgress(t *testing.T) {
 	}, nil)
 
 	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
+	params := parameters.ValidateEgress{VpcSubnetID: "dummy"}
 	clientInput := ClientInput{Logger: &logging.GlogLogger{},
-		VpcSubnetID:  "dummy-id",
-		CloudImageID: "dummy-id"}
-
+		InstanceType: "dummy",
+		CloudImageID: "dummy",
+	}
 	cli := Client{
 		ec2Client:   FakeEC2Cli,
 		clientInput: &clientInput,
+		logger:      &logging.GlogLogger{},
+		ctx:         context.Background(),
 	}
 
-	if !cli.validateEgress(context.TODO()).IsSuccessful() {
+	if !cli.validateEgress(params).IsSuccessful() {
 		t.Errorf("validateEgress(): should pass")
 	}
 }
@@ -148,16 +153,19 @@ Unable to reach somesample.endpoint
 		}, nil)
 
 		FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
+		params := parameters.ValidateEgress{VpcSubnetID: "dummy"}
 		clientInput := ClientInput{Logger: &logging.GlogLogger{},
-			VpcSubnetID:  "dummy-id",
-			CloudImageID: "dummy-id"}
-
+			InstanceType: "dummy",
+			CloudImageID: "dummy",
+		}
 		cli := Client{
 			ec2Client:   FakeEC2Cli,
 			clientInput: &clientInput,
+			logger:      &logging.GlogLogger{},
+			ctx:         context.Background(),
 		}
 
-		if cli.validateEgress(context.TODO()).IsSuccessful() {
+		if cli.validateEgress(params).IsSuccessful() {
 			t.Errorf("failed %s: validateEgress(): should fail", test.name)
 		}
 

@@ -6,27 +6,34 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/pkg/parameters"
 )
 
 func extendValidateEgressV1() {
-	//---------Set commandline args---------
+	//---------Set client options---------
+	logger, _ := ocmlog.NewStdLoggerBuilder().Debug(true).Build()
 	cmdOptions := cloudclient.CmdOptions{
 		Region:     "us-east-1",                       // optional
 		CloudTags:  map[string]string{"key1": "val1"}, // optional
 		AwsProfile: "yourAwsProfile",                  // optional
-		CloudType:  "aws",                             // optional
+		CloudType:  "aws",
+		Logger:     logger,
+		Ctx:        context.Background(),
 	}
 
-	logger, _ := ocmlog.NewStdLoggerBuilder().Debug(true).Build()
+	//---------Set test parameters---------
+	params := parameters.ValidateEgress{VpcSubnetID: "test-subnet-id"}
 
 	//---------create ONV cloud client---------
-	cli, err := cloudclient.NewClient(context.TODO(), logger, cmdOptions)
+	client, err := cloudclient.GetClientFor(&cmdOptions)
 	if err != nil {
-		fmt.Errorf("Error creating cloud client: %s", err.Error())
+		fmt.Errorf("error creating cloud client: %s", err.Error())
 	}
 
 	// Call egress validator
-	out := cli.ValidateEgress(context.TODO())
+	out := client.ValidateEgress(params)
+
+	// Interpret output
 	if !out.IsSuccessful() {
 		// Retrieve errors
 		failures, exceptions, errors := out.Parse()
