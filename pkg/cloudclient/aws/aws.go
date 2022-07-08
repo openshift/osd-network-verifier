@@ -7,13 +7,12 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/parameters"
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
-const ClientIdentifier = configv1.AWSPlatformType
+const ClientIdentifier = "AWS"
 
 // Client represents an AWS Client
 type Client struct {
@@ -59,7 +58,7 @@ type EC2Client interface {
 }
 
 func (c *Client) ByoVPCValidator(params parameters.ValidateByoVpc) error {
-	c.logger.Info(context.TODO(), "interface executed: %s", ClientIdentifier)
+	c.logger.Info(context.TODO(), "interface executed: %s")
 	return nil
 }
 

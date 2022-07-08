@@ -4,8 +4,8 @@ package utils
 import (
 	"os"
 	"strings"
-
-	configv1 "github.com/openshift/api/config/v1"
+	// following has predefined provider identifier types, but removing dependency as it requires go 1.17
+	//configv1 "github.com/openshift/api/config/v1"
 )
 
 type Infrastructure struct {
@@ -15,18 +15,24 @@ func (f Infrastructure) IsExported() bool {
 	return true
 }
 
+const (
+	TYPE_AWS     = "AWS"
+	TYPE_GCP     = "GCP"
+	TYPE_INVALID = "invalid"
+)
+
 // PlatformType returns AWS if CLI input AWS profile is set/ or CLI input cloudType=AWS/ or env var AWS_ACCESS_KEY_ID or AWS_PROFILE are set
 // returns GCP if CLI input cloudType=GCP
 // returns "invalid" platformtype otherwise
-func PlatformType(cliPlatformType string, cliAwsProfile string) configv1.PlatformType {
+func PlatformType(cliPlatformType string, cliAwsProfile string) string {
 	if strings.EqualFold(cliPlatformType, "aws") ||
 		os.Getenv("AWS_ACCESS_KEY_ID") != "" ||
 		os.Getenv("AWS_PROFILE") != "" ||
 		cliAwsProfile != "" {
-		return configv1.AWSPlatformType
+		return TYPE_AWS
 	}
 	if strings.EqualFold(cliPlatformType, "gcp") {
-		return configv1.GCPPlatformType
+		return TYPE_GCP
 	}
-	return "invalid"
+	return TYPE_INVALID
 }

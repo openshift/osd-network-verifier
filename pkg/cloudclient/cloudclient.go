@@ -6,7 +6,6 @@ import (
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/parameters"
 	"github.com/openshift/osd-network-verifier/pkg/utils"
@@ -61,12 +60,12 @@ type CloudClient interface {
 	VerifyDns(params parameters.ValidateDns) *output.Output
 }
 
-var controllerMapping = map[configv1.PlatformType]Factory{}
+var controllerMapping = map[string]Factory{}
 
 type Factory func(options *CmdOptions) (CloudClient, error)
 
-func Register(name configv1.PlatformType, factoryFunc Factory) {
-	controllerMapping[name] = factoryFunc
+func Register(providerType string, factoryFunc Factory) {
+	controllerMapping[providerType] = factoryFunc
 }
 
 // GetClientFor returns the CloudClient for any cloud provider
