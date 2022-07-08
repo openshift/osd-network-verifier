@@ -5,6 +5,7 @@ import (
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
@@ -12,7 +13,7 @@ import (
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
-const ClientIdentifier string = "GCP"
+const ClientIdentifier = configv1.GCPPlatformType
 
 // Client represents a GCP Client
 type Client struct {
