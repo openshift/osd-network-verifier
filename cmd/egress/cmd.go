@@ -12,7 +12,11 @@ import (
 )
 
 var config = cloudclient.CmdOptions{}
-var vpcSubnetId string
+var inputStruct = egressInput{}
+
+type egressInput struct {
+	vpcSubnetId string
+}
 
 func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd := &cobra.Command{
@@ -31,7 +35,7 @@ are set correctly before execution.
 	}
 
 	//test specific args - required
-	validateEgressCmd.Flags().StringVar(&vpcSubnetId, "subnet-id", "", "source subnet ID")
+	validateEgressCmd.Flags().StringVar(&inputStruct.vpcSubnetId, "subnet-id", "", "source subnet ID")
 
 	//client args - all these have defaults
 	validateEgressCmd.Flags().StringVar(&config.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
@@ -66,8 +70,9 @@ func rune(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error creating cloud client: %s", err.Error())
 	}
 
+	//Downstream must pass in data in the form defined in parameters.ValidateEgress
 	out := client.ValidateEgress(parameters.ValidateEgress{
-		VpcSubnetID: vpcSubnetId, // required downstream argument
+		VpcSubnetID: inputStruct.vpcSubnetId, // required downstream argument
 	})
 
 	out.Summary()
