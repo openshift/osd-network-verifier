@@ -1,14 +1,13 @@
 #cloud-config
 repo_update: true
 package_update: true
-
 packages:
   - docker 
-
 runcmd:
-  - [ sh, -c, echo "${USERDATA_BEGIN}"]
   - sudo service docker start
-  - [ sh, -c, "sudo docker pull ${VALIDATOR_IMAGE}"]
+  - echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
+  - sudo docker pull ${VALIDATOR_IMAGE}
   # Use `|| true` to ignore failure exit codes, we want the script to continue either way
-  - [ sh, -c, 'sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${VALIDATOR_IMAGE} --timeout=${TIMEOUT} || true' ]
-  - [ sh, -c, echo "${USERDATA_END}"]
+  - sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${VALIDATOR_IMAGE} --timeout=${TIMEOUT}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
+  - echo "${USERDATA_END}" >> /var/log/userdata-output
+  - cat /var/log/userdata-output >/dev/console
