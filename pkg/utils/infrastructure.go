@@ -11,10 +11,6 @@ import (
 type Infrastructure struct {
 }
 
-func (f Infrastructure) IsExported() bool {
-	return true
-}
-
 const (
 	TYPE_AWS     = "AWS"
 	TYPE_GCP     = "GCP"
