@@ -10,6 +10,9 @@ import (
 //go:embed config/userdata.yaml
 var UserdataTemplate string
 
+//go:embed config/gcpUserData.yaml
+var UserdataTemplateGcp string
+
 func PollImmediate(interval time.Duration, timeout time.Duration, condition func() (bool, error)) error {
 
 	var totalTime time.Duration = 0

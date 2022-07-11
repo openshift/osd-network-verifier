@@ -28,27 +28,20 @@ import (
 	"path/filepath"
 	// "reflect"
 	// "encoding/base64"
-)
-
-/*	// "github.com/aws/aws-sdk-go-v2/aws"
-	// "github.com/aws/aws-sdk-go-v2/config"
-	// "github.com/aws/aws-sdk-go-v2/credentials"
-	// "github.com/aws/aws-sdk-go-v2/service/ec2"
-	// ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	// "github.com/aws/aws-sdk-go/aws/awserr"
-	//
-
-
 	// handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
-*/
-// type createE2InstanceInput struct {
-// 	amiID         string
-// 	vpcSubnetID   string
-// 	userdata      string
-// 	ebsKmsKeyID   string
 
-// }
+type createE2InstanceInput struct {
+	amiID       string
+	vpcSubnetID string
+	userdata    string
+	// ebsKmsKeyID   string
+	zone         string
+	machineType  string
+	instanceName string
+	sourceImage  string
+	networkName  string
+}
 
 // //global variable ami image, gcp has region, zone
 
@@ -59,8 +52,8 @@ var (
 		//other regions to add
 	}
 	// TODO find a location for future docker images
-	// networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb"
-	// userdataEndVerifier   string = "USERDATA END"
+	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb"
+	userdataEndVerifier   string = "USERDATA END"
 )
 
 //build labels/tags method TODO
@@ -94,15 +87,103 @@ func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Cr
 		logger:         logger,
 		output:         output.Output{},
 	}, nil
-
-	//ToDo
-	//call validate instance type then return
 }
 
+//ToDo func build tags
 
+//ToDo func createE2Instance
+func (c *Client) createE2Instance(ctx context.Context, input createE2InstanceInput) (createE2InstanceInput, error) {
+	instancesClient, err := compute.NewInstancesRESTClient(ctx)
+
+	if err != nil {
+		fmt.Errorf("NewInstancesRESTClient: %v", err)
+	}
+	defer instancesClient.Close()
+
+	req := &computepb.InsertInstanceRequest{
+		Project: c.projectID,
+		Zone:    input.zone,
+		InstanceResource: &computepb.Instance{
+			Name: proto.String(input.instanceName),
+			//How to add network tag ? http/https? -- Not needed yet
+			// Tags: &computepb.Tags{
+			// 	items: [
+			// 		"https-server",
+			// 	],
+			// },
+			Disks: []*computepb.AttachedDisk{
+				{
+					InitializeParams: &computepb.AttachedDiskInitializeParams{
+						DiskSizeGb:  proto.Int64(10),
+						SourceImage: proto.String(input.sourceImage),
+					},
+					AutoDelete: proto.Bool(true),
+					Boot:       proto.Bool(true),
+					Type:       proto.String(computepb.AttachedDisk_PERSISTENT.String()),
+				},
+			},
+			MachineType: proto.String(fmt.Sprintf("zones/%s/machineTypes/%s", input.zone, input.machineType)),
+			NetworkInterfaces: []*computepb.NetworkInterface{
+				{
+					Name:       proto.String(input.networkName),
+					Subnetwork: proto.String(input.vpcSubnetID),
+				},
+			},
+			// can call docker using startup script or pass cloud-init script to user-data
+			Metadata: &computepb.Metadata{
+				Items: []*computepb.Items{
+					//can pass startup script
+					// {
+					// 	Key: proto.String("startup-script"),
+					// 	Value: proto.String("#!/bin/bash\n" +
+					// 		"sudo mkdir  ~/../home/test; sudo docker run --env 'AWS_REGION=us-east-2' -e 'START_VERIFIER=VALIDATOR START' -e 'END_VERIFIER=VALIDATOR END' 'quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb' --timeout='2s'  >> ~/../home/test/userdata-output || echo 'Failed to successfully run the docker container';\n" +
+					// 		"cat ~/../home/test/userdata-output;"),
+					// },
+
+					//pass gcpuserdata.yaml
+					{
+						Key:   proto.String("user-data"),
+						Value: proto.String(input.userdata),
+					},
+				},
+			},
+		},
+	}
+
+	instanceResp, err := instancesClient.Insert(ctx, req)
+	if err != nil {
+		fmt.Errorf("unable to create instance: %v", err)
+	}
+
+	if err = instanceResp.Wait(ctx); err != nil {
+		fmt.Errorf("unable to wait for the operation: %v", err)
+	}
+
+	fmt.Println("Instance created\n")
+	c.logger.Info(ctx, "Created instance with ID: %s", input.instanceName)
+
+	return input, nil
+
+}
+
+//ToDo func describeE2Instances - check status code meaning and return
+
+//ToDo func waitForEC2InstanceCompletion - check for timeout
+
+//ToDo func generateUserData - helpers.usersdatatemplateGcp
+func generateUserData(variables map[string]string) (string, error) {
+	variableMapper := func(varName string) string {
+		return variables[varName]
+	}
+	data := os.Expand(helpers.UserdataTemplateGcp, variableMapper)
+
+	// fmt.Println("printing data", base64.StdEncoding.EncodeToString([]byte(data)))
+
+	return data, nil
+}
 
 //ToDo func findUnreachableEndpoints
-func (c *Client) findUnreachableEndpoints(ctx context.Context, projectID string, instanceName string, zone string) error {
+func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName string, zone string) error {
 	// Compile the regular expressions once
 	// reVerify := regexp.MustCompile(userdataEndVerifier)
 	// reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
@@ -111,7 +192,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, projectID string,
 
 	// getConsoleOutput then parse, use c.output to store result of the execution
 	err := helpers.PollImmediate(30*time.Second, 30*time.Second, func() (bool, error) {
-		output, err := c.computeService.Instances.GetSerialPortOutput(projectID, zone, instanceName).Context(ctx).Do()
+		output, err := c.computeService.Instances.GetSerialPortOutput(c.projectID, zone, instanceName).Context(ctx).Do()
 		if err != nil {
 			return false, err
 		}
@@ -161,10 +242,11 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, projectID string,
 
 // terminateE2Instance terminates target ec2 instance
 // uses c.output to store result of the execution
-func (c *Client) terminateE2Instance(ctx context.Context, projectID string, instanceName string, zone string) {
+func (c *Client) terminateE2Instance(ctx context.Context, instanceName string, zone string) {
 	c.logger.Info(ctx, "Terminating ec2 instance with id %s", instanceName)
 
-	sp, err := c.computeService.Instances.Stop(projectID, zone, instanceName).Context(ctx).Do()
+	// sp, err := ctx.instancesClient.Stop(ctx, reqs)
+	sp, err := c.computeService.Instances.Stop(c.projectID, zone, instanceName).Context(ctx).Do()
 	if err != nil {
 		fmt.Errorf("unable to stop instance: %v", err, sp)
 	}
@@ -172,7 +254,6 @@ func (c *Client) terminateE2Instance(ctx context.Context, projectID string, inst
 	fmt.Println(instanceName, " Instance stopped\n")
 
 	c.output.AddError(err)
-	// return &c.output
 
 }
 
@@ -190,133 +271,68 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 	return cloudImageID, nil
 }
 
-// sudo docker run --env "AWS_REGION=us-east-2" -e "START_VERIFIER=VALIDATOR START" -e "END_VERIFIER=VALIDATOR END" ${VALIDATOR_IMAGE} --timeout="2s"  >> ~/userdata-output || echo "Failed to successfully run the docker container"
-// docker run --env "AWS_REGION=us-east-2" -e "START_VERIFIER=VALIDATOR START" -e "END_VERIFIER=VALIDATOR END" ${VALIDATOR_IMAGE} --timeout="error"  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
-
-//creates and terminates a VMwith startup script
+//creates and terminates a VM - uses cloud init script in VM
 func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	fmt.Println("using subnet ", vpcSubnetID)
 
-	// userDataVariables := map[string]string{
-	// 	"AWS_REGION":               "us-east-2",
-	// 	"USERDATA_BEGIN":           "USERDATA BEGIN",
-	// 	"USERDATA_END":             userdataEndVerifier,
-	// 	"VALIDATOR_START_VERIFIER": "VALIDATOR START",
-	// 	"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
-	// 	"VALIDATOR_IMAGE":          networkValidatorImage,
-	// 	"TIMEOUT":                  timeout.String(),
-	// }
-	var er error
-	cloudImageID, er = c.setCloudImage(cloudImageID)
-	if er != nil {
-		return c.output.AddError(er) // fatal
+	userDataVariables := map[string]string{
+		"AWS_REGION":               "us-east-2",
+		"USERDATA_BEGIN":           "USERDATA BEGIN",
+		"USERDATA_END":             userdataEndVerifier,
+		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
+		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
+		"VALIDATOR_IMAGE":          networkValidatorImage,
+		"TIMEOUT":                  timeout.String(),
 	}
 
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	projectID := "himanshub3"
-	zone := "us-east1-b"
-	instanceName := "works-joe"
-	machineType := "e2-standard-2" //https://cloud.google.com/compute/docs/general-purpose-machines#e2-standard
+	userData, err := generateUserData(userDataVariables)
+	if err != nil {
+		return c.output.AddError(err)
+	}
+	c.logger.Debug(ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
+	// time.Sleep(40 * time.Second)
+
+	cloudImageID, err = c.setCloudImage(cloudImageID)
+	if err != nil {
+		return c.output.AddError(err) // fatal
+	}
 
 	// image code reference doc https://cloud.google.com/compute/docs/reference/rest/v1/instances
+
 	// https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel - image list
-	
-	sourceImage := "projects/cos-cloud/global/images/family/cos-97-lts" 
+
 	//container opt images https://cloud.google.com/compute/docs/containers#container_images
-	networkName := fmt.Sprintf("projects/%s/global/networks/hb-gcp-test-lzncg-network", projectID)
-	subnetworkName := fmt.Sprintf("projects/%s/regions/us-east1/subnetworks/%s", projectID, vpcSubnetID)
 
+	//sourceImage := "projects/fedora-coreos-cloud/global/images/family/fedora-coreos-stable" //latest rhel image premium?
 
-	fmt.Println("working!", projectID, zone, instanceName, machineType, sourceImage, networkName)
+	instance, err := c.createE2Instance(ctx, createE2InstanceInput{
+		amiID:        cloudImageID,
+		vpcSubnetID:  fmt.Sprintf("projects/%s/regions/us-east1/subnetworks/%s", c.projectID, vpcSubnetID),
+		userdata:     userData,
+		zone:         "us-east1-b",
+		machineType:  "e2-standard-2",
+		instanceName: "test-gcp-inst",
+		sourceImage:  "projects/cos-cloud/global/images/family/cos-97-lts",
+		networkName:  fmt.Sprintf("projects/%s/global/networks/hb-gcp-test-lzncg-network", c.projectID),
 
-	var instancesClient, err = compute.NewInstancesRESTClient(ctx)
-	// fmt.Println(instancesClient)
-	// fmt.Println(reflect.TypeOf(instancesClient))
-	// time.Sleep(120 * time.Second)
+		// ebsKmsKeyID:   kmsKeyID,
+
+	})
 	if err != nil {
-		fmt.Errorf("NewInstancesRESTClient: %v", err)
+		return c.output.AddError(err) // fatal
 	}
-	defer instancesClient.Close()
+	fmt.Println("working! ", instance.zone, instance.instanceName)
 
-	req := &computepb.InsertInstanceRequest{
-		Project: projectID,
-		Zone:    zone,
-		InstanceResource: &computepb.Instance{
-			Name: proto.String(instanceName),
-
-			Disks: []*computepb.AttachedDisk{
-				{
-					InitializeParams: &computepb.AttachedDiskInitializeParams{
-						DiskSizeGb:  proto.Int64(10),
-						SourceImage: proto.String(sourceImage),
-					},
-					AutoDelete: proto.Bool(true),
-					Boot:       proto.Bool(true),
-					Type:       proto.String(computepb.AttachedDisk_PERSISTENT.String()),
-				},
-			},
-			MachineType: proto.String(fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType)),
-			NetworkInterfaces: []*computepb.NetworkInterface{
-				{
-					Name:       proto.String(networkName),
-					Subnetwork: proto.String(subnetworkName),
-				},
-			},
-			// can call docker using startup script or pass cloud-init script to user-data
-			Metadata: &computepb.Metadata{
-				Items: []*computepb.Items{
-					// {
-					// 	Key: proto.String("startup-script"),
-					// 	Value: proto.String("#!/bin/bash\n" +
-					// 		"sudo mkdir  ~/../home/test; sudo docker run --env 'AWS_REGION=us-east-2' -e 'START_VERIFIER=VALIDATOR START' -e 'END_VERIFIER=VALIDATOR END' 'quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb' --timeout='2s'  >> ~/../home/test/userdata-output || echo 'Failed to successfully run the docker container';\n" +
-					// 		"cat ~/../home/test/userdata-output;"),
-					// },
-					// //How to pass gcpuserdata.yaml
-					{
-						Key: proto.String("user-data"),
-						Value: proto.String("#cloud-config\n" +
-							"repo_update: true\n" +
-							"package_update: true\n" +
-
-							"packages:\n" +
-							"  - docker\n" +
-
-							"runcmd:\n" +
-							"  - sudo service docker start\n" +
-							"  - sudo mkdir  ~/../home/test\n" +
-							"  - echo 'VALIDATOR START' >> ~/../home/test/userdata-output\n" +
-							"  # - sudo docker pull ${VALIDATOR_IMAGE}\n" +
-							"  # Use `|| true` to ignore failure exit codes, we want the script to continue either way\n" +
-							"  - sudo docker run --env 'AWS_REGION=us-east-2' -e 'START_VERIFIER=VALIDATOR START' -e 'END_VERIFIER=VALIDATOR END' 'quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb' --timeout='2s'  >> ~/../home/test/userdata-output || echo 'Failed to successfully run the docker container'\n" +
-							"  - echo 'VALIDATOR END' >> ~/../home/test/userdata-output\n" +
-							"  - cat ~/../home/test/userdata-output #>/dev/console"),
-					},
-				},
-			},
-		},
-	}
-
-	op, err := instancesClient.Insert(ctx, req)
-	if err != nil {
-		fmt.Errorf("unable to create instance: %v", err)
-	}
-
-	if err = op.Wait(ctx); err != nil {
-		fmt.Errorf("unable to wait for the operation: %v", err)
-	}
-
-	fmt.Println("Instance created\n")
-
-	//wait for instance to start - 40 seeconds
+	//stop instance after 40 seeconds
 	time.Sleep(40 * time.Second)
-	defer instancesClient.Close()
 
-	c.findUnreachableEndpoints(ctx, projectID, instanceName, zone)
+	err = c.findUnreachableEndpoints(ctx, instance.instanceName, instance.zone)
+	if err != nil {
+		c.output.AddError(err)
+	}
 
-	c.terminateE2Instance(ctx, projectID, instanceName, zone)
+	c.terminateE2Instance(ctx, instance.instanceName, instance.zone)
 
 	return &c.output
 }
