@@ -20,7 +20,7 @@ type egressInput struct {
 var inputStruct = egressInput{}
 
 //client config
-var awsConfig = utils.AWSClientConfig{AwsProfile: "yourProfile"}
+var awsConfig = utils.AWSClientConfig{}
 var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsConfig}
 
 //execution config

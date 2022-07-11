@@ -48,6 +48,7 @@ func produceAWS(clientConfig *cloudclient.ClientConfig, execConfig *cloudclient.
 		clientConfig.AWSConfig.CloudTags = DefaultTagsAWS
 
 	}
+	clientConfig.AWSConfig.Region = getAWSRegion(*clientConfig.AWSConfig)
 	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY") //https://issues.redhat.com/browse/OSD-12432
 	clientConfig.AWSConfig.AccessKeyId = os.Getenv("AWS_ACCESS_KEY_ID")         //https://issues.redhat.com/browse/OSD-12432
 	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY") //https://issues.redhat.com/browse/OSD-12432

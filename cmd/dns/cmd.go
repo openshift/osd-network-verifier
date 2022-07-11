@@ -16,7 +16,7 @@ import (
 var vpcId string
 
 //client config
-var awsConfig = utils.AWSClientConfig{AwsProfile: "yourProfile"}
+var awsConfig = utils.AWSClientConfig{}
 var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsConfig}
 
 //execution config
