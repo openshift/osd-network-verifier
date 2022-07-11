@@ -20,7 +20,7 @@ var (
 )
 
 // Precedence: cli > env var > default
-func getRegion(options CmdOptions) string {
+func getAWSRegion(options CmdOptions) string {
 	if options.Region != "" {
 		return options.Region
 	}
@@ -47,7 +47,7 @@ func produceAWS(options *CmdOptions) (CloudClient, error) {
 		Logger:          options.Logger,
 		CloudImageID:    options.CloudImageID,
 		KmsKeyID:        options.KmsKeyID,
-		Region:          getRegion(*options),
+		Region:          getAWSRegion(*options),
 		InstanceType:    options.InstanceType,
 		CloudTags:       options.CloudTags,
 		Profile:         options.AwsProfile,                 //todo create env getter similar to region
