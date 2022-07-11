@@ -71,7 +71,7 @@ func Register(providerType string, factoryFunc Factory) {
 // GetClientFor returns the CloudClient for any cloud provider
 
 func GetClientFor(options *CmdOptions) (CloudClient, error) {
-	platformType := utils.PlatformType(options.CloudType, options.AwsProfile)
+	platformType := utils.PlatformType(options.CloudType)
 	//if _, ok := controllerMapping[platformType]; ok {
 	cli, err := controllerMapping[platformType](options)
 	//}
