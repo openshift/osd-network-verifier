@@ -9,9 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/errors"
-	"github.com/openshift/osd-network-verifier/pkg/parameters"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
@@ -83,7 +83,7 @@ func TestValidateEgress(t *testing.T) {
 	}, nil)
 
 	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
-	params := parameters.ValidateEgress{VpcSubnetID: "dummy"}
+	params := cloudclient.ValidateEgress{VpcSubnetID: "dummy"}
 	clientInput := ClientInput{Logger: &logging.GlogLogger{},
 		InstanceType: "dummy",
 		CloudImageID: "dummy",
@@ -153,7 +153,7 @@ Unable to reach somesample.endpoint
 		}, nil)
 
 		FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
-		params := parameters.ValidateEgress{VpcSubnetID: "dummy"}
+		params := cloudclient.ValidateEgress{VpcSubnetID: "dummy"}
 		clientInput := ClientInput{Logger: &logging.GlogLogger{},
 			InstanceType: "dummy",
 			CloudImageID: "dummy",

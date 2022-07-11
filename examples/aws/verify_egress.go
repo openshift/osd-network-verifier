@@ -6,7 +6,6 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
-	"github.com/openshift/osd-network-verifier/pkg/parameters"
 )
 
 func extendValidateEgressV1() {
@@ -22,7 +21,7 @@ func extendValidateEgressV1() {
 	}
 
 	//---------Set test parameters---------
-	params := parameters.ValidateEgress{VpcSubnetID: "test-subnet-id"}
+	params := cloudclient.ValidateEgress{VpcSubnetID: "test-subnet-id"}
 
 	//---------create ONV cloud client---------
 	client, err := cloudclient.GetClientFor(&cmdOptions)

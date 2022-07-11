@@ -7,7 +7,7 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
-	"github.com/openshift/osd-network-verifier/pkg/parameters"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ func NewCmdValidateDns() *cobra.Command {
 	}
 
 	validateDnsCmd.Flags().StringVar(&vpcId, "vpc-id", "", "ID of the VPC under test")
-	validateDnsCmd.Flags().StringVar(&config.Region, "region", cloudclient.RegionDefaultAWS, fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", cloudclient.RegionEnvVarStrAWS, cloudclient.RegionDefaultAWS))
+	validateDnsCmd.Flags().StringVar(&config.Region, "region", aws.RegionDefaultAWS, fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", aws.RegionEnvVarStrAWS, aws.RegionDefaultAWS))
 	validateDnsCmd.Flags().BoolVar(&config.Debug, "debug", false, "If true, enable additional debug-level logging")
 	//
 	if err := validateDnsCmd.MarkFlagRequired("vpc-id"); err != nil {
@@ -50,7 +50,7 @@ func run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Error creating %s cloud client: %s", config.CloudType, err.Error())
 	}
-	out := client.VerifyDns(parameters.ValidateDns{VpcId: vpcId})
+	out := client.VerifyDns(cloudclient.ValidateDns{VpcId: vpcId})
 	out.Summary()
 	if !out.IsSuccessful() {
 		return fmt.Errorf("Failure!")

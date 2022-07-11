@@ -16,8 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/openshift/osd-network-verifier/pkg/parameters"
-
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 
@@ -375,7 +374,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return ` c.clientInput.output` which stores the execution results
-func (c *Client) validateEgress(egressOptions parameters.ValidateEgress) *output.Output {
+func (c *Client) validateEgress(egressOptions cloudclient.ValidateEgress) *output.Output {
 	c.logger.Debug(c.ctx, "Using configured timeout of %s for each egress request", c.clientInput.Timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
@@ -430,7 +429,7 @@ func (c *Client) validateEgress(egressOptions parameters.ValidateEgress) *output
 // Basic workflow is:
 // - ask AWS API for VPC attributes
 // - ensure they're set correctly
-func (c *Client) verifyDns(params parameters.ValidateDns) *output.Output {
+func (c *Client) verifyDns(params cloudclient.ValidateDns) *output.Output {
 	c.logger.Info(c.ctx, "Verifying DNS config for VPC %s", params.VpcId)
 	// Request boolean values from AWS API
 	dnsSprtResult, dnsSprtErr := c.ec2Client.DescribeVpcAttribute(c.ctx, &ec2.DescribeVpcAttributeInput{

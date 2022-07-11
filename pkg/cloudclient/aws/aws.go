@@ -7,8 +7,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	"github.com/openshift/osd-network-verifier/pkg/parameters"
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
@@ -57,26 +57,17 @@ type EC2Client interface {
 	DescribeVpcAttribute(ctx context.Context, input *ec2.DescribeVpcAttributeInput, optFns ...func(*ec2.Options)) (*ec2.DescribeVpcAttributeOutput, error)
 }
 
-func (c *Client) ByoVPCValidator(params parameters.ValidateByoVpc) error {
+func (c *Client) ByoVPCValidator(params cloudclient.ValidateByoVpc) error {
 	c.logger.Info(context.TODO(), "interface executed: %s")
 	return nil
 }
 
-func (c *Client) ValidateEgress(params parameters.ValidateEgress) *output.Output {
+func (c *Client) ValidateEgress(params cloudclient.ValidateEgress) *output.Output {
 	return c.validateEgress(params)
 }
 
-func (c *Client) VerifyDns(params parameters.ValidateDns) *output.Output {
+func (c *Client) VerifyDns(params cloudclient.ValidateDns) *output.Output {
 	return c.verifyDns(params)
-}
-
-// NewClient creates a new CloudClient for use with AWS.
-func NewClient(input ClientInput) (*Client, error) {
-	client, err := newClient(&input)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create AWS client %w", err)
-	}
-	return client, nil
 }
 
 func GetEc2ClientFromInput(input *ClientInput) (*ec2.Client, error) {

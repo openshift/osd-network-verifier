@@ -7,7 +7,6 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	"github.com/openshift/osd-network-verifier/pkg/parameters"
 	"github.com/openshift/osd-network-verifier/pkg/utils"
 )
 
@@ -47,17 +46,17 @@ var (
 type CloudClient interface {
 
 	// ByoVPCValidator validates the configuration given by the customer
-	ByoVPCValidator(params parameters.ValidateByoVpc) error
+	ByoVPCValidator(params ValidateByoVpc) error
 
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	ValidateEgress(params parameters.ValidateEgress) *output.Output
+	ValidateEgress(params ValidateEgress) *output.Output
 
 	// VerifyDns verifies that a given VPC meets the DNS requirements specified in:
 	// https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	VerifyDns(params parameters.ValidateDns) *output.Output
+	VerifyDns(params ValidateDns) *output.Output
 }
 
 var controllerMapping = map[string]Factory{}
@@ -80,4 +79,16 @@ func GetClientFor(options *CmdOptions) (CloudClient, error) {
 
 	}
 	return cli, nil
+}
+
+type ValidateEgress struct {
+	VpcSubnetID string
+}
+
+type ValidateDns struct {
+	VpcId string
+}
+
+type ValidateByoVpc struct {
+	//	todo
 }

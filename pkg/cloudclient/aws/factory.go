@@ -1,14 +1,16 @@
-package cloudclient
+package aws
 
 import (
 	"context"
-	"github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
+	"fmt"
 	"os"
+
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 )
 
 func init() {
-	Register(
-		aws.ClientIdentifier,
+	cloudclient.Register(
+		ClientIdentifier,
 		produceAWS,
 	)
 }
@@ -20,7 +22,7 @@ var (
 )
 
 // Precedence: cli > env var > default
-func getAWSRegion(options CmdOptions) string {
+func getAWSRegion(options cloudclient.CmdOptions) string {
 	if options.Region != "" {
 		return options.Region
 	}
@@ -35,7 +37,7 @@ func getAWSRegion(options CmdOptions) string {
 // produceAWS isolates the AWS specific logic from cloudclient GetClientFor.
 // This is the factory function for cloudclient.GetClientFor()
 // where utils.platformType() decided by cmdOptions or env vars returns "AWS"
-func produceAWS(options *CmdOptions) (CloudClient, error) {
+func produceAWS(options *cloudclient.CmdOptions) (cloudclient.CloudClient, error) {
 	if options.AwsProfile != "" {
 		options.Logger.Info(context.TODO(), "Using AWS profile: %s.", options.AwsProfile)
 	} else {
@@ -45,7 +47,7 @@ func produceAWS(options *CmdOptions) (CloudClient, error) {
 		options.CloudTags = DefaultTagsAWS
 
 	}
-	c, err := aws.NewClient(aws.ClientInput{
+	input := ClientInput{
 		Ctx:             options.Ctx,
 		Logger:          options.Logger,
 		CloudImageID:    options.CloudImageID,
@@ -57,11 +59,15 @@ func produceAWS(options *CmdOptions) (CloudClient, error) {
 		AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),     //todo create env getter similar to region
 		SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"), //todo create env getter similar to region
 		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),     //todo create env getter similar to region
-	})
+	}
+	client, err := newClient(&input)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create AWS client %w", err)
+	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	return c, nil
+	return client, nil
 }
