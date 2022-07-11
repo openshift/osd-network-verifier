@@ -22,7 +22,7 @@ func NewCmdValidateDns() *cobra.Command {
 	}
 
 	validateDnsCmd.Flags().StringVar(&vpcId, "vpc-id", "", "ID of the VPC under test")
-	validateDnsCmd.Flags().StringVar(&config.Region, "region", cloudclient.RegionDefault, fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", cloudclient.RegionEnvVarStr, cloudclient.RegionDefault))
+	validateDnsCmd.Flags().StringVar(&config.Region, "region", cloudclient.RegionDefaultAWS, fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", cloudclient.RegionEnvVarStrAWS, cloudclient.RegionDefaultAWS))
 	validateDnsCmd.Flags().BoolVar(&config.Debug, "debug", false, "If true, enable additional debug-level logging")
 	//
 	if err := validateDnsCmd.MarkFlagRequired("vpc-id"); err != nil {
