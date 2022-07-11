@@ -31,3 +31,19 @@ func PlatformType(cliPlatformType string) string {
 	//defaulting to AWS
 	return TYPE_AWS
 }
+
+type AWSClientConfig struct {
+	KmsKeyID        string
+	CloudImageID    string
+	Region          string
+	InstanceType    string
+	CloudTags       map[string]string
+	AccessKeyId     string
+	SessionToken    string
+	SecretAccessKey string
+	AwsProfile      string
+}
+
+type GCPClientConfig struct {
+	//	todo
+}

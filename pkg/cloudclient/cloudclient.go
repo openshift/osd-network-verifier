@@ -10,26 +10,25 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/utils"
 )
 
-// common commandline args
-type CmdOptions struct {
-	// AWS client options
-	KmsKeyID        string
-	CloudImageID    string
-	Region          string
-	InstanceType    string
-	CloudTags       map[string]string
-	AccessKeyId     string
-	SessionToken    string
-	SecretAccessKey string
-	AwsProfile      string
-
-	// GCP options
-	// todo
-
-	// Operation options
-	Debug     bool
-	Timeout   time.Duration
+// Config struct for cloudclient creation.
+// This struct separates provider specific configs and makes coudclient provider agnostic.
+// Downstream function utilizes "GetClientFor" factory with
+// their desired set of ClientConfig and ExecConfig.
+// This factory returns their required client intelligently based on the input.
+// For most tests such as egress, all params in this struct are optional and
+// client can be created solely using on credentials.
+type ClientConfig struct {
 	CloudType string
+	AWSConfig *utils.AWSClientConfig
+	GCPConfig *utils.GCPClientConfig
+}
+
+// Execution options.
+// These are only related to execution options (such as debug, timeout) and do not include configs for cloud provider.
+type ExecConfig struct {
+	// Operation options
+	Debug   bool
+	Timeout time.Duration
 
 	// Following are passed to client to mitigate "cannot create context from nil parent" error
 	Ctx    context.Context
@@ -61,18 +60,18 @@ type CloudClient interface {
 
 var controllerMapping = map[string]Factory{}
 
-type Factory func(options *CmdOptions) (CloudClient, error)
+type Factory func(clientConfig *ClientConfig, execConfig *ExecConfig) (CloudClient, error)
 
 func Register(providerType string, factoryFunc Factory) {
 	controllerMapping[providerType] = factoryFunc
 }
 
-// GetClientFor returns the CloudClient for any cloud provider
-
-func GetClientFor(options *CmdOptions) (CloudClient, error) {
-	platformType := utils.PlatformType(options.CloudType)
+// GetClientFor returns the CloudClient for any cloud provider based on clientConfig.
+// ExecConfig is used to format output, timeouts etc.
+func GetClientFor(clientConfig *ClientConfig, execConfig *ExecConfig) (CloudClient, error) {
+	platformType := utils.PlatformType(clientConfig.CloudType)
 	//if _, ok := controllerMapping[platformType]; ok {
-	cli, err := controllerMapping[platformType](options)
+	cli, err := controllerMapping[platformType](clientConfig, execConfig)
 	//}
 	if err != nil {
 		return nil, (fmt.Errorf("Couldn't create cloud client for %s: %s", platformType, err))
@@ -80,6 +79,8 @@ func GetClientFor(options *CmdOptions) (CloudClient, error) {
 	}
 	return cli, nil
 }
+
+// Test parameter structs. Define struct for each new test.
 
 type ValidateEgress struct {
 	VpcSubnetID string

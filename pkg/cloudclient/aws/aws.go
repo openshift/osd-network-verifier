@@ -3,7 +3,6 @@ package aws
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
@@ -25,24 +24,14 @@ type Client struct {
 	ctx    context.Context
 }
 
-// This struct is the intermediary between cloudclient config and AWS client
-// add_aws.go implementation of cloudclient converts the interface's CmdOptions struct into an AWS specific ClientInput
-// Cloudclient CmdOptions struct can't be used here due to cyclic import issues
+// This struct provides input for the AWS cloudclient
+// aws/factory combines the cloudClient interface's ClientConfig and Test Specific Config structs into an AWS ClientInput
+// Cloudclient Config structs can't be imported here due to cyclic import issues
 type ClientInput struct {
-	VpcSubnetID     string
-	VpcID           string
-	CloudImageID    string
-	Timeout         time.Duration
-	KmsKeyID        string
-	Ctx             context.Context
-	Logger          ocmlog.Logger
-	Region          string
-	InstanceType    string
-	CloudTags       map[string]string
-	Profile         string
-	AccessKeyId     string
-	SessionToken    string
-	SecretAccessKey string
+	Ctx          context.Context
+	Logger       ocmlog.Logger
+	ClientConfig *cloudclient.ClientConfig
+	ExecConfig   *cloudclient.ExecConfig
 }
 
 // Extend EC2Client so that we can mock them all for testing

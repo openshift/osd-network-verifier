@@ -66,18 +66,18 @@ func getEc2ClientFromInput(input ClientInput) (*ec2.Client, error) {
 	var cfg aws.Config
 	var err error
 
-	cfg, err = config.LoadDefaultConfig(input.Ctx,
-		config.WithRegion(input.Region),
+	cfg, err = config.LoadDefaultConfig(input.ExecConfig.Ctx,
+		config.WithRegion(input.ClientConfig.AWSConfig.Region),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
 			Value: aws.Credentials{
-				AccessKeyID: input.AccessKeyId, SecretAccessKey: input.SecretAccessKey,
-				SessionToken: input.SessionToken,
+				AccessKeyID: input.ClientConfig.AWSConfig.AccessKeyId, SecretAccessKey: input.ClientConfig.AWSConfig.SecretAccessKey,
+				SessionToken: input.ClientConfig.AWSConfig.SessionToken,
 			},
 		}),
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("can not get AWS config from profile `%s`", input.Profile)
+		return nil, fmt.Errorf("can not get AWS config from profile `%s`", input.ClientConfig.AWSConfig.AwsProfile)
 	}
 	return ec2.NewFromConfig(cfg), nil
 }
@@ -102,7 +102,7 @@ func newClient(input *ClientInput) (*Client, error) {
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := cl.validateInstanceType(input.Ctx); err != nil {
-		return nil, fmt.Errorf("instance type %s can not be validated: %s", cl.clientInput.InstanceType, err)
+		return nil, fmt.Errorf("instance type %s can not be validated: %s", cl.clientInput.ClientConfig.AWSConfig.InstanceType, err)
 	}
 
 	return cl, nil
@@ -130,7 +130,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	// Describe the provided instance type only
 	//      https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
 	descInput := ec2.DescribeInstanceTypesInput{
-		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.clientInput.InstanceType)},
+		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.clientInput.ClientConfig.AWSConfig.InstanceType)},
 	}
 
 	//c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.clientInput.InstanceType)
@@ -139,7 +139,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 		// Check for invalid instance type error and return a cleaner error
 		re := regexp.MustCompile("400.*api error InvalidInstanceType")
 		if re.Match([]byte(err.Error())) {
-			err = fmt.Errorf("Instance type %s does not exist", c.clientInput.InstanceType)
+			err = fmt.Errorf("Instance type %s does not exist", c.clientInput.ClientConfig.AWSConfig.InstanceType)
 		}
 		return fmt.Errorf("Unable to gather list of supported instance types from EC2: %s", err)
 	}
@@ -147,18 +147,18 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 
 	found := false
 	for _, t := range descOut.InstanceTypes {
-		if string(t.InstanceType) == c.clientInput.InstanceType {
+		if string(t.InstanceType) == c.clientInput.ClientConfig.AWSConfig.InstanceType {
 			found = true
 			if t.Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
 				return fmt.Errorf("Instance type must use hypervisor type 'nitro' to support reliable result collection")
 			}
-			c.logger.Debug(ctx, "Instance type %s has hypervisor %s", c.clientInput.InstanceType, t.Hypervisor)
+			c.logger.Debug(ctx, "Instance type %s has hypervisor %s", c.clientInput.ClientConfig.AWSConfig.InstanceType, t.Hypervisor)
 			break
 		}
 	}
 
 	if !found {
-		return fmt.Errorf("Instance type %s not found in EC2 API", c.clientInput.InstanceType)
+		return fmt.Errorf("Instance type %s not found in EC2 API", c.clientInput.ClientConfig.AWSConfig.InstanceType)
 	}
 
 	return nil
@@ -179,7 +179,7 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 		ImageId:      aws.String(input.amiID),
 		MaxCount:     aws.Int32(int32(input.instanceCount)),
 		MinCount:     aws.Int32(int32(input.instanceCount)),
-		InstanceType: ec2Types.InstanceType(c.clientInput.InstanceType),
+		InstanceType: ec2Types.InstanceType(c.clientInput.ClientConfig.AWSConfig.InstanceType),
 		// Because we're making this VPC aware, we also have to include a network interface specification
 		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{
 			{
@@ -196,7 +196,7 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 			},
 		},
 		UserData:          aws.String(input.userdata),
-		TagSpecifications: buildTags(c.clientInput.CloudTags),
+		TagSpecifications: buildTags(c.clientInput.ClientConfig.AWSConfig.CloudTags),
 	}
 	// Finally, we make our request
 	instanceResp, err := c.ec2Client.RunInstances(ctx, &instanceReq)
@@ -359,9 +359,9 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 	// If a cloud image wasn't provided by the caller,
 	if cloudImageID == "" {
 		// use defaultAmi for the region instead
-		cloudImageID = defaultAmi[c.clientInput.Region]
+		cloudImageID = defaultAmi[c.clientInput.ClientConfig.AWSConfig.Region]
 		if cloudImageID == "" {
-			return "", fmt.Errorf("no default ami found for region %s ", c.clientInput.Region)
+			return "", fmt.Errorf("no default ami found for region %s ", c.clientInput.ClientConfig.AWSConfig.Region)
 		}
 	}
 
@@ -375,16 +375,16 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - find unreachable endpoints & parse output, then terminate instance
 // - return ` c.clientInput.output` which stores the execution results
 func (c *Client) validateEgress(egressOptions cloudclient.ValidateEgress) *output.Output {
-	c.logger.Debug(c.ctx, "Using configured timeout of %s for each egress request", c.clientInput.Timeout.String())
+	c.logger.Debug(c.ctx, "Using configured timeout of %s for each egress request", c.clientInput.ExecConfig.Timeout.String())
 	// Generate the userData file
 	userDataVariables := map[string]string{
-		"AWS_REGION":               c.clientInput.Region,
+		"AWS_REGION":               c.clientInput.ClientConfig.AWSConfig.Region,
 		"USERDATA_BEGIN":           "USERDATA BEGIN",
 		"USERDATA_END":             userdataEndVerifier,
 		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
 		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
 		"VALIDATOR_IMAGE":          networkValidatorImage,
-		"TIMEOUT":                  c.clientInput.Timeout.String(),
+		"TIMEOUT":                  c.clientInput.ExecConfig.Timeout.String(),
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {
@@ -392,16 +392,16 @@ func (c *Client) validateEgress(egressOptions cloudclient.ValidateEgress) *outpu
 	}
 	c.logger.Debug(c.ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
 
-	c.clientInput.CloudImageID, err = c.setCloudImage(c.clientInput.CloudImageID)
+	c.clientInput.ClientConfig.AWSConfig.CloudImageID, err = c.setCloudImage(c.clientInput.ClientConfig.AWSConfig.CloudImageID)
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}
 
 	instance, err := c.createEC2Instance(c.ctx, createEC2InstanceInput{
-		amiID:         c.clientInput.CloudImageID,
+		amiID:         c.clientInput.ClientConfig.AWSConfig.CloudImageID,
 		vpcSubnetID:   egressOptions.VpcSubnetID,
 		userdata:      userData,
-		ebsKmsKeyID:   c.clientInput.KmsKeyID,
+		ebsKmsKeyID:   c.clientInput.ClientConfig.AWSConfig.KmsKeyID,
 		instanceCount: instanceCount,
 	})
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/pkg/utils"
 )
 
 func init() {
@@ -22,7 +23,7 @@ var (
 )
 
 // Precedence: cli > env var > default
-func getAWSRegion(options cloudclient.CmdOptions) string {
+func getAWSRegion(options utils.AWSClientConfig) string {
 	if options.Region != "" {
 		return options.Region
 	}
@@ -37,28 +38,25 @@ func getAWSRegion(options cloudclient.CmdOptions) string {
 // produceAWS isolates the AWS specific logic from cloudclient GetClientFor.
 // This is the factory function for cloudclient.GetClientFor()
 // where utils.platformType() decided by cmdOptions or env vars returns "AWS"
-func produceAWS(options *cloudclient.CmdOptions) (cloudclient.CloudClient, error) {
-	if options.AwsProfile != "" {
-		options.Logger.Info(context.TODO(), "Using AWS profile: %s.", options.AwsProfile)
+func produceAWS(clientConfig *cloudclient.ClientConfig, execConfig *cloudclient.ExecConfig) (cloudclient.CloudClient, error) {
+	if clientConfig.AWSConfig.AwsProfile != "" {
+		execConfig.Logger.Info(context.TODO(), "Using AWS profile: %s.", clientConfig.AWSConfig.AwsProfile)
 	} else {
-		options.Logger.Info(context.TODO(), "Using AWS secret key")
+		execConfig.Logger.Info(context.TODO(), "Using AWS secret key")
 	}
-	if options.CloudTags == nil {
-		options.CloudTags = DefaultTagsAWS
+	if clientConfig.AWSConfig.CloudTags == nil {
+		clientConfig.AWSConfig.CloudTags = DefaultTagsAWS
 
 	}
+	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY") //https://issues.redhat.com/browse/OSD-12432
+	clientConfig.AWSConfig.AccessKeyId = os.Getenv("AWS_ACCESS_KEY_ID")         //https://issues.redhat.com/browse/OSD-12432
+	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY") //https://issues.redhat.com/browse/OSD-12432
 	input := ClientInput{
-		Ctx:             options.Ctx,
-		Logger:          options.Logger,
-		CloudImageID:    options.CloudImageID,
-		KmsKeyID:        options.KmsKeyID,
-		Region:          getAWSRegion(*options),
-		InstanceType:    options.InstanceType,
-		CloudTags:       options.CloudTags,
-		Profile:         options.AwsProfile,                 //todo create env getter similar to region
-		AccessKeyId:     os.Getenv("AWS_ACCESS_KEY_ID"),     //todo create env getter similar to region
-		SecretAccessKey: os.Getenv("AWS_SECRET_ACCESS_KEY"), //todo create env getter similar to region
-		SessionToken:    os.Getenv("AWS_SESSION_TOKEN"),     //todo create env getter similar to region
+		Ctx:    execConfig.Ctx,
+		Logger: execConfig.Logger,
+
+		ExecConfig:   execConfig,
+		ClientConfig: clientConfig,
 	}
 	client, err := newClient(&input)
 	if err != nil {

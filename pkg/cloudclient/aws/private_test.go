@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/openshift/osd-network-verifier/pkg/utils"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
@@ -31,7 +32,11 @@ func TestCreateEC2Instance(t *testing.T) {
 			InstanceId: aws.String(testID),
 		}},
 	}, nil)
-	clientInput := ClientInput{Logger: &logging.GlogLogger{}}
+	var awsOptions = utils.AWSClientConfig{InstanceType: "dummy",
+		CloudImageID: "dummy"}
+	var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsOptions}
+
+	clientInput := ClientInput{Logger: &logging.GlogLogger{}, ClientConfig: &clientConfig}
 	cli := Client{
 		ec2Client:   FakeEC2Cli,
 		clientInput: &clientInput,
@@ -84,10 +89,12 @@ func TestValidateEgress(t *testing.T) {
 
 	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
 	params := cloudclient.ValidateEgress{VpcSubnetID: "dummy"}
-	clientInput := ClientInput{Logger: &logging.GlogLogger{},
-		InstanceType: "dummy",
-		CloudImageID: "dummy",
-	}
+
+	var awsOptions = utils.AWSClientConfig{InstanceType: "dummy",
+		CloudImageID: "dummy"}
+	var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsOptions}
+	var execConfig = cloudclient.ExecConfig{}
+	clientInput := ClientInput{Logger: &logging.GlogLogger{}, ClientConfig: &clientConfig, ExecConfig: &execConfig}
 	cli := Client{
 		ec2Client:   FakeEC2Cli,
 		clientInput: &clientInput,
@@ -154,10 +161,11 @@ Unable to reach somesample.endpoint
 
 		FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
 		params := cloudclient.ValidateEgress{VpcSubnetID: "dummy"}
-		clientInput := ClientInput{Logger: &logging.GlogLogger{},
-			InstanceType: "dummy",
-			CloudImageID: "dummy",
-		}
+		var awsOptions = utils.AWSClientConfig{InstanceType: "dummy",
+			CloudImageID: "dummy"}
+		var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsOptions}
+		var execConfig = cloudclient.ExecConfig{}
+		clientInput := ClientInput{Logger: &logging.GlogLogger{}, ClientConfig: &clientConfig, ExecConfig: &execConfig}
 		cli := Client{
 			ec2Client:   FakeEC2Cli,
 			clientInput: &clientInput,

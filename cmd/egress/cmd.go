@@ -8,15 +8,23 @@ import (
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
+	"github.com/openshift/osd-network-verifier/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-var config = cloudclient.CmdOptions{}
-var inputStruct = egressInput{}
-
+// test params
 type egressInput struct {
 	vpcSubnetId string
 }
+
+var inputStruct = egressInput{}
+
+//client config
+var awsConfig = utils.AWSClientConfig{AwsProfile: "yourProfile"}
+var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsConfig}
+
+//execution config
+var execConfig = cloudclient.ExecConfig{Debug: true}
 
 func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd := &cobra.Command{
@@ -38,13 +46,13 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&inputStruct.vpcSubnetId, "subnet-id", "", "source subnet ID")
 
 	//client args - all these have defaults
-	validateEgressCmd.Flags().StringVar(&config.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
-	validateEgressCmd.Flags().StringVar(&config.InstanceType, "instance-type", "t3.micro", "(optional) compute instance type")
-	validateEgressCmd.Flags().StringVar(&config.Region, "region", config.Region, fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", aws.RegionEnvVarStrAWS, aws.RegionDefaultAWS))
-	validateEgressCmd.Flags().StringToStringVar(&config.CloudTags, "cloud-tags", aws.DefaultTagsAWS, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
-	validateEgressCmd.Flags().BoolVar(&config.Debug, "debug", false, "(optional) if true, enable additional debug-level logging")
-	validateEgressCmd.Flags().DurationVar(&config.Timeout, "timeout", cloudclient.DefaultTime, "(optional) timeout for individual egress verification requests")
-	validateEgressCmd.Flags().StringVar(&config.KmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
+	validateEgressCmd.Flags().StringVar(&awsConfig.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
+	validateEgressCmd.Flags().StringVar(&awsConfig.InstanceType, "instance-type", "t3.micro", "(optional) compute instance type")
+	validateEgressCmd.Flags().StringVar(&awsConfig.Region, "region", awsConfig.Region, fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", aws.RegionEnvVarStrAWS, aws.RegionDefaultAWS))
+	validateEgressCmd.Flags().StringToStringVar(&awsConfig.CloudTags, "cloud-tags", aws.DefaultTagsAWS, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().BoolVar(&execConfig.Debug, "debug", false, "(optional) if true, enable additional debug-level logging")
+	validateEgressCmd.Flags().DurationVar(&execConfig.Timeout, "timeout", cloudclient.DefaultTime, "(optional) timeout for individual egress verification requests")
+	validateEgressCmd.Flags().StringVar(&awsConfig.KmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
@@ -58,14 +66,14 @@ func rune(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 
 	// Create logger
-	logger, err := ocmlog.NewStdLoggerBuilder().Debug(config.Debug).Build()
+	logger, err := ocmlog.NewStdLoggerBuilder().Debug(execConfig.Debug).Build()
 	if err != nil {
 		return fmt.Errorf("unable to build logger: %s\n", err.Error())
 	}
-	config.Logger = logger
-	config.Ctx = ctx
+	execConfig.Logger = logger
+	execConfig.Ctx = ctx
 
-	client, err := cloudclient.GetClientFor(&config)
+	client, err := cloudclient.GetClientFor(&clientConfig, &execConfig)
 	if err != nil {
 		return fmt.Errorf("error creating cloud client: %s", err.Error())
 	}
