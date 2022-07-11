@@ -32,14 +32,10 @@ func TestCreateEC2Instance(t *testing.T) {
 			InstanceId: aws.String(testID),
 		}},
 	}, nil)
-	var awsOptions = utils.AWSClientConfig{InstanceType: "dummy",
-		CloudImageID: "dummy"}
-	var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsOptions}
 
-	clientInput := ClientInput{Logger: &logging.GlogLogger{}, ClientConfig: &clientConfig}
 	cli := Client{
 		ec2Client:   FakeEC2Cli,
-		clientInput: &clientInput,
+		clientInput: getDummyClientInput(),
 		logger:      &logging.GlogLogger{},
 	}
 	out, err := cli.createEC2Instance(context.Background(), createEC2InstanceInput{
@@ -90,14 +86,9 @@ func TestValidateEgress(t *testing.T) {
 	FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
 	params := cloudclient.ValidateEgress{VpcSubnetID: "dummy"}
 
-	var awsOptions = utils.AWSClientConfig{InstanceType: "dummy",
-		CloudImageID: "dummy"}
-	var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsOptions}
-	var execConfig = cloudclient.ExecConfig{}
-	clientInput := ClientInput{Logger: &logging.GlogLogger{}, ClientConfig: &clientConfig, ExecConfig: &execConfig}
 	cli := Client{
 		ec2Client:   FakeEC2Cli,
-		clientInput: &clientInput,
+		clientInput: getDummyClientInput(),
 		logger:      &logging.GlogLogger{},
 		ctx:         context.Background(),
 	}
@@ -161,14 +152,10 @@ Unable to reach somesample.endpoint
 
 		FakeEC2Cli.EXPECT().TerminateInstances(gomock.Any(), gomock.Any()).Times(1).Return(nil, nil)
 		params := cloudclient.ValidateEgress{VpcSubnetID: "dummy"}
-		var awsOptions = utils.AWSClientConfig{InstanceType: "dummy",
-			CloudImageID: "dummy"}
-		var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsOptions}
-		var execConfig = cloudclient.ExecConfig{}
-		clientInput := ClientInput{Logger: &logging.GlogLogger{}, ClientConfig: &clientConfig, ExecConfig: &execConfig}
+
 		cli := Client{
 			ec2Client:   FakeEC2Cli,
-			clientInput: &clientInput,
+			clientInput: getDummyClientInput(),
 			logger:      &logging.GlogLogger{},
 			ctx:         context.Background(),
 		}
@@ -193,4 +180,12 @@ Unable to reach somesample.endpoint
 		}
 
 	}
+}
+
+func getDummyClientInput() *ClientInput {
+	var awsOptions = utils.AWSClientConfig{InstanceType: "dummy",
+		CloudImageID: "dummy"}
+	var clientConfig = cloudclient.ClientConfig{AWSConfig: &awsOptions}
+	var execConfig = cloudclient.ExecConfig{}
+	return &ClientInput{Logger: &logging.GlogLogger{}, ClientConfig: &clientConfig, ExecConfig: &execConfig}
 }
