@@ -63,7 +63,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 			region,
 			instanceType,
 			tags,
-			fmt.Sprintf("%v", creds),
+			creds.(string),
 		)
 	case awscredsv1.Credentials:
 		var value awscredsv1.Value
