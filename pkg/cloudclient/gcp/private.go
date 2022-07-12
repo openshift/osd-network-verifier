@@ -5,7 +5,7 @@ import (
 	// "encoding/base64"
 	// "errors"
 	"fmt"
-	// "regexp"
+	"regexp"
 	"time"
 	// "io"
 
@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	// "reflect"
 	// "encoding/base64"
-	// handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
 type createE2InstanceInput struct {
@@ -185,55 +185,59 @@ func generateUserData(variables map[string]string) (string, error) {
 //ToDo func findUnreachableEndpoints
 func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName string, zone string) error {
 	// Compile the regular expressions once
-	// reVerify := regexp.MustCompile(userdataEndVerifier)
-	// reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
+	reVerify := regexp.MustCompile(userdataEndVerifier)
+	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 
 	// latest := true
 
 	// getConsoleOutput then parse, use c.output to store result of the execution
-	err := helpers.PollImmediate(30*time.Second, 30*time.Second, func() (bool, error) {
+	err := helpers.PollImmediate(40*time.Second, 80*time.Second, func() (bool, error) {
 		output, err := c.computeService.Instances.GetSerialPortOutput(c.projectID, zone, instanceName).Context(ctx).Do()
 		if err != nil {
 			return false, err
 		}
-		fmt.Println(output)
-		// if output != nil {
-		// 	// First, gather the ec2 console output
-		// 	scriptOutput := output
-		// 	if err != nil {
-		// 		// unable to decode output. we will try again
-		// 		c.logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
-		// 		return false, nil
-		// 	}
+		// fmt.Println(output)
+		if output != nil {
+			// First, gather the ec2 console output
+			scriptOutput := fmt.Sprintf("%#v", output)
+			fmt.Println(output)
+			if err != nil {
+				// unable to decode output. we will try again
+				c.logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
+				return false, nil
+			}
 
-		// 	// In the early stages, an ec2 instance may be running but the console is not populated with any data, retry if that is the case
-		// 	if len(scriptOutput) < 1 {
-		// 		c.logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
-		// 		return false, nil
-		// 	}
+			// In the early stages, an ec2 instance may be running but the console is not populated with any data, retry if that is the case
+			if len(scriptOutput) < 1 {
+				c.logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
+				return false, nil
+			}
 
-		// 	// Check for the specific string we output in the generated userdata file at the end to verify the userdata script has run
-		// 	// It is possible we get EC2 console output, but the userdata script has not yet completed.
-		// 	verifyMatch := reVerify.FindString(string(scriptOutput))
-		// 	if len(verifyMatch) < 1 {
-		// 		c.logger.Debug(ctx, "EC2 console output contains data, but end of userdata script not seen, continuing to wait...")
-		// 		return false, nil
-		// 	}
+			// Check for the specific string we output in the generated userdata file at the end to verify the userdata script has run
+			// It is possible we get EC2 console output, but the userdata script has not yet completed.
+			verifyMatch := reVerify.FindString(string(scriptOutput))
+			if len(verifyMatch) < 1 {
+				c.logger.Debug(ctx, "EC2 console output contains data, but end of userdata script not seen, continuing to wait...")
+				return false, nil
+			}
 
-		// 	// check output failures, report as exception if they occurred
-		// 	// var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
-		// 	// notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
-		// 	// if len(notFoundMatch) > 0 {
-		// 	// 	c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
-		// 	// }
+			// check output failures, report as exception if they occurred
+			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
+			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 
-		// 	// If debug logging is enabled, output the full console log that appears to include the full userdata run
-		// 	c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
+			// var reg = regexp.MustCompile(`(?m)^(.*Success!.*)`)
+			// success := reg.FindAllStringSubmatch(string(scriptOutput), -1)
+			if len(notFoundMatch) > 0 { //&& len(success) < 1
+				c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
+			}
 
-		// 	c.output.SetFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
-		// 	return true, nil
-		// }
-		// c.logger.Debug(ctx, "Waiting for UserData script to complete...")
+			// If debug logging is enabled, output the full console log that appears to include the full userdata run
+			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
+
+			c.output.SetFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
+			return true, nil
+		}
+		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
 		return false, nil
 	})
 
@@ -310,9 +314,9 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		amiID:        cloudImageID,
 		vpcSubnetID:  fmt.Sprintf("projects/%s/regions/us-east1/subnetworks/%s", c.projectID, vpcSubnetID),
 		userdata:     userData,
-		zone:         "us-east1-b",
+		zone:         "us-east1-b", //Note: gcp zone format is us-east1-b - fmt.Sprintf("%s-b", c.region),
 		machineType:  "e2-standard-2",
-		instanceName: "test-gcp-inst",
+		instanceName: "final",
 		sourceImage:  "projects/cos-cloud/global/images/family/cos-97-lts",
 		networkName:  fmt.Sprintf("projects/%s/global/networks/hb-gcp-test-lzncg-network", c.projectID),
 
@@ -325,7 +329,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	fmt.Println("working! ", instance.zone, instance.instanceName)
 
 	//stop instance after 40 seeconds
-	time.Sleep(40 * time.Second)
+	// time.Sleep(40 * time.Second)
 
 	err = c.findUnreachableEndpoints(ctx, instance.instanceName, instance.zone)
 	if err != nil {

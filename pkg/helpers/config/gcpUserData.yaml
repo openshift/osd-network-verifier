@@ -6,7 +6,6 @@ packages:
   - docker 
 
 runcmd:
-  - sudo service docker start
   - sudo mkdir  ~/../home/test
   - echo "${USERDATA_BEGIN}" >> ~/../home/test/userdata-output
   - sudo docker pull ${VALIDATOR_IMAGE}
