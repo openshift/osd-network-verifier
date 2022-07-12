@@ -113,6 +113,7 @@ func ValidateReachability(host string, port int, tlsDisabled bool) error {
 		Timeout: *timeout,
 	}
 
+	// #nosec G402 -- Low chance of MITM, as the instance is short-lived, see OHSS-11465
 	if tlsDisabled {
 		httpClient.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

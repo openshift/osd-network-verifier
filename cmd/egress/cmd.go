@@ -53,6 +53,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().BoolVar(&execConfig.Debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&execConfig.Timeout, "timeout", cloudclient.DefaultTime, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&awsConfig.KmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
+	validateEgressCmd.Flags().StringVar(&awsConfig.AwsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
