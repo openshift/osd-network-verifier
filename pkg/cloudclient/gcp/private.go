@@ -159,7 +159,7 @@ func (c *Client) createE2Instance(ctx context.Context, input createE2InstanceInp
 		fmt.Errorf("unable to wait for the operation: %v", err)
 	}
 
-	fmt.Println("Instance created\n")
+	fmt.Println("Instance created")
 	c.logger.Info(ctx, "Created instance with ID: %s", input.instanceName)
 
 	return input, nil
@@ -234,7 +234,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName stri
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
 			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
 
-			c.output.SetFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
+			c.output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
 			return true, nil
 		}
 		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
@@ -252,10 +252,10 @@ func (c *Client) terminateE2Instance(ctx context.Context, instanceName string, z
 	// sp, err := ctx.instancesClient.Stop(ctx, reqs)
 	sp, err := c.computeService.Instances.Stop(c.projectID, zone, instanceName).Context(ctx).Do()
 	if err != nil {
-		fmt.Errorf("unable to stop instance: %v", err, sp)
+		fmt.Errorf("unable to stop instance: %v %v", err, sp)
 	}
 
-	fmt.Println(instanceName, " Instance stopped\n")
+	fmt.Println(instanceName, " Instance stopped")
 
 	c.output.AddError(err)
 

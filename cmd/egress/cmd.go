@@ -66,30 +66,37 @@ are set correctly before execution.
 				os.Exit(1)
 			}
 			logger.Info(ctx, "Using region: %s", config.region)
-		    var cli = cloudclient.CloudClient 
+			var creds interface{}
 			if (config.gcp == false) {
-				//AWS stuff 
-				var creds interface{}
+				//AWS stuff
 				if config.awsProfile != "" {
 					creds = config.awsProfile
 					logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
 				} else {
 					creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 				}
-				cli, err = cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
+				if err != nil {
+					logger.Error(ctx, err.Error())
+					os.Exit(1)
+				}
+
 			} else {
+				// GCP stuff
 				// creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 				//gcp creds....
 				//cred:=
 				// cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
-				credentials := &google.Credentials{ProjectID: "himanshub3"}
+				creds = &google.Credentials{ProjectID: "himanshub3"}
 				//gcp cli,err := ...NewClient... (..Credentials, google.credentials)
-				cli, err = cloudclient.NewClient(ctx, logger, credentials, config.region, config.instanceType, config.cloudTags)
+				if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+					logger.Error(ctx, "please set environment variable GOOGLE_APPLICATION_CREDENTIALS to the credentials json file path")
+					os.Exit(1)
+				}
+				logger.Info(ctx, "Using GCP credential json file from %s", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 
-			}	
-			
-			
-			
+			}
+
+			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)
