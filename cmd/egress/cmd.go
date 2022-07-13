@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	// "github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/spf13/cobra"
@@ -28,7 +28,8 @@ type egressConfig struct {
 	region       string
 	timeout      time.Duration
 	kmsKeyID     string
-	gcp          string
+	gcp          bool
+	awsProfile   string
 }
 
 func getDefaultRegion() string {
@@ -64,19 +65,31 @@ are set correctly before execution.
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
+			logger.Info(ctx, "Using region: %s", config.region)
+		    var cli = cloudclient.CloudClient 
+			if (config.gcp == false) {
+				//AWS stuff 
+				var creds interface{}
+				if config.awsProfile != "" {
+					creds = config.awsProfile
+					logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
+				} else {
+					creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+				}
+				cli, err = cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
+			} else {
+				// creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+				//gcp creds....
+				//cred:=
+				// cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
+				credentials := &google.Credentials{ProjectID: "himanshub3"}
+				//gcp cli,err := ...NewClient... (..Credentials, google.credentials)
+				cli, err = cloudclient.NewClient(ctx, logger, credentials, config.region, config.instanceType, config.cloudTags)
 
-			logger.Warn(ctx, "Using region: %s", config.region)
-			// creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-
-			//gcp creds....
-			//cred:=
-
-			// cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
-			credentials := &google.Credentials{ProjectID: "himanshub3"}
-
-			//gcp cli,err := ...NewClient... (..Credentials, google.credentials)
-			cli, err := cloudclient.NewClient(ctx, logger, credentials, config.region, config.instanceType, config.cloudTags)
-
+			}	
+			
+			
+			
 			if err != nil {
 				logger.Error(ctx, err.Error())
 				os.Exit(1)
@@ -102,10 +115,11 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", regionEnvVarStr, regionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
-	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 1*time.Second, "(optional) timeout for individual egress verification requests")
+	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 2*time.Second, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
-	// Added gcp-key flag
-	validateEgressCmd.Flags().StringVar(&config.gcp, "gcp", "", "use GCP VPC. Pass GCP OAuth2.0 Json File")
+	// Added gcp  flag
+	validateEgressCmd.Flags().BoolVar(&config.gcp, "gcp", false, "Set to true if cluster is GCP")
+	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)

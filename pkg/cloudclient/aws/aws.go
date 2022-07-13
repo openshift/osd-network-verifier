@@ -53,6 +53,18 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 // NewClient creates a new CloudClient for use with AWS.
 func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, region, instanceType string, tags map[string]string) (client *Client, err error) {
 	switch c := creds.(type) {
+	case string:
+		client, err = newClient(
+			ctx,
+			logger,
+			"",
+			"",
+			"",
+			region,
+			instanceType,
+			tags,
+			creds.(string),
+		)
 	case awscredsv1.Credentials:
 		var value awscredsv1.Value
 		if value, err = c.Get(); err == nil {
@@ -65,6 +77,7 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 				region,
 				instanceType,
 				tags,
+				"",
 			)
 		}
 	case awscredsv2.StaticCredentialsProvider:
@@ -77,7 +90,9 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 			region,
 			instanceType,
 			tags,
+			"",
 		)
+
 	default:
 		err = fmt.Errorf("unsupported credentials type %T", c)
 	}

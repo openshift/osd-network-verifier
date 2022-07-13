@@ -62,9 +62,6 @@ endpoints:
   - host: sts.amazonaws.com
     ports:
       - 443
-  - host: api.pagerduty.com
-    ports:
-      - 443
   - host: events.pagerduty.com
     ports:
       - 443
