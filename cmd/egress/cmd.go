@@ -34,6 +34,7 @@ type egressConfig struct {
 	httpsProxy   string
 	CaCert       string
 	noTls        bool
+	awsProfile   string
 }
 
 func getDefaultRegion() string {
@@ -69,9 +70,14 @@ are set correctly before execution.
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
-
-			logger.Warn(ctx, "Using region: %s", config.region)
-			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+			logger.Info(ctx, "Using region: %s", config.region)
+			var creds interface{}
+			if config.awsProfile != "" {
+				creds = config.awsProfile
+				logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
+			} else {
+				creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+			}
 			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
 			if err != nil {
 				logger.Error(ctx, err.Error())
@@ -97,6 +103,7 @@ are set correctly before execution.
 				Cacert:     config.CaCert,
 				NoTls:      config.noTls,
 			}
+
 			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout, p)
 			out.Summary()
 			if !out.IsSuccessful() {
@@ -120,6 +127,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.httpsProxy, "https-proxy", "", "(optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978")
 	validateEgressCmd.Flags().StringVar(&config.CaCert, "cacert", "", "(optional) path to cacert file to be used upon https requests being made by verifier")
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, ignore all ssl certificate validations on client-side.")
+	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)

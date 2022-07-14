@@ -20,20 +20,21 @@
 ## Setup ##
 ### AWS Environment ###
 Set up your environment to use the correct credentials for the AWS account for the target cluster. 
-- Obtain a valid set of AWS secret and key for the target account.
-- Export these AWS credentials:
-   ```shell
-   export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
-   export AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY>
-   ```
-  For STS credentials, also:
-    ```shell 
-    export AWS_SESSION_TOKEN=<YOUR_SESSION_TOKEN_STRING> 
-    ```
-  Export any other AWS environment vars:
-    ```shell
-    export AWS_REGION=<VPC_AWS_REGION>
-    ````
+- Obtain a valid set of AWS secret and key for the target account and use them in one of the following ways:
+  - Set them as an AWS profile in you ~/.aws/credentials file as prescribed in [this AWS doc.](https://docs.aws.amazon.com/sdk-for-php/v3/developer-guide/guide_credentials_profiles.html)
+  - Export these AWS credentials:
+     ```shell
+     export AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID)>
+     export AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY>
+     ```
+    For STS credentials, also:
+      ```shell 
+      export AWS_SESSION_TOKEN=<YOUR_SESSION_TOKEN_STRING> 
+      ```
+    Export any other AWS environment vars:
+      ```shell
+      export AWS_REGION=<VPC_AWS_REGION>
+      ````
   
 ### VPC ###
 - Any VPC for a ROSA/OSD CCS cluster can be tested using this tool.
@@ -100,23 +101,29 @@ repeat the verification process for each subnet ID.
    for the same region where your subnet is.
 
    5. Execute:
-    
+
        ```shell        
-       ./osd-network-verifier egress \
-           --subnet-id <subnet_id> 
+      # using AWS profile 
+      ./osd-network-verifier egress --subnet-id $SUBNET_ID --profile $AWS_PROFILE
+      
+      # using AWS secret 
+        AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY  \
+      ./osd-network-verifier egress --subnet-id $SUBNET_ID  
         ```
    
         Additional optional flags for overriding defaults:
       ```shell
-      --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources (default [osd-network-verifier=owned,red-hat-managed=true,Name=osd-network-verifier])
+      --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [osd-network-verifier=owned,red-hat-managed=true,Name=osd-network-verifier])
       --debug                       (optional) if true, enable additional debug-level logging
-      --image-id string             (optional) specify cloud image for the compute instance
-      --instance-type string        compute instance type (default "(optional) t3.micro")
+      --image-id string             (optional) cloud image for the compute instance
+      --instance-type string        (optional) compute instance type (default "t3.micro")
       --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
-      --region string               (optional) compute instance region. If absent, environment var AWS_DEFAULT_REGION will be used, if set (default "us-east-1")
+      --region string               (optional) compute instance region. If absent, environment var AWS_REGION will be used, if set (default "us-east-2")
+      --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored.
       --subnet-id string            source subnet ID
       --timeout duration            (optional) timeout for individual egress verification requests (default 2s). If timeout is less than 2s, it would likely cause false negatives test results.
-       ```
+         ```
+   
        Get cli help:
     
         ```shell
@@ -183,8 +190,14 @@ are both set to `true`. This tool automates that process
 ##### 2.1.1 CLI Executable #####
 Build the `osd-network-verifier` executable as shown the egress documentation above.
 Then run:
+
 ```shell
-AWS_ACCESS_KEY_ID=$(YOUR_AWS_ACCESS_KEY_ID) AWS_SECRET_ACCESS_KEY=$(YOUR_AWS_SECRET_ACCESS_KEY) ./osd-network-verifier dns --vpc-id=vpc-0123456789deadbeef
+ # using AWS profile    
+  ./osd-network-verifier dns --vpc-id=$VPC_ID --profile $AWS_PROFILE
+  
+ # using AWS secret
+  AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY  \
+  ./osd-network-verifier dns --vpc-id=$VPC_ID 
 ```
 
 ##### 2.1.2 Golang API #####

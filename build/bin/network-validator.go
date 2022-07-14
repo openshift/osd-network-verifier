@@ -20,8 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/crypto/ssh"
-
 	"gopkg.in/yaml.v2"
 )
 
@@ -164,6 +162,7 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 	httpClient.Transport = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		TLSClientConfig: &tls.Config{
+			// #nosec G402 -- Low chance of MITM, as the instance is short-lived, see OHSS-11465
 			InsecureSkipVerify: tlsDisabled,
 			// RootCAs defines the set of root certificate authorities that clients use when verifying server certificates.
 			// If RootCAs is nil, TLS uses the host's root CA set.
@@ -180,12 +179,6 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 			_, err = httpClient.Get(fmt.Sprintf("%s://%s", "http", host))
 		case 443:
 			_, err = httpClient.Get(fmt.Sprintf("%s://%s", "https", host))
-		case 22:
-			_, err = ssh.Dial("tcp", endpoint, &ssh.ClientConfig{HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: *timeout})
-			if err.Error() == "ssh: handshake failed: EOF" {
-				// at this point, connectivity is available
-				err = nil
-			}
 		default:
 			_, err = net.DialTimeout("tcp", endpoint, *timeout)
 		}

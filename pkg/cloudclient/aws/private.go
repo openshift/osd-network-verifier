@@ -60,19 +60,29 @@ var (
 		"me-south-1":     "ami-0483952b6a5997b06",
 	}
 	// TODO find a location for future docker images
-	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb"
+	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.197-16fe250"
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region, instanceType string, tags map[string]string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-			Value: aws.Credentials{
-				AccessKeyID: accessID, SecretAccessKey: accessSecret, SessionToken: sessiontoken,
-			},
-		}),
-	)
+func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region,
+	instanceType string, tags map[string]string, profile string) (*Client, error) {
+	var cfg aws.Config
+	var err error
+	if profile != "" {
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithSharedConfigProfile(profile),
+			config.WithRegion(region),
+		)
+	} else {
+		cfg, err = config.LoadDefaultConfig(ctx,
+			config.WithRegion(region),
+			config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+				Value: aws.Credentials{
+					AccessKeyID: accessID, SecretAccessKey: accessSecret, SessionToken: sessiontoken,
+				},
+			}),
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
