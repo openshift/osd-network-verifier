@@ -1,8 +1,10 @@
 package egress
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -77,12 +79,22 @@ are set correctly before execution.
 			}
 
 			// Set Up Proxy
-			// Get CACERT from env if exists
-			cacert := os.Getenv("CACERT")
+			if config.CaCert != "" {
+				// Read in the cert file
+				cert, err := ioutil.ReadFile(config.CaCert)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				// store string form of it
+				// this was agreed with sda that they'll be communicating it as a string.
+				config.CaCert = bytes.NewBuffer(cert).String()
+			}
+
 			p := proxy.ProxyConfig{
 				HttpProxy:  config.httpProxy,
 				HttpsProxy: config.httpsProxy,
-				Cacert:     cacert,
+				Cacert:     config.CaCert,
 				NoTls:      config.noTls,
 			}
 			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout, p)
@@ -106,6 +118,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
 	validateEgressCmd.Flags().StringVar(&config.httpProxy, "http-proxy", "", "(optional) http-proxy to be used upon http requests being made by verifier, format: http://user:pass@x.x.x.x:8978")
 	validateEgressCmd.Flags().StringVar(&config.httpsProxy, "https-proxy", "", "(optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978")
+	validateEgressCmd.Flags().StringVar(&config.CaCert, "cacert", "", "(optional) path to cacert file to be used upon https requests being made by verifier")
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, ignore all ssl certificate validations on client-side.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {

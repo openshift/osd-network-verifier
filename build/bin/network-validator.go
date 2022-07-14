@@ -5,7 +5,6 @@ package main
 
 // validations under proxy:
 // - assuming you have proxy server & https tls certs:
-// export CACERT=`cat mitmproxy-ca.pem`
 // $ HTTP_PROXY=http://user:pass@x.x.x.x:8888 HTTPS_PROXY=https://user:pass@x.x.x.x:8888 AWS_REGION=us-east-1 ./network-validator --timeout=3s --config=../config/config.yaml --cacert mitmproxy-ca.pem --no-tls
 
 import (
@@ -119,15 +118,16 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func embedProxyCertificate(cacertFile string) (*x509.CertPool, error) {
+func getProxyCertificate(cacertFile string) (*x509.CertPool, error) {
+	if cacertFile == "" {
+		// default is being set.
+		return nil, nil
+	}
+
 	// Get the SystemCertPool, continue with an empty pool on error
 	rootCAs, _ := x509.SystemCertPool()
 	if rootCAs == nil {
 		rootCAs = x509.NewCertPool()
-	}
-
-	if cacertFile == "" {
-		return rootCAs, nil
 	}
 
 	// Read in the cert file
@@ -152,7 +152,7 @@ func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile st
 	}
 
 	// Setup Certs
-	rootCAs, err := embedProxyCertificate(cacertFile)
+	rootCAs, err := getProxyCertificate(cacertFile)
 	if err != nil {
 		log.Fatalf("Failed to append %v to RootCAs: %v", rootCAs, err)
 		return err

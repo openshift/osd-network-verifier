@@ -129,11 +129,11 @@ repeat the verification process for each subnet ID.
 * Pass proxy config to be used to egress subcommand
 
 ```shell
-export CACERT=`cat mitmproxy-ca.pem`         
 ./osd-network-verifier egress \
     --subnet-id <subnet_id>  \
     --http-proxy http://sre:123@18.234.52.122:8888 \ 
     --https-proxy https://sre:123@18.234.52.122:8888 \
+    --cacert mitmproxy-ca.pem \
     --no-tls
 ```
 
