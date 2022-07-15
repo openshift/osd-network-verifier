@@ -133,7 +133,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.clientInput.ClientConfig.AWSConfig.InstanceType)},
 	}
 
-	//c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.clientInput.InstanceType)
+	c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.clientInput.ClientConfig.AWSConfig.InstanceType)
 	descOut, err := c.ec2Client.DescribeInstanceTypes(ctx, &descInput)
 	if err != nil {
 		// Check for invalid instance type error and return a cleaner error
