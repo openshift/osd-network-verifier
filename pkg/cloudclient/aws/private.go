@@ -102,7 +102,7 @@ func newClient(input *ClientInput) (*Client, error) {
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := cl.validateInstanceType(input.Ctx); err != nil {
-		return nil, fmt.Errorf("instance type %s can not be validated: %s", cl.clientInput.ClientConfig.AWSConfig.InstanceType, err)
+		return nil, fmt.Errorf("instance type %s cannot be validated: %s", cl.clientInput.ClientConfig.AWSConfig.InstanceType, err)
 	}
 
 	return cl, nil
