@@ -28,9 +28,9 @@ var execConfig = cloudclient.ExecConfig{Debug: true}
 
 func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd := &cobra.Command{
-		Use:        "egress",
-		Short:      "Verify essential openshift domains are reachable from given subnet ID.",
-		Long:       `Verify essential openshift domains are reachable from given subnet ID.`,
+		Use:   "egress",
+		Short: "Verify essential openshift domains are reachable from given subnet ID.",
+		Long:  `Verify essential openshift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars 
 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credentials) 
 are set correctly before execution.
