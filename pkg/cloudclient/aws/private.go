@@ -77,7 +77,7 @@ func getEc2ClientFromInput(input ClientInput) (*ec2.Client, error) {
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("can not get AWS config from profile `%s`", input.ClientConfig.AWSConfig.AwsProfile)
+		return nil, fmt.Errorf("cannot get AWS config from profile `%s`", input.ClientConfig.AWSConfig.AwsProfile)
 	}
 	return ec2.NewFromConfig(cfg), nil
 }
