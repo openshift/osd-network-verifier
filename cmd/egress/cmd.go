@@ -84,7 +84,7 @@ func rune(cmd *cobra.Command, args []string) error {
 
 	out.Summary()
 	if !out.IsSuccessful() {
-		return fmt.Errorf("Failure!")
+		return fmt.Errorf("failure")
 	}
 
 	logger.Info(ctx, "Success")
