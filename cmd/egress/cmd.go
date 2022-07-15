@@ -7,7 +7,7 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
-	"github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
+	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	"github.com/openshift/osd-network-verifier/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -29,8 +29,6 @@ var execConfig = cloudclient.ExecConfig{Debug: true}
 func NewCmdValidateEgress() *cobra.Command {
 	validateEgressCmd := &cobra.Command{
 		Use:        "egress",
-		Aliases:    nil,
-		SuggestFor: nil,
 		Short:      "Verify essential openshift domains are reachable from given subnet ID.",
 		Long:       `Verify essential openshift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars 
@@ -48,8 +46,8 @@ are set correctly before execution.
 	//client args - all these have defaults
 	validateEgressCmd.Flags().StringVar(&awsConfig.CloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&awsConfig.InstanceType, "instance-type", "t3.micro", "(optional) compute instance type")
-	validateEgressCmd.Flags().StringVar(&awsConfig.Region, "region", awsConfig.Region, fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", aws.RegionEnvVarStrAWS, aws.RegionDefaultAWS))
-	validateEgressCmd.Flags().StringToStringVar(&awsConfig.CloudTags, "cloud-tags", aws.DefaultTagsAWS, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().StringVar(&awsConfig.Region, "region", awsConfig.Region, fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", awsCloudClient.RegionEnvVarStrAWS, awsCloudClient.RegionDefaultAWS))
+	validateEgressCmd.Flags().StringToStringVar(&awsConfig.CloudTags, "cloud-tags", awsCloudClient.DefaultTagsAWS, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&execConfig.Debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&execConfig.Timeout, "timeout", cloudclient.DefaultTime, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&awsConfig.KmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")

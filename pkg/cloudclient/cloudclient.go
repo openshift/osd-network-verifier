@@ -70,9 +70,7 @@ func Register(providerType string, factoryFunc Factory) {
 // ExecConfig is used to format output, timeouts etc.
 func GetClientFor(clientConfig *ClientConfig, execConfig *ExecConfig) (CloudClient, error) {
 	platformType := utils.PlatformType(clientConfig.CloudType)
-	//if _, ok := controllerMapping[platformType]; ok {
 	cli, err := controllerMapping[platformType](clientConfig, execConfig)
-	//}
 	if err != nil {
 		return nil, (fmt.Errorf("Couldn't create cloud client for %s: %s", platformType, err))
 
