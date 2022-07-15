@@ -49,9 +49,10 @@ func produceAWS(clientConfig *cloudclient.ClientConfig, execConfig *cloudclient.
 
 	}
 	clientConfig.AWSConfig.Region = getAWSRegion(*clientConfig.AWSConfig)
-	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY") //https://issues.redhat.com/browse/OSD-12432
-	clientConfig.AWSConfig.AccessKeyId = os.Getenv("AWS_ACCESS_KEY_ID")         //https://issues.redhat.com/browse/OSD-12432
-	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY") //https://issues.redhat.com/browse/OSD-12432
+	// following vars should be defaulted to cli > env and then optionally a default set by client. todo OSD-12432.
+	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	clientConfig.AWSConfig.AccessKeyId = os.Getenv("AWS_ACCESS_KEY_ID")
+	clientConfig.AWSConfig.SecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 	input := ClientInput{
 		Ctx:    execConfig.Ctx,
 		Logger: execConfig.Logger,
