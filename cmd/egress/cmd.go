@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	defaultTags            = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	defaultTags            = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
 	regionEnvVarStr string = "AWS_REGION"
 	regionDefault   string = "us-east-2"
 )
@@ -67,7 +67,7 @@ are set correctly before execution.
 			}
 			logger.Info(ctx, "Using region: %s", config.region)
 			var creds interface{}
-			if (config.gcp == false) {
+			if config.gcp == false {
 				//AWS stuff
 				if config.awsProfile != "" {
 					creds = config.awsProfile

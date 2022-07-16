@@ -5,6 +5,7 @@ import (
 	// "encoding/base64"
 	// "errors"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"time"
 	// "io"
@@ -12,6 +13,7 @@ import (
 	compute "cloud.google.com/go/compute/apiv1"
 	computepb "google.golang.org/genproto/googleapis/cloud/compute/v1"
 	"google.golang.org/protobuf/proto"
+	computev1 "google.golang.org/api/compute/v1"
 	"os"
 	// "cloud.google.com/go/storage"
 	"golang.org/x/oauth2/google"
@@ -22,10 +24,10 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	//cli
-	computev1 "google.golang.org/api/compute/v1"
-	// "io/ioutil"
+	
 	// "io/ioutil"
 	"path/filepath"
+
 	// "reflect"
 	// "encoding/base64"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
@@ -56,8 +58,6 @@ var (
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-//build labels/tags method TODO
-
 //newClient method
 func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	//use oauth2 token in credentials struct to create client, JSON optional
@@ -75,8 +75,6 @@ func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Cr
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Println("working!", region, instanceType, computeService)
-	// time.Sleep(30 * time.Second)
 
 	return &Client{
 		projectID:      credentials.ProjectID,
@@ -89,27 +87,23 @@ func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Cr
 	}, nil
 }
 
-//ToDo func build tags
-
 //ToDo func createE2Instance
 func (c *Client) createE2Instance(ctx context.Context, input createE2InstanceInput) (createE2InstanceInput, error) {
+
 	instancesClient, err := compute.NewInstancesRESTClient(ctx)
 
 	if err != nil {
 		fmt.Errorf("NewInstancesRESTClient: %v", err)
 	}
-	defer instancesClient.Close()
+	// defer instancesClient.Close()
 
 	req := &computepb.InsertInstanceRequest{
 		Project: c.projectID,
 		Zone:    input.zone,
 		InstanceResource: &computepb.Instance{
 			Name: proto.String(input.instanceName),
-			//How to add network tag ? http/https? -- Not needed yet
 			// Tags: &computepb.Tags{
-			// 	items: [
-			// 		"https-server",
-			// 	],
+			// 	Items: []string{"http-server", "https-server"},
 			// },
 			Disks: []*computepb.AttachedDisk{
 				{
@@ -129,15 +123,13 @@ func (c *Client) createE2Instance(ctx context.Context, input createE2InstanceInp
 					Subnetwork: proto.String(input.vpcSubnetID),
 				},
 			},
-			// can call docker using startup script or pass cloud-init script to user-data
+			//call gcpuserdata.yaml cloud-init script
 			Metadata: &computepb.Metadata{
 				Items: []*computepb.Items{
 					//can pass startup script
 					// {
 					// 	Key: proto.String("startup-script"),
-					// 	Value: proto.String("#!/bin/bash\n" +
-					// 		"sudo mkdir  ~/../home/test; sudo docker run --env 'AWS_REGION=us-east-2' -e 'START_VERIFIER=VALIDATOR START' -e 'END_VERIFIER=VALIDATOR END' 'quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb' --timeout='2s'  >> ~/../home/test/userdata-output || echo 'Failed to successfully run the docker container';\n" +
-					// 		"cat ~/../home/test/userdata-output;"),
+					// 	Value: proto.String("#!/bin/bash\n"),
 					// },
 
 					//pass gcpuserdata.yaml
@@ -145,6 +137,7 @@ func (c *Client) createE2Instance(ctx context.Context, input createE2InstanceInp
 						Key:   proto.String("user-data"),
 						Value: proto.String(input.userdata),
 					},
+					//c.tags,
 				},
 			},
 		},
@@ -152,23 +145,99 @@ func (c *Client) createE2Instance(ctx context.Context, input createE2InstanceInp
 
 	instanceResp, err := instancesClient.Insert(ctx, req)
 	if err != nil {
-		fmt.Errorf("unable to create instance: %v", err)
+		fmt.Errorf("unable to create instance: %v %v", err, instanceResp)
 	}
 
-	if err = instanceResp.Wait(ctx); err != nil {
-		fmt.Errorf("unable to wait for the operation: %v", err)
-	}
-
-	fmt.Println("Instance created")
 	c.logger.Info(ctx, "Created instance with ID: %s", input.instanceName)
+
+	inst, err := c.computeService.Instances.Get(c.projectID, input.zone, input.instanceName).Do()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	//Add tags - known as labels in gcp
+	c.logger.Info(ctx, "Applying labels:", c.tags)
+
+	rb := &computev1.InstancesSetLabelsRequest{
+		LabelFingerprint: inst.LabelFingerprint,
+		Labels:           c.tags,
+	}
+
+	res, err := c.computeService.Instances.SetLabels(c.projectID, input.zone, input.instanceName, rb).Context(ctx).Do()
+	if err != nil {
+		fmt.Errorf("unable to create label: %v", err)
+		fmt.Printf("error occured when creating labels ", err)
+	}
+
+	if res != nil {
+		c.logger.Info(ctx, "Successfully applied labels ", c.tags)
+	}
 
 	return input, nil
 
 }
 
 //ToDo func describeE2Instances - check status code meaning and return
+// Returns instance state
+func (c *Client) describeE2Instances(ctx context.Context, zone string, instanceName string) (string, error) {
+	// States
+	//PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, TERMINATED, SUSPENDED
+	// https://cloud.google.com/compute/docs/instances/instance-life-cycle
+
+	resp, err := c.computeService.Instances.Get(c.projectID, zone, instanceName).Context(ctx).Do()
+	if err != nil {
+		c.logger.Error(ctx, "Errors while describing the instance status: %s", err.Error())
+		return "FATAL", err
+	}
+
+	// s := fmt.Sprintf("", resp)
+	// rgx := regexp.MustCompile(`PROVISIONING|STAGING|RUNNING|STOPPING|STOPPED|TERMINATED|SUSPENDED`)
+	status := resp.Status
+	if len(status) < 1 {
+		fmt.Println("Errors while describing the instance status: %v", err.Error())
+	}
+	switch status {
+	case "PROVISIONING", "STAGING":
+		fmt.Println("Waiting on operation: ", status)
+
+	case "STOPPING", "STOPPED", "TERMINATED", "SUSPENDED":
+		c.logger.Debug(ctx, "Fatal - Instance status: ", instanceName)
+		return "STOPPED", fmt.Errorf(status)
+	}
+	if len(status) == 0 {
+		c.logger.Debug(ctx, "Instance %s has no status yet", instanceName)
+	}
+	return status, nil
+}
 
 //ToDo func waitForEC2InstanceCompletion - check for timeout
+func (c *Client) waitForE2InstanceCompletion(ctx context.Context, zone string, instanceName string) error {
+	//wait for the instance to run
+	err := helpers.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
+		code, descError := c.describeE2Instances(ctx, zone, instanceName)
+		switch code {
+		case "RUNNING":
+			c.logger.Info(ctx, "E2 Instance: %s Running", instanceName)
+			// 16 represents a successful region initialization
+			// Instance is running, break
+			return true, nil
+
+		case "STOPPED":
+			return false, fmt.Errorf("Error - Instance status: %s", descError)
+
+		case "FATAL":
+			return false, fmt.Errorf("missing required permissions for account: %s", descError)
+		}
+
+		if descError != nil {
+			return false, descError // unhandled
+		}
+
+		return false, nil // continue loop
+	})
+
+	return err
+}
 
 //ToDo func generateUserData - helpers.usersdatatemplateGcp
 func generateUserData(variables map[string]string) (string, error) {
@@ -188,8 +257,6 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName stri
 	reVerify := regexp.MustCompile(userdataEndVerifier)
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 
-	// latest := true
-
 	// getConsoleOutput then parse, use c.output to store result of the execution
 	err := helpers.PollImmediate(40*time.Second, 80*time.Second, func() (bool, error) {
 		output, err := c.computeService.Instances.GetSerialPortOutput(c.projectID, zone, instanceName).Context(ctx).Do()
@@ -200,7 +267,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName stri
 		if output != nil {
 			// First, gather the ec2 console output
 			scriptOutput := fmt.Sprintf("%#v", output)
-			fmt.Println(output)
+			// fmt.Println(output)
 			if err != nil {
 				// unable to decode output. we will try again
 				c.logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
@@ -225,8 +292,6 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName stri
 			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 
-			// var reg = regexp.MustCompile(`(?m)^(.*Success!.*)`)
-			// success := reg.FindAllStringSubmatch(string(scriptOutput), -1)
 			if len(notFoundMatch) > 0 { //&& len(success) < 1
 				c.output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
 			}
@@ -275,7 +340,12 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 	return cloudImageID, nil
 }
 
-//creates and terminates a VM - uses cloud init script in VM
+// validateEgress performs validation process for egress
+// Basic workflow is:
+// - prepare for e2 instance creation
+// - create instance and wait till it gets ready, wait for gcpUserData script execution
+// - find unreachable endpoints & parse output, then terminate instance
+// - return `c.output` which stores the execution results
 func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	fmt.Println("using subnet ", vpcSubnetID)
@@ -316,7 +386,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		userdata:     userData,
 		zone:         "us-east1-b", //Note: gcp zone format is us-east1-b - fmt.Sprintf("%s-b", c.region),
 		machineType:  "e2-standard-2",
-		instanceName: "final",
+		instanceName: fmt.Sprintf("test%v", rand.Intn(2000)),
 		sourceImage:  "projects/cos-cloud/global/images/family/cos-97-lts",
 		networkName:  fmt.Sprintf("projects/%s/global/networks/hb-gcp-test-lzncg-network", c.projectID),
 
@@ -328,8 +398,13 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 	fmt.Println("working! ", instance.zone, instance.instanceName)
 
-	//stop instance after 40 seeconds
-	// time.Sleep(40 * time.Second)
+	c.logger.Debug(ctx, "Waiting for E2 instance %s to be running", instance.instanceName)
+	if instanceReadyErr := c.waitForE2InstanceCompletion(ctx, instance.zone, instance.instanceName); instanceReadyErr != nil {
+		c.terminateE2Instance(ctx, instance.instanceName, instance.zone) // try to terminate the created instance
+		return c.output.AddError(instanceReadyErr)                       // fatal
+	}
+
+	c.logger.Info(ctx, "Gathering and parsing console log output...")
 
 	err = c.findUnreachableEndpoints(ctx, instance.instanceName, instance.zone)
 	if err != nil {
