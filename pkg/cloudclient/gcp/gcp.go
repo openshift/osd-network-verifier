@@ -18,6 +18,7 @@ const ClientIdentifier string = "GCP"
 type Client struct {
 	projectID      string
 	region         string
+	zone           string
 	instanceType   string
 	computeService *computev1.Service
 	tags           map[string]string

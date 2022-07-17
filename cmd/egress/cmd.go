@@ -14,9 +14,11 @@ import (
 )
 
 var (
-	defaultTags            = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
-	regionEnvVarStr string = "AWS_REGION"
-	regionDefault   string = "us-east-2"
+	defaultTags               = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
+	regionEnvVarStr    string = "AWS_REGION"
+	regionDefault      string = "us-east-2"
+	GcpRegionEnvVarStr string = "GCP_REGION"
+	GcpRegionDefault   string = "us-east1"
 )
 
 type egressConfig struct {
@@ -40,6 +42,7 @@ func getDefaultRegion() string {
 		return regionDefault
 	}
 }
+
 func NewCmdValidateEgress() *cobra.Command {
 	config := egressConfig{}
 
@@ -65,8 +68,9 @@ are set correctly before execution.
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
-			logger.Info(ctx, "Using region: %s", config.region)
+
 			var creds interface{}
+
 			if config.gcp == false {
 				//AWS stuff
 				if config.awsProfile != "" {
@@ -82,19 +86,42 @@ are set correctly before execution.
 
 			} else {
 				// GCP stuff
-				// creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-				//gcp creds....
-				//cred:=
-				// cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
-				creds = &google.Credentials{ProjectID: "himanshub3"}
+
 				//gcp cli,err := ...NewClient... (..Credentials, google.credentials)
 				if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
 					logger.Error(ctx, "please set environment variable GOOGLE_APPLICATION_CREDENTIALS to the credentials json file path")
 					os.Exit(1)
 				}
-				logger.Info(ctx, "Using GCP credential json file from %s", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 
+				if os.Getenv("GCP_VPC_NAME") == "" {
+					logger.Error(ctx, "please set environment variable GCP_VPC_NAME to the name of VPC")
+					os.Exit(1)
+				}
+
+				if os.Getenv("GCP_PROJECT_ID") == "" {
+					logger.Error(ctx, "please set environment variable GCP_PROJECT_ID to the project ID of VPC")
+					os.Exit(1)
+				}
+				creds = &google.Credentials{ProjectID: os.Getenv("GCP_PROJECT_ID")}
+
+				//gcp region
+				val, present := os.LookupEnv(GcpRegionEnvVarStr)
+				if present {
+					config.region = val
+				} else {
+					config.region = GcpRegionDefault
+				}
+
+				//default gcp machine e2
+				if config.instanceType == "t3.micro" {
+					config.instanceType = "e2-standard-2"
+				}
+
+				logger.Info(ctx, "Using GCP credential json file from %s", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+				logger.Info(ctx, "Using Project ID %s", os.Getenv("GCP_PROJECT_ID"))
 			}
+
+			logger.Info(ctx, "Using region: %s", config.region)
 
 			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
 			if err != nil {
@@ -103,8 +130,6 @@ are set correctly before execution.
 			}
 
 			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout)
-
-			//gcp validate egress cloudclient.... out :=
 
 			out.Summary()
 			if !out.IsSuccessful() {
