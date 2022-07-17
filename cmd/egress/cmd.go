@@ -88,10 +88,6 @@ are set correctly before execution.
 				// GCP stuff
 
 				//gcp cli,err := ...NewClient... (..Credentials, google.credentials)
-				if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
-					logger.Error(ctx, "please set environment variable GOOGLE_APPLICATION_CREDENTIALS to the credentials json file path")
-					os.Exit(1)
-				}
 
 				if os.Getenv("GCP_VPC_NAME") == "" {
 					logger.Error(ctx, "please set environment variable GCP_VPC_NAME to the name of VPC")
@@ -103,6 +99,12 @@ are set correctly before execution.
 					os.Exit(1)
 				}
 				creds = &google.Credentials{ProjectID: os.Getenv("GCP_PROJECT_ID")}
+
+				if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+					logger.Info(ctx, "GOOGLE_APPLICATION_CREDENTIALS not set; using service account attached to %s", os.Getenv("GCP_PROJECT_ID"))
+				} else {
+					logger.Info(ctx, "Using GCP credential json file from %s", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+				}
 
 				//gcp region
 				val, present := os.LookupEnv(GcpRegionEnvVarStr)
@@ -117,7 +119,6 @@ are set correctly before execution.
 					config.instanceType = "e2-standard-2"
 				}
 
-				logger.Info(ctx, "Using GCP credential json file from %s", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 				logger.Info(ctx, "Using Project ID %s", os.Getenv("GCP_PROJECT_ID"))
 			}
 

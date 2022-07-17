@@ -1,25 +1,25 @@
 package gcp
+
 //Features to add - image-id, kms-key-id
 import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"regexp"
 	"time"
-	"os"
-	"path/filepath"
+	// "path/filepath"
 
 	compute "cloud.google.com/go/compute/apiv1"
+	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
 	computepb "google.golang.org/genproto/googleapis/cloud/compute/v1"
 	"google.golang.org/protobuf/proto"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/option"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
 type createE2InstanceInput struct {
@@ -51,13 +51,11 @@ var (
 func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	//use oauth2 token in credentials struct to create client,
 	// https://pkg.go.dev/golang.org/x/oauth2/google#Credentials
-	//env var has path to json file
-	absPath, err := filepath.Abs(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 
-	if err != nil {
-		return nil, err
-	}
-	computeService, err := computev1.NewService(ctx, option.WithCredentialsFile(absPath))
+	// https://cloud.google.com/docs/authentication/production
+	//service account credentials order - env variable, service account attached to resource, error
+
+	computeService, err := computev1.NewService(ctx)
 	if err != nil {
 		return nil, err
 	}
