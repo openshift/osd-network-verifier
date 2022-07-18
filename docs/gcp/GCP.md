@@ -1,7 +1,7 @@
 ### Table of Contents ###
 
-Current functional egress flags for GCP are subnet-id, instance-type, region, cloud-tags, debug, timeout
-TODO egress flags for GCP image-id, kms-key-id
+### Current functional egress flags for GCP are subnet-id, instance-type, region, cloud-tags, debug, timeout ###
+### TODO egress flags for GCP image-id, kms-key-id ###
 
 - [Setup](#setup)
   - [GCP Environment](#gcp-environment)
