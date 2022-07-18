@@ -41,9 +41,10 @@ repeat the verification process for each subnet ID.
 ##### 1.1.1 CLI Executable #####
    1. Ensure correct [environment setup](#setup).
 
-   2. Clone the source:
+   2. Clone the source and switch to branch gcpPrivateGo:
       ```shell
       git clone https://github.com/hbhushan3/osd-network-verifier.git
+      git checkout gcpPrivateGo
       ``` 
    3. Build the cli:
       ```shell
