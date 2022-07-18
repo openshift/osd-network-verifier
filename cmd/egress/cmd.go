@@ -87,8 +87,6 @@ are set correctly before execution.
 			} else {
 				// GCP stuff
 
-				//gcp cli,err := ...NewClient... (..Credentials, google.credentials)
-
 				if os.Getenv("GCP_VPC_NAME") == "" {
 					logger.Error(ctx, "please set environment variable GCP_VPC_NAME to the name of VPC")
 					os.Exit(1)
@@ -110,7 +108,7 @@ are set correctly before execution.
 				val, present := os.LookupEnv(GcpRegionEnvVarStr)
 				if present {
 					config.region = val
-				} else {
+				} else if config.region == regionDefault {
 					config.region = GcpRegionDefault
 				}
 
