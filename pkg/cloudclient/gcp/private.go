@@ -318,7 +318,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName stri
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
-			c.logger.Debug(ctx, "Full E2 console output:\n---\n%s\n---", scriptOutput)
+			c.logger.Debug(ctx, "Full E2 console output:\n---\n%s\n---", output)
 
 			c.output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
 			return true, nil
