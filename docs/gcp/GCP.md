@@ -43,7 +43,7 @@ repeat the verification process for each subnet ID.
 
    2. Clone the source:
       ```shell
-      git clone git@github.com:openshift/osd-network-verifier.git
+      git clone https://github.com/hbhushan3/osd-network-verifier.git
       ``` 
    3. Build the cli:
       ```shell
