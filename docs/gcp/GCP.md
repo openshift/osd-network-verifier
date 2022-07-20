@@ -1,5 +1,8 @@
 ### Table of Contents ###
 
+### Current functional egress flags for GCP are subnet-id, instance-type, region, cloud-tags, debug, timeout ###
+### TODO Add features - egress flags - image-id, kms-key-id for GCP ###
+
 - [Setup](#setup)
   - [GCP Environment](#gcp-environment)
 - [Available tools](#available-tools)
@@ -9,7 +12,7 @@
 
 ## Setup ##
 ### GCP Environment ###
-Set up your environment to use the correct VPC name, project ID, credentials for the GCP account for the target cluster. 
+Set up your environment to use the correct VPC name, project ID, credentials of the GCP account for the target cluster.
 - Make sure to have a Service Account with the permissions required within your GCP account (in that project). This can be done in the following ways:
   -  Follow the steps to use a script as prescibed in [this document.](https://github.com/openshift/ops-sop/blob/master/gcp/create-ccs-project.md) or create a service account manually [this] (https://cloud.google.com/iam/docs/creating-managing-service-accounts#iam-service-accounts-create-gcloud)
   - Export these GCP environment variables:
@@ -24,27 +27,8 @@ Set up your environment to use the correct VPC name, project ID, credentials for
       ````
   
 ### IAM permissions ###
-Ensure that the AWS credentials being used have the following permissions. (This list is a subset of permissions documented in the Support role and Support policy sections [in this doc.](https://docs.openshift.com/rosa/rosa_architecture/rosa-sts-about-iam-resources.html#rosa-sts-account-wide-roles-and-policies_rosa-sts-about-iam-resources))
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ec2:CreateTags",
-        "ec2:RunInstances",
-        "ec2:DescribeInstanceStatus",
-        "ec2:DescribeInstanceTypes",
-        "ec2:GetConsoleOutput",
-        "ec2:TerminateInstances",
-        "ec2:DescribeVpcAttribute"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+Ensure that the GCP credentials being used have the following permissions:
+![image](https://user-images.githubusercontent.com/77566186/179435749-0fc92102-21e5-43e8-a401-32cabeb19f56.png)
  
 ## Available Tools ##
 
@@ -57,9 +41,10 @@ repeat the verification process for each subnet ID.
 ##### 1.1.1 CLI Executable #####
    1. Ensure correct [environment setup](#setup).
 
-   2. Clone the source:
+   2. Clone the source and switch to branch gcpPrivateGo:
       ```shell
-      git clone git@github.com:openshift/osd-network-verifier.git
+      git clone https://github.com/hbhushan3/osd-network-verifier.git
+      git checkout gcpPrivateGo
       ``` 
    3. Build the cli:
       ```shell
