@@ -8,7 +8,7 @@ import (
 	"os"
 	"regexp"
 	"time"
-	
+
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
 
