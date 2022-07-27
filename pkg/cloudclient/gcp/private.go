@@ -154,7 +154,7 @@ func (c *Client) createComputeServiceInstance(ctx context.Context, input createC
 	//send request to computeService
 	instanceResp, err := c.computeService.Instances.Insert(c.projectID, c.zone, req).Context(ctx).Do()
 	if err != nil {
-		fmt.Errorf("unable to create instance: %v %v", err, instanceResp)
+		return input, fmt.Errorf("unable to create instance: %v %v", err, instanceResp)
 	}
 
 	c.logger.Info(ctx, "Created instance with ID: %s", input.instanceName)
@@ -162,7 +162,7 @@ func (c *Client) createComputeServiceInstance(ctx context.Context, input createC
 	//get fingerprint from instance
 	inst, err := c.computeService.Instances.Get(c.projectID, c.zone, input.instanceName).Do()
 	if err != nil {
-		fmt.Errorf("Failed to get fingerprint to apply tags to instance %v", err)
+		c.logger.Debug(ctx, "Failed to get fingerprint to apply tags to instance %v", err)
 	}
 
 	//Add tags - known as labels in gcp
@@ -173,10 +173,10 @@ func (c *Client) createComputeServiceInstance(ctx context.Context, input createC
 		Labels:           c.tags,
 	}
 
-	//send request to apply tags
+	//send request to apply tags, continue if tags are invalid
 	resp, err := c.computeService.Instances.SetLabels(c.projectID, c.zone, input.instanceName, reqbody).Context(ctx).Do()
 	if err != nil {
-		fmt.Errorf("unable to create label: %v", err)
+		c.logger.Info(ctx, "Unable to create label: %v", err)
 	}
 
 	if resp != nil {
@@ -204,12 +204,10 @@ func (c *Client) describeComputeServiceInstances(ctx context.Context, instanceNa
 
 	// Get status of vm
 	status := resp.Status
-	if len(status) < 1 {
-		fmt.Errorf("Errors while describing the instance status: %v", err.Error())
-	}
+
 	switch status {
 	case "PROVISIONING", "STAGING":
-		c.logger.Debug(ctx, "Waiting on VM operation: ", status)
+		c.logger.Debug(ctx, "Waiting on VM operation: %s", status)
 
 	case "STOPPING", "STOPPED", "TERMINATED", "SUSPENDED":
 		c.logger.Debug(ctx, "Fatal - Instance status: ", instanceName)
@@ -324,26 +322,24 @@ func (c *Client) terminateComputeServiceInstance(ctx context.Context, instanceNa
 	c.logger.Info(ctx, "Terminating ComputeService instance with id %s", instanceName)
 
 	_, err := c.computeService.Instances.Stop(c.projectID, c.zone, instanceName).Context(ctx).Do()
-	if err != nil {
-		fmt.Errorf("Unable to terminate instance: %v", err)
-	}
 
 	c.output.AddError(err)
 
 }
 
+//Feature will be added soon
 func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 	// If a cloud image wasn't provided by the caller,
 	// if cloudImageID == "" {
 	// use defaultContOptImage for the region instead
 	// cloudImageID = defaultContOptImage[c.region]
-	cloudImageID = defaultContOptImage["default"]
-	if cloudImageID == "" {
-		return "", fmt.Errorf("no default container optimized image (ContOptImage) found for region %s ", c.region)
+	cloudImage := defaultContOptImage["default"]
+	if cloudImage == "" {
+		return "", fmt.Errorf("no default container optimized image (ContOptImage) found for region %s %s", c.region, cloudImageID)
 	}
 	// }
 
-	return cloudImageID, nil
+	return cloudImage, nil
 }
 
 // validateEgress performs validation process for egress

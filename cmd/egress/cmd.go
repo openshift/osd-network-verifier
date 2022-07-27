@@ -71,7 +71,7 @@ are set correctly before execution.
 
 			var creds interface{}
 
-			if config.gcp == false {
+			if !config.gcp {
 				//AWS stuff
 				if config.awsProfile != "" {
 					creds = config.awsProfile
