@@ -2,7 +2,7 @@ include project.mk
 
 # Include shared Makefiles
 include boilerplate/generated-includes.mk
-# test
+
 GOFLAGS=-mod=mod
 
 .PHONY: build

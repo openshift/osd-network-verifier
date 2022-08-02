@@ -22,34 +22,25 @@ type createComputeServiceInstanceInput struct {
 	ContOptImageID string
 	vpcSubnetID    string
 	userdata       string
-	// ebsKmsKeyID   string
-	zone         string
-	machineType  string
-	instanceName string
-	sourceImage  string
-	networkName  string
+	zone           string
+	machineType    string
+	instanceName   string
+	sourceImage    string
+	networkName    string
 }
 
-// //global variable ContOptImage image, gcp has region, zone
-
 var (
-	defaultContOptImage = map[string]string{
-		// using google container optimized image
-		"default": "cos-97-lts",
-		//other regions to add
-	}
 	// TODO find a location for future docker images
 	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb"
 	userdataEndVerifier   string = "USERDATA END"
 )
 
-//newClient method
 func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
-	//use oauth2 token in credentials struct to create client,
+	//use oauth2 token in credentials struct to create a client,
 	// https://pkg.go.dev/golang.org/x/oauth2/google#Credentials
 
 	// https://cloud.google.com/docs/authentication/production
-	//service account credentials order - env variable, service account attached to resource, error
+	//service account credentials order/priority - env variable, service account attached to resource, error
 
 	computeService, err := computev1.NewService(ctx)
 	if err != nil {
@@ -81,7 +72,6 @@ func (c *Client) validateMachineType(ctx context.Context) error {
 
 	descOut := c.computeService.MachineTypes.List(c.projectID, c.zone)
 
-	//check if instanceType is in the list
 	found := false
 	if err := descOut.Pages(ctx, func(page *computev1.MachineTypeList) error {
 		for _, machineType := range page.Items {
@@ -104,22 +94,17 @@ func (c *Client) validateMachineType(ctx context.Context) error {
 	return nil
 }
 
-//ToDo func createComputeServiceInstance
 func (c *Client) createComputeServiceInstance(ctx context.Context, input createComputeServiceInstanceInput) (createComputeServiceInstanceInput, error) {
 
 	req := &computev1.Instance{
 		Name:        input.instanceName,
 		MachineType: fmt.Sprintf("zones/%s/machineTypes/%s", c.zone, input.machineType),
 
-		// Tags: &computev1.Tags{
-		// 	Items: []string{"http-server", "https-server"},
-		// },
 		Disks: []*computev1.AttachedDisk{
 			{
 				InitializeParams: &computev1.AttachedDiskInitializeParams{
 					DiskSizeGb:  10,
 					SourceImage: input.sourceImage,
-					// sourceImageEncryptionKey: &computepb.
 				},
 				AutoDelete: true,
 				Boot:       true,
@@ -133,16 +118,9 @@ func (c *Client) createComputeServiceInstance(ctx context.Context, input createC
 				Subnetwork: input.vpcSubnetID,
 			},
 		},
-		//pass gcpuserdata.yaml cloud-init script
+
 		Metadata: &computev1.Metadata{
 			Items: []*computev1.MetadataItems{
-				//can pass startup script
-				// {
-				// 	Key: proto.String("startup-script"),
-				// 	Value: proto.String("#!/bin/bash\n"),
-				// },
-
-				//pass gcpuserdata.yaml
 				{
 					Key:   "user-data",
 					Value: &input.userdata,
@@ -173,22 +151,18 @@ func (c *Client) createComputeServiceInstance(ctx context.Context, input createC
 		Labels:           c.tags,
 	}
 
-	//send request to apply tags, continue if tags are invalid
+	//send request to apply tags, return error if tags are invalid
 	resp, err := c.computeService.Instances.SetLabels(c.projectID, c.zone, input.instanceName, reqbody).Context(ctx).Do()
 	if err != nil {
-		c.logger.Info(ctx, "Unable to create label: %v", err)
+		return input, fmt.Errorf("Unable to create labels: %v %v", err, resp)
 	}
 
-	if resp != nil {
-		c.logger.Info(ctx, "Successfully applied labels ")
-	}
+	c.logger.Info(ctx, "Successfully applied labels ")
 
 	return input, nil
 
 }
 
-//ToDo func describeComputeServiceInstances - check status code meaning and return
-// Returns instance state
 func (c *Client) describeComputeServiceInstances(ctx context.Context, instanceName string) (string, error) {
 	// States
 	//PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, TERMINATED, SUSPENDED
@@ -202,7 +176,6 @@ func (c *Client) describeComputeServiceInstances(ctx context.Context, instanceNa
 		return "PERMISSION DENIED", err
 	}
 
-	// Get status of vm
 	status := resp.Status
 
 	switch status {
@@ -220,7 +193,6 @@ func (c *Client) describeComputeServiceInstances(ctx context.Context, instanceNa
 	return status, nil
 }
 
-//ToDo func waitForEC2InstanceCompletion - check for timeout
 func (c *Client) waitForComputeServiceInstanceCompletion(ctx context.Context, instanceName string) error {
 	//wait for the instance to run
 	err := helpers.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
@@ -248,7 +220,6 @@ func (c *Client) waitForComputeServiceInstanceCompletion(ctx context.Context, in
 	return err
 }
 
-//ToDo func generateUserData - helpers.usersdatatemplateGcp
 func generateUserData(variables map[string]string) (string, error) {
 	variableMapper := func(varName string) string {
 		return variables[varName]
@@ -258,7 +229,6 @@ func generateUserData(variables map[string]string) (string, error) {
 	return data, nil
 }
 
-//ToDo func findUnreachableEndpoints
 func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName string) error {
 	// Compile the regular expressions once
 	reVerify := regexp.MustCompile(userdataEndVerifier)
@@ -270,7 +240,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName stri
 		if err != nil {
 			return false, err
 		}
-		// fmt.Println(output)
+
 		if output != nil {
 			// First, gather the ComputeService console output
 			scriptOutput := fmt.Sprintf("%#v", output)
@@ -316,7 +286,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceName stri
 	return err
 }
 
-// terminateComputeServiceInstance terminates target ec2 instance
+// terminateComputeServiceInstance terminates target ComputeService instance
 // uses c.output to store result of the execution
 func (c *Client) terminateComputeServiceInstance(ctx context.Context, instanceName string) {
 	c.logger.Info(ctx, "Terminating ComputeService instance with id %s", instanceName)
@@ -327,19 +297,14 @@ func (c *Client) terminateComputeServiceInstance(ctx context.Context, instanceNa
 
 }
 
-//Feature will be added soon
 func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 	// If a cloud image wasn't provided by the caller,
-	// if cloudImageID == "" {
-	// use defaultContOptImage for the region instead
-	// cloudImageID = defaultContOptImage[c.region]
-	cloudImage := defaultContOptImage["default"]
-	if cloudImage == "" {
-		return "", fmt.Errorf("no default container optimized image (ContOptImage) found for region %s %s", c.region, cloudImageID)
+	if cloudImageID == "" {
+		// use default container optimized image
+		cloudImageID = "cos-97-lts"
 	}
-	// }
 
-	return cloudImage, nil
+	return cloudImageID, nil
 }
 
 // validateEgress performs validation process for egress
@@ -365,8 +330,8 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	if err != nil {
 		return c.output.AddError(err)
 	}
+
 	c.logger.Debug(ctx, "Generated userdata script:\n---\n%s\n---", userData)
-	// time.Sleep(40 * time.Second)
 
 	cloudImageID, err = c.setCloudImage(cloudImageID)
 	if err != nil {
@@ -387,14 +352,12 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		userdata:     userData,
 		zone:         c.zone, //Note: gcp zone format is us-east1-b
 		machineType:  c.instanceType,
-		instanceName: fmt.Sprintf("verifier-%v", rand.Intn(1000)),
+		instanceName: fmt.Sprintf("verifier-%v", rand.Intn(10000)),
 		sourceImage:  fmt.Sprintf("projects/cos-cloud/global/images/family/%s", cloudImageID),
 		networkName:  fmt.Sprintf("projects/%s/global/networks/%s", c.projectID, os.Getenv("GCP_VPC_NAME")),
-
-		// ebsKmsKeyID:   kmsKeyID,
-
 	})
 	if err != nil {
+		c.terminateComputeServiceInstance(ctx, instance.instanceName)
 		return c.output.AddError(err) // fatal
 	}
 
