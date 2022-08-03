@@ -343,10 +343,6 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 
 	//image list https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel
 
-	//container images https://cloud.google.com/compute/docs/containers#container_images
-
-	//sourceImage := "projects/fedora-coreos-cloud/global/images/family/fedora-coreos-stable"
-
 	instance, err := c.createComputeServiceInstance(ctx, createComputeServiceInstanceInput{
 		vpcSubnetID:  fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", c.projectID, c.region, vpcSubnetID),
 		userdata:     userData,
