@@ -48,9 +48,11 @@ func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Cr
 	}
 
 	c := &Client{
-		projectID:      credentials.ProjectID,
-		region:         region,
-		zone:           fmt.Sprintf("%s-b", region), //append zone b
+		projectID: credentials.ProjectID,
+		region:    region,
+		//Zone b is supported by all regions and has the most machine types compared to zone a and c
+		//https://cloud.google.com/compute/docs/regions-zones#available
+		zone:           fmt.Sprintf("%s-b", region),
 		instanceType:   instanceType,
 		computeService: computeService,
 		tags:           tags,
@@ -68,7 +70,7 @@ func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Cr
 func (c *Client) validateMachineType(ctx context.Context) error {
 	//  machineTypes List https://cloud.google.com/compute/docs/reference/rest/v1/machineTypes/list
 
-	c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.instanceType)
+	c.logger.Debug(ctx, "Gathering description of instance type %s from ComputeService API", c.instanceType)
 
 	descOut := c.computeService.MachineTypes.List(c.projectID, c.zone)
 
@@ -224,7 +226,7 @@ func generateUserData(variables map[string]string) (string, error) {
 	variableMapper := func(varName string) string {
 		return variables[varName]
 	}
-	data := os.Expand(helpers.UserdataTemplateGcp, variableMapper)
+	data := os.Expand(helpers.UserdataTemplate, variableMapper)
 
 	return data, nil
 }
@@ -346,7 +348,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	instance, err := c.createComputeServiceInstance(ctx, createComputeServiceInstanceInput{
 		vpcSubnetID:  fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", c.projectID, c.region, vpcSubnetID),
 		userdata:     userData,
-		zone:         c.zone, //Note: gcp zone format is us-east1-b
+		zone:         c.zone,
 		machineType:  c.instanceType,
 		instanceName: fmt.Sprintf("verifier-%v", rand.Intn(10000)),
 		sourceImage:  fmt.Sprintf("projects/cos-cloud/global/images/family/%s", cloudImageID),
