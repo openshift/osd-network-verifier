@@ -123,7 +123,7 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 
 func (c *Client) validateInstanceType(ctx context.Context) error {
 	// Describe the provided instance type only
-	//      https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
+	//     https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
 	descInput := ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.instanceType)},
 	}
