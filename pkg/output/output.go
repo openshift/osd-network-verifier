@@ -8,7 +8,7 @@ import (
 
 // Output can be used when showcasing validation results at the end of the execution.
 // `failures` represents the failed validation tests
-// `exceptions` is to show edge cases where onv couldn't be ended up as expected
+// `exceptions` is to show edge cases where a verifier test couldn't be ran as expected
 // `errors` is collection of unhandled errors
 type Output struct {
 	failures   []error
@@ -54,7 +54,7 @@ func (o *Output) printFailures() {
 }
 
 func (o *Output) printExceptions() {
-	fmt.Println("printing out exceptions preventing onv from running:")
+	fmt.Println("printing out exceptions preventing the verifier from running the specific test:")
 	for _, v := range o.exceptions {
 		fmt.Println(" - ", v)
 	}
