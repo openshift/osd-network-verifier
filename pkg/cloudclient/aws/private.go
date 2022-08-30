@@ -125,7 +125,7 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 
 func (c *Client) validateInstanceType(ctx context.Context) error {
 	// Describe the provided instance type only
-	//      https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
+	//     https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
 	descInput := ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.instanceType)},
 	}
@@ -324,8 +324,17 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
 			if len(notFoundMatch) > 0 {
-				c.output.AddException(handledErrors.NewGenericError(
-					"internet connectivity problem: please ensure there's internet access in given vpc subnets"))
+
+				errorMsg := "Generic issue: egress tests were not run due to an uncaught error in setup or execution. Further investigation needed"
+
+				dockerRgx := regexp.MustCompile(`(?m)(docker)`)
+				dockerIssue := dockerRgx.FindAllString(string(scriptOutput), -1)
+				if len(dockerIssue) > 0 {
+					errorMsg = "Docker was unable to install or run. Further investigation needed"
+				}
+				c.output.AddException(handledErrors.NewGenericError(errorMsg))
+				c.output.AddError(handledErrors.NewGenericError(fmt.Sprint(notFoundMatch)))
+				c.logger.Debug(ctx, fmt.Sprint(notFoundMatch))
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run

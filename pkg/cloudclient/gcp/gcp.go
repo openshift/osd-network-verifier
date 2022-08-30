@@ -9,7 +9,6 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
-	"google.golang.org/api/option"
 )
 
 // ClientIdentifier is what kind of cloud this implement supports
@@ -19,6 +18,7 @@ const ClientIdentifier string = "GCP"
 type Client struct {
 	projectID      string
 	region         string
+	zone           string
 	instanceType   string
 	computeService *computev1.Service
 	tags           map[string]string
@@ -31,8 +31,8 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, p proxy.ProxyConfig) *output.Output {
-	return &c.output
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
+	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
 }
 
 func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
@@ -42,20 +42,4 @@ func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {
 func NewClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
 	// initialize actual client
 	return newClient(ctx, logger, credentials, region, instanceType, tags)
-}
-
-func newClient(ctx context.Context, logger ocmlog.Logger, credentials *google.Credentials, region, instanceType string, tags map[string]string) (*Client, error) {
-	computeService, err := computev1.NewService(ctx, option.WithCredentials(credentials))
-	if err != nil {
-		return nil, err
-	}
-
-	return &Client{
-		projectID:      credentials.ProjectID,
-		region:         region,
-		instanceType:   instanceType,
-		computeService: computeService,
-		tags:           tags,
-		logger:         logger,
-	}, nil
 }

@@ -1,5 +1,6 @@
 package gcp
 
+//tests for ValidateEgress, NewClient have been skipped because it calls gcp api
 import (
 	"context"
 	"testing"
@@ -21,6 +22,7 @@ func TestByoVPCValidator(t *testing.T) {
 }
 
 func TestValidateEgress(t *testing.T) {
+	t.Skip("Skipping testing for ValidateEgress as it calls gcp api")
 	ctx := context.TODO()
 	subnetID := "subnet-id"
 	cloudImageID := "image-id"
@@ -32,6 +34,7 @@ func TestValidateEgress(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Skip("Skipping testing for NewClient as it calls gcp api")
 	ctx := context.TODO()
 	logger := &ocmlog.StdLogger{}
 	credentials := &google.Credentials{ProjectID: "my-sample-project-191923"}

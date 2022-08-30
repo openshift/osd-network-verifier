@@ -13,12 +13,15 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/spf13/cobra"
+	"golang.org/x/oauth2/google"
 )
 
 var (
-	defaultTags            = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	regionEnvVarStr string = "AWS_REGION"
-	regionDefault   string = "us-east-2"
+	defaultTags               = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
+	awsRegionEnvVarStr string = "AWS_REGION"
+	awsRegionDefault   string = "us-east-2"
+	gcpRegionEnvVarStr string = "GCP_REGION"
+	gcpRegionDefault   string = "us-east1"
 )
 
 type egressConfig struct {
@@ -34,17 +37,31 @@ type egressConfig struct {
 	httpsProxy   string
 	CaCert       string
 	noTls        bool
+	gcp          bool
 	awsProfile   string
 }
 
-func getDefaultRegion() string {
-	val, present := os.LookupEnv(regionEnvVarStr)
-	if present {
-		return val
+func getDefaultRegion(cloudProvider string) string {
+	if cloudProvider != "gcp" {
+		//aws region
+		val, present := os.LookupEnv(awsRegionEnvVarStr)
+		if present {
+			return val
+		} else {
+			return awsRegionDefault
+		}
 	} else {
-		return regionDefault
+		//gcp region
+		val, present := os.LookupEnv(gcpRegionEnvVarStr)
+		if present {
+			return val
+		} else {
+			return gcpRegionDefault
+		}
 	}
+
 }
+
 func NewCmdValidateEgress() *cobra.Command {
 	config := egressConfig{}
 
@@ -70,14 +87,59 @@ are set correctly before execution.
 				fmt.Printf("Unable to build logger: %s\n", err.Error())
 				os.Exit(1)
 			}
-			logger.Info(ctx, "Using region: %s", config.region)
+
 			var creds interface{}
-			if config.awsProfile != "" {
-				creds = config.awsProfile
-				logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
+
+			if !config.gcp {
+				//AWS stuff
+				if config.region == "" {
+					config.region = getDefaultRegion("aws")
+				}
+				//default aws machine t3
+				if config.instanceType == "" {
+					config.instanceType = "t3.micro"
+				}
+				if config.awsProfile != "" {
+					creds = config.awsProfile
+					logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
+				} else {
+					creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+				}
+				if err != nil {
+					logger.Error(ctx, err.Error())
+					os.Exit(1)
+				}
+
 			} else {
-				creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+				// GCP stuff
+				if config.region == "" {
+					config.region = getDefaultRegion("gcp")
+				}
+				if os.Getenv("GCP_VPC_NAME") == "" {
+					logger.Error(ctx, "please set environment variable GCP_VPC_NAME to the name of VPC")
+					os.Exit(1)
+				}
+
+				if os.Getenv("GCP_PROJECT_ID") == "" {
+					logger.Error(ctx, "please set environment variable GCP_PROJECT_ID to the project ID of VPC")
+					os.Exit(1)
+				}
+				creds = &google.Credentials{ProjectID: os.Getenv("GCP_PROJECT_ID")}
+
+				if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+					logger.Info(ctx, "GOOGLE_APPLICATION_CREDENTIALS not set; using service account attached to %s", os.Getenv("GCP_PROJECT_ID"))
+				} else {
+					logger.Info(ctx, "Using GCP credential json file from %s", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+				}
+				//default gcp machine e2
+				if config.instanceType == "" {
+					config.instanceType = "e2-standard-2"
+				}
+				logger.Info(ctx, "Using Project ID %s", os.Getenv("GCP_PROJECT_ID"))
 			}
+
+			logger.Info(ctx, "Using region: %s", config.region)
+
 			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
 			if err != nil {
 				logger.Error(ctx, err.Error())
@@ -105,6 +167,7 @@ are set correctly before execution.
 			}
 
 			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout, p)
+
 			out.Summary()
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
@@ -117,8 +180,8 @@ are set correctly before execution.
 
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
-	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "t3.micro", "(optional) compute instance type")
-	validateEgressCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v will be used, if set", regionEnvVarStr, regionDefault))
+	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
+	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 2*time.Second, "(optional) timeout for individual egress verification requests")
@@ -127,6 +190,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.httpsProxy, "https-proxy", "", "(optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978")
 	validateEgressCmd.Flags().StringVar(&config.CaCert, "cacert", "", "(optional) path to cacert file to be used upon https requests being made by verifier")
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, ignore all ssl certificate validations on client-side.")
+	validateEgressCmd.Flags().BoolVar(&config.gcp, "gcp", false, "Set to true if cluster is GCP")
 	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {

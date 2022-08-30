@@ -4,7 +4,7 @@ package_update: true
 packages:
   - docker 
 runcmd:
-  - sudo service docker start
+  - sudo service docker start 2>1 > /dev/null || echo "docker not started by systemctl"
   - echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
   - sudo docker pull ${VALIDATOR_IMAGE}
   - echo "${CACERT}" | base64 --decode > /proxy.pem

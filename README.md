@@ -22,8 +22,8 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
  
 
 ## Cloud Provider Specific READMEs
--  [AWS](docs/AWS/AWS.md)
--  [GCP](docs/GCP/GCP.md)
+-  [AWS](docs/aws/aws.md)
+-  [GCP](docs/gcp/gcp.md)
 
 
 ## Makefile Targets
