@@ -12,6 +12,7 @@ import (
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
@@ -89,7 +90,7 @@ func TestValidateEgress(t *testing.T) {
 		logger:    &logging.GlogLogger{},
 	}
 
-	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second)).IsSuccessful() {
+	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second), proxy.ProxyConfig{}).IsSuccessful() {
 		t.Errorf("validateEgress(): should pass")
 	}
 }
@@ -154,7 +155,7 @@ Unable to reach somesample.endpoint
 			logger:    &logging.GlogLogger{},
 		}
 		if cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "",
-			time.Duration(1*time.Second)).IsSuccessful() {
+			time.Duration(1*time.Second), proxy.ProxyConfig{}).IsSuccessful() {
 			t.Errorf("failed %s: validateEgress(): should fail", test.name)
 		}
 

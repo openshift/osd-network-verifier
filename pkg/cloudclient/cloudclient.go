@@ -11,6 +11,7 @@ import (
 	awsCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/aws"
 	gcpCloudClient "github.com/openshift/osd-network-verifier/pkg/cloudclient/gcp"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	proxy "github.com/openshift/osd-network-verifier/pkg/proxy"
 
 	"golang.org/x/oauth2/google"
 )
@@ -25,7 +26,7 @@ type CloudClient interface {
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
-	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output
+	ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output
 
 	// VerifyDns verifies that a given VPC meets the DNS requirements specified in:
 	// https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html

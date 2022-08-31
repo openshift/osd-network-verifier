@@ -1,14 +1,17 @@
 package egress
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2/google"
 )
@@ -30,6 +33,10 @@ type egressConfig struct {
 	region       string
 	timeout      time.Duration
 	kmsKeyID     string
+	httpProxy    string
+	httpsProxy   string
+	CaCert       string
+	noTls        bool
 	gcp          bool
 	awsProfile   string
 }
@@ -139,7 +146,27 @@ are set correctly before execution.
 				os.Exit(1)
 			}
 
-			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout)
+			// Set Up Proxy
+			if config.CaCert != "" {
+				// Read in the cert file
+				cert, err := ioutil.ReadFile(config.CaCert)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
+				}
+				// store string form of it
+				// this was agreed with sda that they'll be communicating it as a string.
+				config.CaCert = bytes.NewBuffer(cert).String()
+			}
+
+			p := proxy.ProxyConfig{
+				HttpProxy:  config.httpProxy,
+				HttpsProxy: config.httpsProxy,
+				Cacert:     config.CaCert,
+				NoTls:      config.noTls,
+			}
+
+			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout, p)
 
 			out.Summary()
 			if !out.IsSuccessful() {
@@ -159,6 +186,10 @@ are set correctly before execution.
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 2*time.Second, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
+	validateEgressCmd.Flags().StringVar(&config.httpProxy, "http-proxy", "", "(optional) http-proxy to be used upon http requests being made by verifier, format: http://user:pass@x.x.x.x:8978")
+	validateEgressCmd.Flags().StringVar(&config.httpsProxy, "https-proxy", "", "(optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978")
+	validateEgressCmd.Flags().StringVar(&config.CaCert, "cacert", "", "(optional) path to cacert file to be used upon https requests being made by verifier")
+	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, ignore all ssl certificate validations on client-side.")
 	validateEgressCmd.Flags().BoolVar(&config.gcp, "gcp", false, "Set to true if cluster is GCP")
 	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 

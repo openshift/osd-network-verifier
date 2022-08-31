@@ -1,13 +1,19 @@
 package main
 
 // Usage
-// $ network-validator --timeout=1s --config=config/config.yaml
+// $ AWS_REGION=us-east-1  ./network-validator --timeout=3s --config=config/config.yaml
+
+// validations under proxy:
+// - assuming you have proxy server & https tls certs:
+// $ HTTP_PROXY=http://user:pass@x.x.x.x:8888 HTTPS_PROXY=https://user:pass@x.x.x.x:8888 AWS_REGION=us-east-1 ./network-validator --timeout=3s --config=../config/config.yaml --cacert mitmproxy-ca.pem --no-tls
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -21,6 +27,8 @@ var (
 	maxRetries     = flag.Int("max-retries", 3, "Maximum connection attempts per endpoint")
 	timeout        = flag.Duration("timeout", 2000*time.Millisecond, "Timeout for each dial request made")
 	configFilePath = flag.String("config", "config.yaml", "Path to configuration file")
+	cacertFilePath = flag.String("cacert", "", "Path to cacert file to be used upon https requests")
+	noTls          = flag.Bool("no-tls", false, "option to ignore all ssl certificate validations on client-side. Proxy can still be passed alongside")
 )
 
 type reachabilityConfig struct {
@@ -52,7 +60,7 @@ func main() {
 	config := reachabilityConfig{}
 	err := config.LoadFromYaml(*configFilePath)
 	if err != nil {
-		err = fmt.Errorf("unable to reach config file %v: %v", configFilePath, err)
+		err = fmt.Errorf("Unable to reach config file %v: %v", configFilePath, err)
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -78,14 +86,16 @@ func TestEndpoints(config reachabilityConfig) {
 	for _, e := range config.Endpoints {
 		for _, port := range e.Ports {
 			waitGroup.Add(1)
+			// tls decision
+			tls := *noTls || e.TLSDisabled
 			// Validate the endpoints in parallel
-			go func(host string, port int, tlsDisabled bool, failures chan<- error) {
+			go func(host string, port int, tlsDisabled bool, cacertFilePath string, failures chan<- error) {
 				defer waitGroup.Done()
-				err := ValidateReachability(host, port, tlsDisabled)
+				err := ValidateReachability(host, port, tlsDisabled, cacertFilePath)
 				if err != nil {
 					failures <- err
 				}
-			}(e.Host, port, e.TLSDisabled, failures)
+			}(e.Host, port, tls, *cacertFilePath, failures)
 		}
 	}
 	waitGroup.Wait()
@@ -106,18 +116,58 @@ func TestEndpoints(config reachabilityConfig) {
 	os.Exit(0)
 }
 
-func ValidateReachability(host string, port int, tlsDisabled bool) error {
+func getProxyCertificate(cacertFile string) (*x509.CertPool, error) {
+	if cacertFile == "" {
+		// default is being set.
+		return nil, nil
+	}
+
+	// Get the SystemCertPool, continue with an empty pool on error
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	// Read in the cert file
+	cert, err := ioutil.ReadFile(cacertFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Append our cert to the system pool
+	if ok := rootCAs.AppendCertsFromPEM([]byte(cert)); !ok {
+		log.Println("No certs appended, using system certs only")
+	}
+
+	return rootCAs, nil
+}
+
+func ValidateReachability(host string, port int, tlsDisabled bool, cacertFile string) error {
 	var err error
 	endpoint := fmt.Sprintf("%s:%d", host, port)
 	httpClient := http.Client{
 		Timeout: *timeout,
 	}
 
-	// #nosec G402 -- Low chance of MITM, as the instance is short-lived, see OHSS-11465
-	if tlsDisabled {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+	// Setup Certs
+	rootCAs, err := getProxyCertificate(cacertFile)
+	if err != nil {
+		log.Fatalf("Failed to append %v to RootCAs: %v", rootCAs, err)
+		return err
+	}
+
+	// ProxyFromEnvironment enables reading configuration from env
+	// such as export HTTP_PROXY='http://us:pass@prox-server:8888' / export HTTPS_PROXY='http://us:pass@prox-server:8888'
+	// Insecure mod would be enabled if tlsDisabled was put as true. This is for dev purposes: e.g when the certificate is not known by certificate authorities.
+	httpClient.Transport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		TLSClientConfig: &tls.Config{
+			// #nosec G402 -- Low chance of MITM, as the instance is short-lived, see OHSS-11465
+			InsecureSkipVerify: tlsDisabled,
+			// RootCAs defines the set of root certificate authorities that clients use when verifying server certificates.
+			// If RootCAs is nil, TLS uses the host's root CA set.
+			RootCAs: rootCAs,
+		},
 	}
 
 	fmt.Printf("Validating %s\n", endpoint)

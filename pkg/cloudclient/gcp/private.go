@@ -3,10 +3,12 @@ package gcp
 //Features to add - image-id, kms-key-id
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 
 	"golang.org/x/oauth2/google"
@@ -16,6 +18,7 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/proxy"
 )
 
 type createComputeServiceInstanceInput struct {
@@ -315,7 +318,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for gcpUserData script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `c.output` which stores the execution results
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
+func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, p proxy.ProxyConfig) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 
 	userDataVariables := map[string]string{
@@ -326,6 +329,10 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
 		"VALIDATOR_IMAGE":          networkValidatorImage,
 		"TIMEOUT":                  timeout.String(),
+		"HTTP_PROXY":               p.HttpProxy,
+		"HTTPS_PROXY":              p.HttpsProxy,
+		"CACERT":                   base64.StdEncoding.EncodeToString([]byte(p.Cacert)),
+		"NOTLS":                    strconv.FormatBool(p.NoTls),
 	}
 
 	userData, err := generateUserData(userDataVariables)

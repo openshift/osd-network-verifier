@@ -6,6 +6,7 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
 )
@@ -30,8 +31,8 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration) *output.Output {
-	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout)
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
+	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
 }
 
 func (c *Client) VerifyDns(ctx context.Context, vpcID string) *output.Output {

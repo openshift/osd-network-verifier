@@ -130,6 +130,22 @@ repeat the verification process for each subnet ID.
         ./osd-network-verifier egress --help
         ```
 
+##### Egress Validations Under Proxy #####
+
+* Follow the similar flow above, till execute
+* Pass proxy config to be used to egress subcommand
+
+```shell
+./osd-network-verifier egress \
+    --subnet-id <subnet_id>  \
+    --http-proxy http://sre:123@18.234.52.122:8888 \ 
+    --https-proxy https://sre:123@18.234.52.122:8888 \
+    --cacert mitmproxy-ca.pem \
+    --no-tls
+```
+
+
+
 ##### 1.1.2 Go implementation Examples #####
 - [AWS Go SDK v1](../../examples/aws/verify_egressv1.go)  
 - [AWS Go SDK v2](../../examples/aws/verify_egressv2.go)

@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/pkg/proxy"
 )
 
 func extendValidateEgressV2() {
@@ -31,7 +32,7 @@ func extendValidateEgressV2() {
 	//---------ONV egress verifier usage---------
 	cli, _ := cloudclient.NewClient(ctx, logger, creds, region, instanceType, tags)
 	// Call egress validator
-	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 3*time.Second)
+	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 3*time.Second, proxy.ProxyConfig{})
 	if !out.IsSuccessful() {
 		// Retrieve errors
 		failures, exceptions, errors := out.Parse()
