@@ -5,18 +5,17 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
-
-	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/smithy-go"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -34,8 +33,8 @@ type createEC2InstanceInput struct {
 }
 
 var (
-	instanceCount int = 1
-	defaultAmi        = map[string]string{
+	instanceCount = 1
+	defaultAmi    = map[string]string{
 		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
 		"us-east-1":      "ami-0ed9277fb7eb570c9",
 		"us-east-2":      "ami-002068ed284fb165b",
@@ -60,8 +59,8 @@ var (
 		"me-south-1":     "ami-0483952b6a5997b06",
 	}
 	// TODO find a location for future docker images
-	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
-	userdataEndVerifier   string = "USERDATA END"
+	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
+	userdataEndVerifier   = "USERDATA END"
 )
 
 func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region,
@@ -99,7 +98,7 @@ func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := c.validateInstanceType(ctx); err != nil {
-		return nil, fmt.Errorf("Instance type %s is invalid: %s", c.instanceType, err)
+		return nil, err
 	}
 
 	return c, nil
@@ -124,8 +123,6 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 }
 
 func (c *Client) validateInstanceType(ctx context.Context) error {
-	// Describe the provided instance type only
-	//     https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/ec2#DescribeInstanceTypesInput
 	descInput := ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.instanceType)},
 	}
@@ -133,12 +130,17 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.instanceType)
 	descOut, err := c.ec2Client.DescribeInstanceTypes(ctx, &descInput)
 	if err != nil {
-		// Check for invalid instance type error and return a cleaner error
-		re := regexp.MustCompile("400.*api error InvalidInstanceType")
-		if re.Match([]byte(err.Error())) {
-			err = fmt.Errorf("Instance type %s does not exist", c.instanceType)
+		var aerr smithy.APIError
+		if errors.As(err, &aerr) {
+			switch {
+			case aerr.ErrorCode() == "UnauthorizedOperation":
+				return errors.New("missing required permission ec2:DescribeInstanceTypes")
+			default:
+				return err
+			}
 		}
-		return fmt.Errorf("Unable to gather list of supported instance types from EC2: %s", err)
+
+		return fmt.Errorf("error calling ec2:DescribeInstanceTypes: %w", err)
 	}
 	c.logger.Debug(ctx, "Full describe instance types output contains %d instance types", len(descOut.InstanceTypes))
 
@@ -198,7 +200,17 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 	// Finally, we make our request
 	instanceResp, err := c.ec2Client.RunInstances(ctx, &instanceReq)
 	if err != nil {
-		return ec2.RunInstancesOutput{}, err
+		var aerr smithy.APIError
+		if errors.As(err, &aerr) {
+			switch {
+			case aerr.ErrorCode() == "UnauthorizedOperation":
+				return ec2.RunInstancesOutput{}, errors.New("missing required permission ec2:RunInstances")
+			default:
+				return ec2.RunInstancesOutput{}, err
+			}
+		}
+
+		return ec2.RunInstancesOutput{}, fmt.Errorf("error calling ec2:RunInstances: %w", err)
 	}
 
 	for _, i := range instanceResp.Instances {
@@ -223,13 +235,17 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (i
 	})
 
 	if err != nil {
-		c.logger.Error(ctx, "Errors while describing the instance status: %s", err.Error())
-		if aerr, ok := err.(awserr.Error); ok {
-			if aerr.Code() == "UnauthorizedOperation" {
-				return 401, err
+		var aerr smithy.APIError
+		if errors.As(err, &aerr) {
+			switch {
+			case aerr.ErrorCode() == "UnauthorizedOperation":
+				return 401, errors.New("missing required permission ec2:DescribeInstanceStatus")
+			default:
+				return 0, err
 			}
 		}
-		return 0, err
+
+		return 0, fmt.Errorf("error calling ec2:DescribeInstanceStatus: %w", err)
 	}
 
 	if len(result.InstanceStatuses) > 1 {
@@ -251,6 +267,10 @@ func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID st
 	//wait for the instance to run
 	err := helpers.PollImmediate(15*time.Second, 2*time.Minute, func() (bool, error) {
 		code, descError := c.describeEC2Instances(ctx, instanceID)
+		if descError != nil {
+			return false, descError
+		}
+
 		switch code {
 		case 401:
 			return false, fmt.Errorf("missing required permissions for account: %s", descError)
@@ -259,10 +279,6 @@ func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID st
 			// 16 represents a successful region initialization
 			// Instance is running, break
 			return true, nil
-		}
-
-		if descError != nil {
-			return false, descError // unhandled
 		}
 
 		return false, nil // continue loop
@@ -295,7 +311,17 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err != nil {
-			return false, err
+			var aerr smithy.APIError
+			if errors.As(err, &aerr) {
+				switch {
+				case aerr.ErrorCode() == "UnauthorizedOperation":
+					return false, errors.New("missing required permission ec2:GetConsoleOutput")
+				default:
+					return false, err
+				}
+			}
+
+			return false, fmt.Errorf("error calling ec2:GetConsoleOutput: %w", err)
 		}
 		if output.Output != nil {
 			// First, gather the ec2 console output
@@ -352,13 +378,26 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 
 // terminateEC2Instance terminates target ec2 instance
 // uses c.output to store result of the execution
-func (c *Client) terminateEC2Instance(ctx context.Context, instanceID string) {
+func (c *Client) terminateEC2Instance(ctx context.Context, instanceID string) error {
 	c.logger.Info(ctx, "Terminating ec2 instance with id %s", instanceID)
 	input := ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
-	_, err := c.ec2Client.TerminateInstances(ctx, &input)
-	c.output.AddError(err)
+	if _, err := c.ec2Client.TerminateInstances(ctx, &input); err != nil {
+		var aerr smithy.APIError
+		if errors.As(err, &aerr) {
+			switch {
+			case aerr.ErrorCode() == "UnauthorizedOperation":
+				return errors.New("missing required permission ec2:TerminateInstances")
+			default:
+				return err
+			}
+		}
+
+		return fmt.Errorf("error calling ec2:TerminateInstances: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) setCloudImage(cloudImageID string) (string, error) {
@@ -421,16 +460,21 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	instanceID := *instance.Instances[0].InstanceId
 	c.logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
 	if instanceReadyErr := c.waitForEC2InstanceCompletion(ctx, instanceID); instanceReadyErr != nil {
-		c.terminateEC2Instance(ctx, instanceID)    // try to terminate the created instance
+		// try to terminate the created instance
+		if err := c.terminateEC2Instance(ctx, instanceID); err != nil {
+			c.output.AddError(err)
+		}
 		return c.output.AddError(instanceReadyErr) // fatal
 	}
 
 	c.logger.Info(ctx, "Gathering and parsing console log output...")
-	err = c.findUnreachableEndpoints(ctx, instanceID)
-	if err != nil {
+	if err := c.findUnreachableEndpoints(ctx, instanceID); err != nil {
 		c.output.AddError(err)
 	}
-	c.terminateEC2Instance(ctx, instanceID)
+
+	if err := c.terminateEC2Instance(ctx, instanceID); err != nil {
+		c.output.AddError(err)
+	}
 
 	return &c.output
 }
@@ -446,17 +490,38 @@ func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
 		Attribute: "enableDnsSupport",
 		VpcId:     aws.String(vpcID),
 	})
+	if dnsSprtErr != nil {
+		var aerr smithy.APIError
+		if errors.As(dnsSprtErr, &aerr) {
+			switch {
+			case aerr.ErrorCode() == "UnauthorizedOperation":
+				c.output.AddError(errors.New("missing required permission ec2:DescribeVpcAttribute"))
+				return &c.output
+			}
+		}
+
+		c.output.AddError(fmt.Errorf("error calling ec2:DescribeVpcAttribute: %w", dnsSprtErr))
+		return &c.output
+	}
+
 	dnsHostResult, dnsHostErr := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
 		Attribute: "enableDnsHostnames",
 		VpcId:     aws.String(vpcID),
 	})
-
-	if dnsSprtErr != nil {
-		c.output.AddError(dnsSprtErr)
-	}
 	if dnsHostErr != nil {
-		c.output.AddError(dnsHostErr)
+		var aerr smithy.APIError
+		if errors.As(dnsHostErr, &aerr) {
+			switch {
+			case aerr.ErrorCode() == "UnauthorizedOperation":
+				c.output.AddError(errors.New("missing required permission ec2:DescribeVpcAttribute"))
+				return &c.output
+			}
+		}
+
+		c.output.AddError(fmt.Errorf("error calling ec2:DescribeVpcAttribute: %w", dnsHostErr))
+		return &c.output
 	}
+
 	// Verify results
 	c.logger.Info(ctx, "DNS Support for VPC %s: %t", vpcID, *dnsSprtResult.EnableDnsSupport.Value)
 	c.logger.Info(ctx, "DNS Hostnames for VPC %s: %t", vpcID, *dnsHostResult.EnableDnsHostnames.Value)

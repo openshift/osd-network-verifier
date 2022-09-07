@@ -47,23 +47,29 @@ func (o *Output) IsSuccessful() bool {
 }
 
 func (o *Output) printFailures() {
-	fmt.Println("printing out failures:")
-	for _, v := range o.failures {
-		fmt.Println(" - ", v)
+	if o.failures != nil && len(o.failures) > 0 {
+		fmt.Println("printing out failures:")
+		for _, v := range o.failures {
+			fmt.Println(" - ", v)
+		}
 	}
 }
 
 func (o *Output) printExceptions() {
-	fmt.Println("printing out exceptions preventing the verifier from running the specific test:")
-	for _, v := range o.exceptions {
-		fmt.Println(" - ", v)
+	if o.exceptions != nil && len(o.exceptions) > 0 {
+		fmt.Println("printing out exceptions preventing the verifier from running the specific test:")
+		for _, v := range o.exceptions {
+			fmt.Println(" - ", v)
+		}
 	}
 }
 
 func (o *Output) printErrors() {
-	fmt.Println("printing out errors faced during the execution:")
-	for _, v := range o.errors {
-		fmt.Println(" - ", v.Error())
+	if o.errors != nil && len(o.errors) > 0 {
+		fmt.Println("printing out errors faced during the execution:")
+		for _, v := range o.errors {
+			fmt.Println(" - ", v.Error())
+		}
 	}
 }
 
