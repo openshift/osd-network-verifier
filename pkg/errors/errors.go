@@ -8,28 +8,18 @@ import (
 	"github.com/aws/smithy-go"
 )
 
-type EgressURLError struct {
-	e string
-}
-
-var ErrWaitTimeout = errors.New("timed out waiting for the condition")
-
-func (e *GenericError) ErrWaitTimeout() string { return e.message }
-
-func (e *EgressURLError) Error() string { return e.e }
-
-func NewEgressURLError(message string) error {
-	return &EgressURLError{
-		e: fmt.Sprintf("egressURL error: %s", message),
-	}
-}
-
+// GenericError implements the error interface
 type GenericError struct {
 	message string
 }
 
 func (e *GenericError) Error() string { return e.message }
 
+// Ensure GenericError implements the error interface
+var _ error = &GenericError{}
+
+// NewGenericError does some preprocessing if the provided error contains an aws-sdk-go-v2 error, otherwise just
+// prepends `network verifier error: `
 func NewGenericError(err error) *GenericError {
 	var (
 		oe *smithy.OperationError
@@ -65,14 +55,9 @@ func NewGenericError(err error) *GenericError {
 	}
 }
 
-type UnhandledError struct {
-	message string
-}
-
-func (e *UnhandledError) Error() string          { return e.message }
-func (e *UnhandledError) ErrWaitTimeout() string { return e.message }
-func NewGenericUnhandledError(err error) error {
-	return &UnhandledError{
-		message: fmt.Sprintf("generic unhandled error: %s ", err.Error()),
+// NewEgressURLError prepends the provided message with `egressURL error: `
+func NewEgressURLError(message string) error {
+	return &GenericError{
+		message: fmt.Sprintf("egressURL error: %s", message),
 	}
 }
