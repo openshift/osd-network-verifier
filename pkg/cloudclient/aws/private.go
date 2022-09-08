@@ -59,7 +59,7 @@ var (
 		"me-south-1":     "ami-0483952b6a5997b06",
 	}
 	// TODO find a location for future docker images
-	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.197-16fe250"
+	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
 	userdataEndVerifier   = "USERDATA END"
 )
 
