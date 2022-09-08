@@ -9,13 +9,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+
+	"github.com/golang/mock/gomock"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/golang/mock/gomock"
 )
 
 const exception string = "exception"
@@ -73,6 +73,7 @@ func TestValidateEgress(t *testing.T) {
 			InstanceId: aws.String(testID),
 			InstanceState: &types.InstanceState{
 				Code: aws.Int32(16),
+				Name: types.InstanceStateNameRunning,
 			},
 		},
 		},
@@ -144,6 +145,7 @@ Unable to reach somesample.endpoint
 				InstanceId: aws.String(testID),
 				InstanceState: &types.InstanceState{
 					Code: aws.Int32(16),
+					Name: types.InstanceStateNameRunning,
 				},
 			},
 			},

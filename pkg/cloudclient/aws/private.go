@@ -220,16 +220,16 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 	return *instanceResp, nil
 }
 
-// Returns state code as int
-func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (int, error) {
-	// States and codes
-	// 0 : pending
-	// 16 : running
-	// 32 : shutting-down
-	// 48 : terminated
-	// 64 : stopping
-	// 80 : stopped
-	// 401 : failed
+// describeEC2Instances returns the instance state name of an EC2 instance
+// States and codes
+// 0 : pending
+// 16 : running
+// 32 : shutting-down
+// 48 : terminated
+// 64 : stopping
+// 80 : stopped
+// 401 : failed
+func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (*ec2Types.InstanceStateName, error) {
 	result, err := c.ec2Client.DescribeInstanceStatus(ctx, &ec2.DescribeInstanceStatusInput{
 		InstanceIds: []string{instanceID},
 	})
@@ -239,52 +239,53 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (i
 		if errors.As(err, &aerr) {
 			switch {
 			case aerr.ErrorCode() == "UnauthorizedOperation":
-				return 401, errors.New("missing required permission ec2:DescribeInstanceStatus")
+				return nil, errors.New("missing required permission ec2:DescribeInstanceStatus")
 			default:
-				return 0, err
+				return nil, err
 			}
 		}
 
-		return 0, fmt.Errorf("error calling ec2:DescribeInstanceStatus: %w", err)
+		return nil, fmt.Errorf("error calling ec2:DescribeInstanceStatus: %w", err)
 	}
 
 	if len(result.InstanceStatuses) > 1 {
-		return 0, errors.New("more than one EC2 instance found")
+		// Shouldn't happen, since we're describing using an instance ID
+		return nil, errors.New("more than one EC2 instance found")
 	}
 
 	if len(result.InstanceStatuses) == 0 {
 		// Don't return an error here as if the instance is still too new, it may not be
 		// returned at all.
-		//return 0, errors.New("no EC2 instances found")
 		c.logger.Debug(ctx, "Instance %s has no status yet", instanceID)
-		return 0, nil
+		return nil, nil
 	}
 
-	return int(*result.InstanceStatuses[0].InstanceState.Code), nil
+	return &result.InstanceStatuses[0].InstanceState.Name, nil
 }
 
+// waitForInstanceCompletion checks every 15s for up to 2 minutes for an instance to be in the running state
 func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
-	//wait for the instance to run
-	err := helpers.PollImmediate(15*time.Second, 2*time.Minute, func() (bool, error) {
-		code, descError := c.describeEC2Instances(ctx, instanceID)
+	return helpers.PollImmediate(15*time.Second, 2*time.Minute, func() (bool, error) {
+		instanceState, descError := c.describeEC2Instances(ctx, instanceID)
 		if descError != nil {
 			return false, descError
 		}
 
-		switch code {
-		case 401:
-			return false, fmt.Errorf("missing required permissions for account: %s", descError)
-		case 16:
-			c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
-			// 16 represents a successful region initialization
-			// Instance is running, break
-			return true, nil
+		if instanceState == nil {
+			// A state is not populated yet, check again later
+			return false, nil
 		}
 
-		return false, nil // continue loop
+		switch *instanceState {
+		case ec2Types.InstanceStateNameRunning:
+			// Instance is running, we're done waiting
+			c.logger.Info(ctx, "EC2 Instance: %s Running", instanceID)
+			return true, nil
+		default:
+			// Otherwise, check again later
+			return false, nil
+		}
 	})
-
-	return err
 }
 
 func generateUserData(variables map[string]string) (string, error) {
