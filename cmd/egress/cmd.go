@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -109,7 +108,6 @@ are set correctly before execution.
 					logger.Error(ctx, err.Error())
 					os.Exit(1)
 				}
-
 			} else {
 				// GCP stuff
 				if config.region == "" {
@@ -149,7 +147,7 @@ are set correctly before execution.
 			// Set Up Proxy
 			if config.CaCert != "" {
 				// Read in the cert file
-				cert, err := ioutil.ReadFile(config.CaCert)
+				cert, err := os.ReadFile(config.CaCert)
 				if err != nil {
 					fmt.Println(err)
 					os.Exit(1)
