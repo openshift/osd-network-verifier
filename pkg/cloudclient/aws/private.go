@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -209,6 +210,8 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 // 80 : stopped
 // 401 : failed
 func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (*ec2Types.InstanceStateName, error) {
+	c.logger.Debug(ctx, "Describing state of EC2 instance %s", instanceID)
+
 	result, err := c.ec2Client.DescribeInstanceStatus(ctx, &ec2.DescribeInstanceStatusInput{
 		InstanceIds: []string{instanceID},
 	})
@@ -232,8 +235,10 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (*
 	return &result.InstanceStatuses[0].InstanceState.Name, nil
 }
 
-// waitForInstanceCompletion checks every 15s for up to 2 minutes for an instance to be in the running state
+// waitForEC2InstanceCompletion checks every 15s for up to 2 minutes for an instance to be in the running state
 func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
+	c.logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
+
 	return helpers.PollImmediate(15*time.Second, 2*time.Minute, func() (bool, error) {
 		instanceState, descError := c.describeEC2Instances(ctx, instanceID)
 		if descError != nil {
@@ -268,60 +273,62 @@ func generateUserData(variables map[string]string) (string, error) {
 
 func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string) error {
 	// Compile the regular expressions once
-	reVerify := regexp.MustCompile(userdataEndVerifier)
+	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
+	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
+	reDockerFailure := regexp.MustCompile(`(?m)(docker)`)
 
-	latest := true
-	input := ec2.GetConsoleOutputInput{
-		InstanceId: &instanceID,
-		Latest:     &latest,
+	input := &ec2.GetConsoleOutputInput{
+		InstanceId: aws.String(instanceID),
+		Latest:     aws.Bool(true),
 	}
 
-	// getConsoleOutput then parse, use c.output to store result of the execution
+	c.logger.Debug(ctx, "Scraping console output and waiting for user data script to complete...")
+
+	// Periodically scrape console output and analyze the logs for any errors or a successful completion
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
-		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
+		output, err := c.ec2Client.GetConsoleOutput(ctx, input)
 		if err != nil {
 			return false, handledErrors.NewGenericError(err)
 		}
 
 		if output.Output != nil {
-			// First, gather the ec2 console output
-			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
-			if err != nil {
-				// unable to decode output. we will try again
-				c.logger.Debug(ctx, "Error while collecting console output, will retry on next check interval: %s", err)
+			// In the early stages, an ec2 instance may be running but the console is not populated with any data
+			if len(*output.Output) == 0 {
+				c.logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
 				return false, nil
 			}
 
-			// In the early stages, an ec2 instance may be running but the console is not populated with any data, retry if that is the case
-			if len(scriptOutput) < 1 {
-				c.logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
+			// The console output starts out base64 encoded
+			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
+			if err != nil {
+				c.logger.Debug(ctx, "Error decoding console output, will retry on next check interval: %s", err)
 				return false, nil
 			}
 
 			// Check for the specific string we output in the generated userdata file at the end to verify the userdata script has run
 			// It is possible we get EC2 console output, but the userdata script has not yet completed.
-			verifyMatch := reVerify.FindString(string(scriptOutput))
-			if len(verifyMatch) < 1 {
+			userDataComplete := reUserDataComplete.FindString(string(scriptOutput))
+			if len(userDataComplete) < 1 {
 				c.logger.Debug(ctx, "EC2 console output contains data, but end of userdata script not seen, continuing to wait...")
 				return false, nil
 			}
 
-			// check output failures, report as exception if they occurred
-			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
-			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
-			if len(notFoundMatch) > 0 {
+			// Check output for failures, report as exceptions if they occurred
+			genericFailures := reGenericFailure.FindAllStringSubmatch(string(scriptOutput), -1)
+			if len(genericFailures) > 0 {
+				c.logger.Debug(ctx, fmt.Sprint(genericFailures))
 
-				errorMsg := "Generic issue: egress tests were not run due to an uncaught error in setup or execution. Further investigation needed"
-
-				dockerRgx := regexp.MustCompile(`(?m)(docker)`)
-				dockerIssue := dockerRgx.FindAllString(string(scriptOutput), -1)
-				if len(dockerIssue) > 0 {
-					errorMsg = "Docker was unable to install or run. Further investigation needed"
+				dockerFailures := reDockerFailure.FindAllString(string(scriptOutput), -1)
+				if len(dockerFailures) > 0 {
+					// Should be resolved by OSD-13003 and OSD-13007
+					c.output.AddException(handledErrors.NewGenericError(errors.New("docker was unable to install or run. Further investigation needed")))
+					c.output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", dockerFailures)))
+				} else {
+					// TODO: Flesh out generic issues, for now we only know about Docker
+					c.output.AddException(handledErrors.NewGenericError(errors.New("egress tests were not run due to an uncaught error in setup or execution. Further investigation needed")))
+					c.output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", genericFailures)))
 				}
-				c.output.AddException(handledErrors.NewGenericError(errors.New(errorMsg)))
-				c.output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", notFoundMatch)))
-				c.logger.Debug(ctx, fmt.Sprint(notFoundMatch))
 			}
 
 			// If debug logging is enabled, output the full console log that appears to include the full userdata run
@@ -330,7 +337,7 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 			c.output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
 			return true, nil
 		}
-		c.logger.Debug(ctx, "Waiting for UserData script to complete...")
+
 		return false, nil
 	})
 
@@ -351,13 +358,12 @@ func (c *Client) terminateEC2Instance(ctx context.Context, instanceID string) er
 	return nil
 }
 
+// setCloudImage returns a default AMI ID based on the region if one is not provided
 func (c *Client) setCloudImage(cloudImageID string) (string, error) {
-	// If a cloud image wasn't provided by the caller,
 	if cloudImageID == "" {
-		// use defaultAmi for the region instead
 		cloudImageID = defaultAmi[c.region]
 		if cloudImageID == "" {
-			return "", fmt.Errorf("no default ami found for region %s ", c.region)
+			return "", fmt.Errorf("no default ami found for region %s, please specify one with `--image-id`", c.region)
 		}
 	}
 
@@ -396,6 +402,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}
+	c.logger.Debug(ctx, "Using AMI: %s", cloudImageID)
 
 	instance, err := c.createEC2Instance(ctx, createEC2InstanceInput{
 		amiID:         cloudImageID,
@@ -408,8 +415,12 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		return c.output.AddError(err) // fatal
 	}
 
+	if len(instance.Instances) == 0 {
+		// Shouldn't happen, but ensure safety of the following logic
+		return c.output.AddError(handledErrors.NewGenericError(errors.New("unexpectedly found 0 instances after creation, please try again")))
+	}
+
 	instanceID := *instance.Instances[0].InstanceId
-	c.logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
 	if instanceReadyErr := c.waitForEC2InstanceCompletion(ctx, instanceID); instanceReadyErr != nil {
 		// try to terminate the created instance
 		if err := c.terminateEC2Instance(ctx, instanceID); err != nil {
@@ -418,7 +429,6 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		return c.output.AddError(instanceReadyErr) // fatal
 	}
 
-	c.logger.Info(ctx, "Gathering and parsing console log output...")
 	if err := c.findUnreachableEndpoints(ctx, instanceID); err != nil {
 		c.output.AddError(err)
 	}
@@ -438,29 +448,42 @@ func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
 	c.logger.Info(ctx, "Verifying DNS config for VPC %s", vpcID)
 	// Request boolean values from AWS API
 	dnsSprtResult, err := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
-		Attribute: "enableDnsSupport",
+		Attribute: ec2Types.VpcAttributeNameEnableDnsSupport,
 		VpcId:     aws.String(vpcID),
 	})
 	if err != nil {
 		c.output.AddError(handledErrors.NewGenericError(err))
+		c.output.AddException(handledErrors.NewGenericError(
+			fmt.Errorf("failed to validate the %s attribute on VPC: %s is true", ec2Types.VpcAttributeNameEnableDnsSupport, vpcID)),
+		)
 		return &c.output
 	}
 
 	dnsHostResult, err := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
-		Attribute: "enableDnsHostnames",
+		Attribute: ec2Types.VpcAttributeNameEnableDnsHostnames,
 		VpcId:     aws.String(vpcID),
 	})
 	if err != nil {
 		c.output.AddError(handledErrors.NewGenericError(err))
+		c.output.AddException(handledErrors.NewGenericError(
+			fmt.Errorf("failed to validate the %s attribute on VPC: %s is true", ec2Types.VpcAttributeNameEnableDnsHostnames, vpcID),
+		))
 		return &c.output
 	}
 
 	// Verify results
 	c.logger.Info(ctx, "DNS Support for VPC %s: %t", vpcID, *dnsSprtResult.EnableDnsSupport.Value)
 	c.logger.Info(ctx, "DNS Hostnames for VPC %s: %t", vpcID, *dnsHostResult.EnableDnsHostnames.Value)
-	if !(*dnsSprtResult.EnableDnsSupport.Value && *dnsHostResult.EnableDnsHostnames.Value) {
-		c.logger.Error(ctx, "Both DNS support and DNS hostnames must be enabled on VPC %s in order to be compatible with OSD.", vpcID)
-		c.output.AddException(handledErrors.NewGenericError(errors.New("VPC DNS verification failed")))
+	if !(*dnsSprtResult.EnableDnsSupport.Value) {
+		c.output.AddException(handledErrors.NewGenericError(
+			fmt.Errorf("the %s attribute on VPC: %s is %t, must be true", ec2Types.VpcAttributeNameEnableDnsSupport, vpcID, *dnsSprtResult.EnableDnsSupport.Value),
+		))
+	}
+
+	if !(*dnsHostResult.EnableDnsHostnames.Value) {
+		c.output.AddException(handledErrors.NewGenericError(
+			fmt.Errorf("the %s attribute on VPC: %s is %t, must be true", ec2Types.VpcAttributeNameEnableDnsHostnames, vpcID, *dnsHostResult.EnableDnsHostnames.Value),
+		))
 	}
 
 	return &c.output
