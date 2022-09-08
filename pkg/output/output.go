@@ -19,7 +19,7 @@ type Output struct {
 // AddError adds error as generic to the list of errors
 func (o *Output) AddError(err error) *Output {
 	if err != nil {
-		o.errors = append(o.errors, handledErrors.NewGenericError(err.Error()))
+		o.errors = append(o.errors, handledErrors.NewGenericError(err))
 	}
 
 	return o

@@ -3,19 +3,20 @@ package aws
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/openshift-online/ocm-sdk-go/logging"
-	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
-	"github.com/openshift/osd-network-verifier/pkg/errors"
-	"github.com/openshift/osd-network-verifier/pkg/proxy"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/golang/mock/gomock"
+	"github.com/openshift-online/ocm-sdk-go/logging"
+	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/openshift/osd-network-verifier/pkg/proxy"
+	"github.com/stretchr/testify/assert"
 )
 
 const exception string = "exception"
@@ -73,6 +74,7 @@ func TestValidateEgress(t *testing.T) {
 			InstanceId: aws.String(testID),
 			InstanceState: &types.InstanceState{
 				Code: aws.Int32(16),
+				Name: types.InstanceStateNameRunning,
 			},
 		},
 		},
@@ -114,7 +116,7 @@ func TestValidateOutputErrors(t *testing.T) {
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
 Could not do X.
 	[   48.138248] cloud-init[2472]: USERDATA END`,
-			expectError:     errors.NewGenericError(""),
+			expectError:     handledErrors.NewGenericError(errors.New("")),
 			expectErrorType: exception,
 		},
 		{
@@ -123,7 +125,7 @@ Could not do X.
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
 Unable to reach somesample.endpoint
 	[   48.138248] cloud-init[2472]: USERDATA END`,
-			expectError:     errors.NewEgressURLError(""),
+			expectError:     handledErrors.NewEgressURLError(""),
 			expectErrorType: failure,
 		},
 	}
@@ -144,6 +146,7 @@ Unable to reach somesample.endpoint
 				InstanceId: aws.String(testID),
 				InstanceState: &types.InstanceState{
 					Code: aws.Int32(16),
+					Name: types.InstanceStateNameRunning,
 				},
 			},
 			},
