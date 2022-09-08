@@ -3,6 +3,7 @@ package aws
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/cloudclient/mocks"
-	"github.com/openshift/osd-network-verifier/pkg/errors"
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/stretchr/testify/assert"
 )
@@ -115,7 +116,7 @@ func TestValidateOutputErrors(t *testing.T) {
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
 Could not do X.
 	[   48.138248] cloud-init[2472]: USERDATA END`,
-			expectError:     errors.NewGenericError(""),
+			expectError:     handledErrors.NewGenericError(errors.New("")),
 			expectErrorType: exception,
 		},
 		{
@@ -124,7 +125,7 @@ Could not do X.
 	[   48.077429] cloud-init[2472]: USERDATA BEGIN
 Unable to reach somesample.endpoint
 	[   48.138248] cloud-init[2472]: USERDATA END`,
-			expectError:     errors.NewEgressURLError(""),
+			expectError:     handledErrors.NewEgressURLError(""),
 			expectErrorType: failure,
 		},
 	}

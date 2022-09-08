@@ -15,13 +15,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/aws/smithy-go"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
-
-	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
 type createEC2InstanceInput struct {
@@ -29,12 +27,19 @@ type createEC2InstanceInput struct {
 	vpcSubnetID   string
 	userdata      string
 	ebsKmsKeyID   string
-	instanceCount int
+	instanceCount int32
 }
 
+const (
+	instanceCount int32 = 1
+
+	// TODO find a location for future docker images
+	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
+	userdataEndVerifier   = "USERDATA END"
+)
+
 var (
-	instanceCount = 1
-	defaultAmi    = map[string]string{
+	defaultAmi = map[string]string{
 		// using Amazon Linux 2 AMI (HVM) - Kernel 5.10
 		"us-east-1":      "ami-0ed9277fb7eb570c9",
 		"us-east-2":      "ami-002068ed284fb165b",
@@ -58,9 +63,6 @@ var (
 		"af-south-1":     "ami-060867d58b989c6be",
 		"me-south-1":     "ami-0483952b6a5997b06",
 	}
-	// TODO find a location for future docker images
-	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
-	userdataEndVerifier   = "USERDATA END"
 )
 
 func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret, sessiontoken, region,
@@ -130,34 +132,21 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.instanceType)
 	descOut, err := c.ec2Client.DescribeInstanceTypes(ctx, &descInput)
 	if err != nil {
-		var aerr smithy.APIError
-		if errors.As(err, &aerr) {
-			switch {
-			case aerr.ErrorCode() == "UnauthorizedOperation":
-				return errors.New("missing required permission ec2:DescribeInstanceTypes")
-			default:
-				return err
-			}
-		}
-
-		return fmt.Errorf("error calling ec2:DescribeInstanceTypes: %w", err)
-	}
-	c.logger.Debug(ctx, "Full describe instance types output contains %d instance types", len(descOut.InstanceTypes))
-
-	found := false
-	for _, t := range descOut.InstanceTypes {
-		if string(t.InstanceType) == c.instanceType {
-			found = true
-			if t.Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
-				return fmt.Errorf("Instance type must use hypervisor type 'nitro' to support reliable result collection")
-			}
-			c.logger.Debug(ctx, "Instance type %s has hypervisor %s", c.instanceType, t.Hypervisor)
-			break
-		}
+		return handledErrors.NewGenericError(err)
 	}
 
-	if !found {
-		return fmt.Errorf("Instance type %s not found in EC2 API", c.instanceType)
+	// Effectively guaranteed to only have one match since we are casting c.instanceType into ec2Types.InstanceType
+	// and placing it as the only InstanceType filter. Otherwise, ec2:DescribeInstanceTypes also accepts multiple as
+	// an array of InstanceTypes which could return multiple matches.
+	if len(descOut.InstanceTypes) != 1 {
+		c.logger.Debug(ctx, "matched instance types", descOut.InstanceTypes)
+		return fmt.Errorf("expected one instance type match for %s, got %d", c.instanceType, len(descOut.InstanceTypes))
+	}
+
+	if string(descOut.InstanceTypes[0].InstanceType) == c.instanceType {
+		if descOut.InstanceTypes[0].Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
+			return fmt.Errorf("instance type %s must use hypervisor type 'nitro' to support reliable result collection, using %s", c.instanceType, descOut.InstanceTypes[0].Hypervisor)
+		}
 	}
 
 	return nil
@@ -176,8 +165,8 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
 		ImageId:      aws.String(input.amiID),
-		MaxCount:     aws.Int32(int32(input.instanceCount)),
-		MinCount:     aws.Int32(int32(input.instanceCount)),
+		MaxCount:     aws.Int32(input.instanceCount),
+		MinCount:     aws.Int32(input.instanceCount),
 		InstanceType: ec2Types.InstanceType(c.instanceType),
 		// Because we're making this VPC aware, we also have to include a network interface specification
 		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{
@@ -200,17 +189,7 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 	// Finally, we make our request
 	instanceResp, err := c.ec2Client.RunInstances(ctx, &instanceReq)
 	if err != nil {
-		var aerr smithy.APIError
-		if errors.As(err, &aerr) {
-			switch {
-			case aerr.ErrorCode() == "UnauthorizedOperation":
-				return ec2.RunInstancesOutput{}, errors.New("missing required permission ec2:RunInstances")
-			default:
-				return ec2.RunInstancesOutput{}, err
-			}
-		}
-
-		return ec2.RunInstancesOutput{}, fmt.Errorf("error calling ec2:RunInstances: %w", err)
+		return ec2.RunInstancesOutput{}, handledErrors.NewGenericError(err)
 	}
 
 	for _, i := range instanceResp.Instances {
@@ -235,17 +214,7 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (*
 	})
 
 	if err != nil {
-		var aerr smithy.APIError
-		if errors.As(err, &aerr) {
-			switch {
-			case aerr.ErrorCode() == "UnauthorizedOperation":
-				return nil, errors.New("missing required permission ec2:DescribeInstanceStatus")
-			default:
-				return nil, err
-			}
-		}
-
-		return nil, fmt.Errorf("error calling ec2:DescribeInstanceStatus: %w", err)
+		return nil, handledErrors.NewGenericError(err)
 	}
 
 	if len(result.InstanceStatuses) > 1 {
@@ -312,18 +281,9 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
 		output, err := c.ec2Client.GetConsoleOutput(ctx, &input)
 		if err != nil {
-			var aerr smithy.APIError
-			if errors.As(err, &aerr) {
-				switch {
-				case aerr.ErrorCode() == "UnauthorizedOperation":
-					return false, errors.New("missing required permission ec2:GetConsoleOutput")
-				default:
-					return false, err
-				}
-			}
-
-			return false, fmt.Errorf("error calling ec2:GetConsoleOutput: %w", err)
+			return false, handledErrors.NewGenericError(err)
 		}
+
 		if output.Output != nil {
 			// First, gather the ec2 console output
 			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
@@ -359,8 +319,8 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 				if len(dockerIssue) > 0 {
 					errorMsg = "Docker was unable to install or run. Further investigation needed"
 				}
-				c.output.AddException(handledErrors.NewGenericError(errorMsg))
-				c.output.AddError(handledErrors.NewGenericError(fmt.Sprint(notFoundMatch)))
+				c.output.AddException(handledErrors.NewGenericError(errors.New(errorMsg)))
+				c.output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", notFoundMatch)))
 				c.logger.Debug(ctx, fmt.Sprint(notFoundMatch))
 			}
 
@@ -385,17 +345,7 @@ func (c *Client) terminateEC2Instance(ctx context.Context, instanceID string) er
 		InstanceIds: []string{instanceID},
 	}
 	if _, err := c.ec2Client.TerminateInstances(ctx, &input); err != nil {
-		var aerr smithy.APIError
-		if errors.As(err, &aerr) {
-			switch {
-			case aerr.ErrorCode() == "UnauthorizedOperation":
-				return errors.New("missing required permission ec2:TerminateInstances")
-			default:
-				return err
-			}
-		}
-
-		return fmt.Errorf("error calling ec2:TerminateInstances: %w", err)
+		return handledErrors.NewGenericError(err)
 	}
 
 	return nil
@@ -487,39 +437,21 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
 	c.logger.Info(ctx, "Verifying DNS config for VPC %s", vpcID)
 	// Request boolean values from AWS API
-	dnsSprtResult, dnsSprtErr := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
+	dnsSprtResult, err := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
 		Attribute: "enableDnsSupport",
 		VpcId:     aws.String(vpcID),
 	})
-	if dnsSprtErr != nil {
-		var aerr smithy.APIError
-		if errors.As(dnsSprtErr, &aerr) {
-			switch {
-			case aerr.ErrorCode() == "UnauthorizedOperation":
-				c.output.AddError(errors.New("missing required permission ec2:DescribeVpcAttribute"))
-				return &c.output
-			}
-		}
-
-		c.output.AddError(fmt.Errorf("error calling ec2:DescribeVpcAttribute: %w", dnsSprtErr))
+	if err != nil {
+		c.output.AddError(handledErrors.NewGenericError(err))
 		return &c.output
 	}
 
-	dnsHostResult, dnsHostErr := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
+	dnsHostResult, err := c.ec2Client.DescribeVpcAttribute(ctx, &ec2.DescribeVpcAttributeInput{
 		Attribute: "enableDnsHostnames",
 		VpcId:     aws.String(vpcID),
 	})
-	if dnsHostErr != nil {
-		var aerr smithy.APIError
-		if errors.As(dnsHostErr, &aerr) {
-			switch {
-			case aerr.ErrorCode() == "UnauthorizedOperation":
-				c.output.AddError(errors.New("missing required permission ec2:DescribeVpcAttribute"))
-				return &c.output
-			}
-		}
-
-		c.output.AddError(fmt.Errorf("error calling ec2:DescribeVpcAttribute: %w", dnsHostErr))
+	if err != nil {
+		c.output.AddError(handledErrors.NewGenericError(err))
 		return &c.output
 	}
 
@@ -528,7 +460,7 @@ func (c *Client) verifyDns(ctx context.Context, vpcID string) *output.Output {
 	c.logger.Info(ctx, "DNS Hostnames for VPC %s: %t", vpcID, *dnsHostResult.EnableDnsHostnames.Value)
 	if !(*dnsSprtResult.EnableDnsSupport.Value && *dnsHostResult.EnableDnsHostnames.Value) {
 		c.logger.Error(ctx, "Both DNS support and DNS hostnames must be enabled on VPC %s in order to be compatible with OSD.", vpcID)
-		c.output.AddException(handledErrors.NewGenericError("VPC DNS verification failed"))
+		c.output.AddException(handledErrors.NewGenericError(errors.New("VPC DNS verification failed")))
 	}
 
 	return &c.output
