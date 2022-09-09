@@ -17,9 +17,10 @@ var (
 )
 
 type dnsConfig struct {
-	vpcID  string
-	debug  bool
-	region string
+	vpcID      string
+	debug      bool
+	region     string
+	awsProfile string
 }
 
 func getDefaultRegion() string {
@@ -30,6 +31,7 @@ func getDefaultRegion() string {
 		return regionDefault
 	}
 }
+
 func NewCmdValidateDns() *cobra.Command {
 	config := dnsConfig{}
 
@@ -49,7 +51,14 @@ func NewCmdValidateDns() *cobra.Command {
 			}
 
 			logger.Warn(ctx, "Using region: %s", config.region)
-			creds := credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+			var creds interface{}
+			if config.awsProfile != "" {
+				creds = config.awsProfile
+				logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
+			} else {
+				creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+			}
+
 			// The use of t3.micro here is arbitrary; we just need to provide any valid machine type
 			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, "t3.micro", nil)
 			if err != nil {
@@ -71,6 +80,7 @@ func NewCmdValidateDns() *cobra.Command {
 	validateDnsCmd.Flags().StringVar(&config.vpcID, "vpc-id", "", "ID of the VPC under test")
 	validateDnsCmd.Flags().StringVar(&config.region, "region", getDefaultRegion(), fmt.Sprintf("Region to validate. Defaults to exported var %[1]v or '%[2]v' if not %[1]v set", regionEnvVarStr, regionDefault))
 	validateDnsCmd.Flags().BoolVar(&config.debug, "debug", false, "If true, enable additional debug-level logging")
+	validateDnsCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 
 	if err := validateDnsCmd.MarkFlagRequired("vpc-id"); err != nil {
 		validateDnsCmd.PrintErr(err)
