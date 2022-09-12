@@ -107,8 +107,8 @@ func newClient(ctx context.Context, logger ocmlog.Logger, accessID, accessSecret
 	return c, nil
 }
 
-func buildTags(tags map[string]string) []ec2Types.TagSpecification {
-	tagList := []ec2Types.Tag{}
+func buildTags(tags map[string]string) []ec2Types.Tag {
+	tagList := make([]ec2Types.Tag, 0, len(tags))
 	for k, v := range tags {
 		t := ec2Types.Tag{
 			Key:   aws.String(k),
@@ -117,12 +117,7 @@ func buildTags(tags map[string]string) []ec2Types.TagSpecification {
 		tagList = append(tagList, t)
 	}
 
-	tagSpec := ec2Types.TagSpecification{
-		ResourceType: ec2Types.ResourceTypeInstance,
-		Tags:         tagList,
-	}
-
-	return []ec2Types.TagSpecification{tagSpec}
+	return tagList
 }
 
 func (c *Client) validateInstanceType(ctx context.Context) error {
@@ -153,7 +148,8 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceInput) (ec2.RunInstancesOutput, error) {
+// createEC2Instance attempts to create a single EC2 instance, tags it, and returns its id
+func (c *Client) createEC2Instance(ctx context.Context, input *createEC2InstanceInput) (string, error) {
 	ebsBlockDevice := &ec2Types.EbsBlockDevice{
 		DeleteOnTermination: aws.Bool(true),
 		Encrypted:           aws.Bool(true),
@@ -184,20 +180,39 @@ func (c *Client) createEC2Instance(ctx context.Context, input createEC2InstanceI
 				Ebs:        ebsBlockDevice,
 			},
 		},
-		UserData:          aws.String(input.userdata),
-		TagSpecifications: buildTags(c.tags),
+		UserData: aws.String(input.userdata),
 	}
 	// Finally, we make our request
 	instanceResp, err := c.ec2Client.RunInstances(ctx, &instanceReq)
 	if err != nil {
-		return ec2.RunInstancesOutput{}, handledErrors.NewGenericError(err)
+		return "", handledErrors.NewGenericError(err)
 	}
 
 	for _, i := range instanceResp.Instances {
 		c.logger.Info(ctx, "Created instance with ID: %s", *i.InstanceId)
 	}
 
-	return *instanceResp, nil
+	if len(instanceResp.Instances) == 0 {
+		// Shouldn't happen, but ensure safety of the following logic
+		return "", handledErrors.NewGenericError(errors.New("unexpectedly found 0 instances after creation, please try again"))
+	}
+
+	instanceID := *instanceResp.Instances[0].InstanceId
+	if err := c.createTags(ctx, instanceID); err != nil {
+		// Unable to tag the instance
+		return "", handledErrors.NewGenericError(err)
+	}
+
+	return instanceID, nil
+}
+
+func (c *Client) createTags(ctx context.Context, ids ...string) error {
+	_, err := c.ec2Client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: ids,
+		Tags:      buildTags(c.tags),
+	})
+
+	return err
 }
 
 // describeEC2Instances returns the instance state name of an EC2 instance
@@ -404,7 +419,7 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 	c.logger.Debug(ctx, "Using AMI: %s", cloudImageID)
 
-	instance, err := c.createEC2Instance(ctx, createEC2InstanceInput{
+	instanceID, err := c.createEC2Instance(ctx, &createEC2InstanceInput{
 		amiID:         cloudImageID,
 		vpcSubnetID:   vpcSubnetID,
 		userdata:      userData,
@@ -415,12 +430,6 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		return c.output.AddError(err) // fatal
 	}
 
-	if len(instance.Instances) == 0 {
-		// Shouldn't happen, but ensure safety of the following logic
-		return c.output.AddError(handledErrors.NewGenericError(errors.New("unexpectedly found 0 instances after creation, please try again")))
-	}
-
-	instanceID := *instance.Instances[0].InstanceId
 	if instanceReadyErr := c.waitForEC2InstanceCompletion(ctx, instanceID); instanceReadyErr != nil {
 		// try to terminate the created instance
 		if err := c.terminateEC2Instance(ctx, instanceID); err != nil {
