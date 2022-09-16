@@ -34,11 +34,13 @@ func TestCreateEC2Instance(t *testing.T) {
 		}},
 	}, nil)
 
+	FakeEC2Cli.EXPECT().CreateTags(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.CreateTagsOutput{}, nil)
+
 	cli := Client{
 		ec2Client: FakeEC2Cli,
 		logger:    &logging.GlogLogger{},
 	}
-	out, err := cli.createEC2Instance(context.Background(), createEC2InstanceInput{
+	id, err := cli.createEC2Instance(context.Background(), &createEC2InstanceInput{
 		amiID:         "test-ami",
 		vpcSubnetID:   "test",
 		instanceCount: 1,
@@ -47,7 +49,7 @@ func TestCreateEC2Instance(t *testing.T) {
 		t.Errorf("instance should be created")
 	}
 
-	if aws.ToString(out.Instances[0].InstanceId) != testID {
+	if id != testID {
 		t.Errorf("instance ID mismatch")
 	}
 }
@@ -68,6 +70,8 @@ func TestValidateEgress(t *testing.T) {
 			InstanceId: aws.String(testID),
 		}},
 	}, nil)
+
+	FakeEC2Cli.EXPECT().CreateTags(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.CreateTagsOutput{}, nil)
 
 	FakeEC2Cli.EXPECT().DescribeInstanceStatus(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.DescribeInstanceStatusOutput{
 		InstanceStatuses: []types.InstanceStatus{{
@@ -140,6 +144,8 @@ Unable to reach somesample.endpoint
 				InstanceId: aws.String(testID),
 			}},
 		}, nil)
+
+		FakeEC2Cli.EXPECT().CreateTags(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.CreateTagsOutput{}, nil)
 
 		FakeEC2Cli.EXPECT().DescribeInstanceStatus(gomock.Any(), gomock.Any()).Times(1).Return(&ec2.DescribeInstanceStatusOutput{
 			InstanceStatuses: []types.InstanceStatus{{

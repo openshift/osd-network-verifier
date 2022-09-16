@@ -31,13 +31,6 @@ func NewGenericError(err error) *GenericError {
 		if errors.As(oe.Unwrap(), &ae) {
 			switch {
 			case ae.ErrorCode() == "UnauthorizedOperation":
-				if oe.Service() == "EC2" && oe.Operation() == "RunInstances" {
-					// AWS will return an UnauthorizedOperation for ec2:RunInstances even if the true error is that
-					// it cannot add tags to the instance via ec2:CreateTags
-					return &GenericError{
-						message: fmt.Sprintf("missing required permission(s) %s:%s and/or ec2:CreateTags", strings.ToLower(oe.Service()), oe.Operation()),
-					}
-				}
 				return &GenericError{
 					message: fmt.Sprintf("missing required permission %s:%s", strings.ToLower(oe.Service()), oe.Operation()),
 				}

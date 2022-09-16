@@ -7,8 +7,11 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	gomock "github.com/golang/mock/gomock"
+	output "github.com/openshift/osd-network-verifier/pkg/output"
+	proxy "github.com/openshift/osd-network-verifier/pkg/proxy"
 )
 
 // MockCloudClient is a mock of CloudClient interface.
@@ -49,15 +52,29 @@ func (mr *MockCloudClientMockRecorder) ByoVPCValidator(ctx interface{}) *gomock.
 }
 
 // ValidateEgress mocks base method.
-func (m *MockCloudClient) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string) error {
+func (m *MockCloudClient) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID, kmsKeyID string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateEgress", ctx, vpcSubnetID, cloudImageID)
-	ret0, _ := ret[0].(error)
+	ret := m.ctrl.Call(m, "ValidateEgress", ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
+	ret0, _ := ret[0].(*output.Output)
 	return ret0
 }
 
 // ValidateEgress indicates an expected call of ValidateEgress.
-func (mr *MockCloudClientMockRecorder) ValidateEgress(ctx, vpcSubnetID, cloudImageID interface{}) *gomock.Call {
+func (mr *MockCloudClientMockRecorder) ValidateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateEgress", reflect.TypeOf((*MockCloudClient)(nil).ValidateEgress), ctx, vpcSubnetID, cloudImageID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateEgress", reflect.TypeOf((*MockCloudClient)(nil).ValidateEgress), ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
+}
+
+// VerifyDns mocks base method.
+func (m *MockCloudClient) VerifyDns(ctx context.Context, vpcID string) *output.Output {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyDns", ctx, vpcID)
+	ret0, _ := ret[0].(*output.Output)
+	return ret0
+}
+
+// VerifyDns indicates an expected call of VerifyDns.
+func (mr *MockCloudClientMockRecorder) VerifyDns(ctx, vpcID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyDns", reflect.TypeOf((*MockCloudClient)(nil).VerifyDns), ctx, vpcID)
 }
