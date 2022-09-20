@@ -67,7 +67,7 @@ func NewCmdValidateDns() *cobra.Command {
 			}
 
 			out := cli.VerifyDns(ctx, config.vpcID)
-			out.Summary()
+			out.Summary(config.debug)
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
 				os.Exit(1)

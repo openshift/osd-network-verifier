@@ -125,7 +125,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(c.instanceType)},
 	}
 
-	c.logger.Debug(ctx, "Gathering description of instance type %s from EC2", c.instanceType)
+	c.WriteDebugLogs(ctx, fmt.Sprintf("Gathering description of instance type %s from EC2", c.instanceType))
 	descOut, err := c.ec2Client.DescribeInstanceTypes(ctx, &descInput)
 	if err != nil {
 		return handledErrors.NewGenericError(err)
@@ -135,7 +135,7 @@ func (c *Client) validateInstanceType(ctx context.Context) error {
 	// and placing it as the only InstanceType filter. Otherwise, ec2:DescribeInstanceTypes also accepts multiple as
 	// an array of InstanceTypes which could return multiple matches.
 	if len(descOut.InstanceTypes) != 1 {
-		c.logger.Debug(ctx, "matched instance types", descOut.InstanceTypes)
+		c.WriteDebugLogs(ctx, fmt.Sprintf("matched instance types: %v", descOut.InstanceTypes))
 		return fmt.Errorf("expected one instance type match for %s, got %d", c.instanceType, len(descOut.InstanceTypes))
 	}
 
@@ -225,7 +225,7 @@ func (c *Client) createTags(ctx context.Context, ids ...string) error {
 // 80 : stopped
 // 401 : failed
 func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (*ec2Types.InstanceStateName, error) {
-	c.logger.Debug(ctx, "Describing state of EC2 instance %s", instanceID)
+	c.WriteDebugLogs(ctx, fmt.Sprintf("Describing state of EC2 instance %s", instanceID))
 
 	result, err := c.ec2Client.DescribeInstanceStatus(ctx, &ec2.DescribeInstanceStatusInput{
 		InstanceIds: []string{instanceID},
@@ -243,7 +243,7 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (*
 	if len(result.InstanceStatuses) == 0 {
 		// Don't return an error here as if the instance is still too new, it may not be
 		// returned at all.
-		c.logger.Debug(ctx, "Instance %s has no status yet", instanceID)
+		c.WriteDebugLogs(ctx, fmt.Sprintf("Instance %s has no status yet", instanceID))
 		return nil, nil
 	}
 
@@ -252,7 +252,7 @@ func (c *Client) describeEC2Instances(ctx context.Context, instanceID string) (*
 
 // waitForEC2InstanceCompletion checks every 15s for up to 2 minutes for an instance to be in the running state
 func (c *Client) waitForEC2InstanceCompletion(ctx context.Context, instanceID string) error {
-	c.logger.Debug(ctx, "Waiting for EC2 instance %s to be running", instanceID)
+	c.WriteDebugLogs(ctx, fmt.Sprintf("Waiting for EC2 instance %s to be running", instanceID))
 
 	return helpers.PollImmediate(15*time.Second, 2*time.Minute, func() (bool, error) {
 		instanceState, descError := c.describeEC2Instances(ctx, instanceID)
@@ -287,6 +287,10 @@ func generateUserData(variables map[string]string) (string, error) {
 }
 
 func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string) error {
+	var (
+		b64ConsoleLogs string
+		consoleLogs    string
+	)
 	// Compile the regular expressions once
 	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
@@ -298,43 +302,48 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 		Latest:     aws.Bool(true),
 	}
 
-	c.logger.Debug(ctx, "Scraping console output and waiting for user data script to complete...")
+	c.WriteDebugLogs(ctx, "Scraping console output and waiting for user data script to complete...")
 
 	// Periodically scrape console output and analyze the logs for any errors or a successful completion
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
-		output, err := c.ec2Client.GetConsoleOutput(ctx, input)
+		consoleOutput, err := c.ec2Client.GetConsoleOutput(ctx, input)
 		if err != nil {
 			return false, handledErrors.NewGenericError(err)
 		}
 
-		if output.Output != nil {
+		if consoleOutput.Output != nil {
 			// In the early stages, an ec2 instance may be running but the console is not populated with any data
-			if len(*output.Output) == 0 {
-				c.logger.Debug(ctx, "EC2 console output not yet populated with data, continuing to wait...")
+			if len(*consoleOutput.Output) == 0 {
+				c.WriteDebugLogs(ctx, "EC2 console consoleOutput not yet populated with data, continuing to wait...")
 				return false, nil
 			}
 
-			// The console output starts out base64 encoded
-			scriptOutput, err := base64.StdEncoding.DecodeString(*output.Output)
+			// Store base64-encoded output for debug logs
+			b64ConsoleLogs = *consoleOutput.Output
+
+			// The console consoleOutput starts out base64 encoded
+			scriptOutput, err := base64.StdEncoding.DecodeString(*consoleOutput.Output)
 			if err != nil {
-				c.logger.Debug(ctx, "Error decoding console output, will retry on next check interval: %s", err)
+				c.WriteDebugLogs(ctx, fmt.Sprintf("Error decoding console consoleOutput, will retry on next check interval: %s", err))
 				return false, nil
 			}
 
-			// Check for the specific string we output in the generated userdata file at the end to verify the userdata script has run
-			// It is possible we get EC2 console output, but the userdata script has not yet completed.
-			userDataComplete := reUserDataComplete.FindString(string(scriptOutput))
+			consoleLogs = string(scriptOutput)
+
+			// Check for the specific string we consoleOutput in the generated userdata file at the end to verify the userdata script has run
+			// It is possible we get EC2 console consoleOutput, but the userdata script has not yet completed.
+			userDataComplete := reUserDataComplete.FindString(consoleLogs)
 			if len(userDataComplete) < 1 {
-				c.logger.Debug(ctx, "EC2 console output contains data, but end of userdata script not seen, continuing to wait...")
+				c.WriteDebugLogs(ctx, "EC2 console consoleOutput contains data, but end of userdata script not seen, continuing to wait...")
 				return false, nil
 			}
 
-			// Check output for failures, report as exceptions if they occurred
-			genericFailures := reGenericFailure.FindAllStringSubmatch(string(scriptOutput), -1)
+			// Check consoleOutput for failures, report as exceptions if they occurred
+			genericFailures := reGenericFailure.FindAllStringSubmatch(consoleLogs, -1)
 			if len(genericFailures) > 0 {
-				c.logger.Debug(ctx, fmt.Sprint(genericFailures))
+				c.WriteDebugLogs(ctx, fmt.Sprint(genericFailures))
 
-				dockerFailures := reDockerFailure.FindAllString(string(scriptOutput), -1)
+				dockerFailures := reDockerFailure.FindAllString(consoleLogs, -1)
 				if len(dockerFailures) > 0 {
 					// Should be resolved by OSD-13003 and OSD-13007
 					c.output.AddException(handledErrors.NewGenericError(errors.New("docker was unable to install or run. Further investigation needed")))
@@ -346,11 +355,15 @@ func (c *Client) findUnreachableEndpoints(ctx context.Context, instanceID string
 				}
 			}
 
-			// If debug logging is enabled, output the full console log that appears to include the full userdata run
-			c.logger.Debug(ctx, "Full EC2 console output:\n---\n%s\n---", scriptOutput)
+			// If debug logging is enabled, consoleOutput the full console log that appears to include the full userdata run
+			c.WriteDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 
 			c.output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
 			return true, nil
+		}
+
+		if len(b64ConsoleLogs) > 0 {
+			c.WriteDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 		}
 
 		return false, nil
@@ -392,7 +405,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `c.output` which stores the execution results
 func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, p proxy.ProxyConfig) *output.Output {
-	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
+	c.WriteDebugLogs(ctx, fmt.Sprintf("Using configured timeout of %s for each egress request", timeout.String()))
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty srting for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
@@ -414,13 +427,13 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	if err != nil {
 		return c.output.AddError(err)
 	}
-	c.logger.Debug(ctx, "Base64-encoded generated userdata script:\n---\n%s\n---", userData)
+	c.WriteDebugLogs(ctx, fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
 
 	cloudImageID, err = c.setCloudImage(cloudImageID)
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}
-	c.logger.Debug(ctx, "Using AMI: %s", cloudImageID)
+	c.WriteDebugLogs(ctx, fmt.Sprintf("Using AMI: %s", cloudImageID))
 
 	instanceID, err := c.createEC2Instance(ctx, &createEC2InstanceInput{
 		amiID:         cloudImageID,

@@ -166,7 +166,7 @@ are set correctly before execution.
 
 			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout, p)
 
-			out.Summary()
+			out.Summary(config.debug)
 			if !out.IsSuccessful() {
 				logger.Error(ctx, "Failure!")
 				os.Exit(1)
