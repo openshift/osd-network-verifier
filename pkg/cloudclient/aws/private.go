@@ -394,6 +394,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, p proxy.ProxyConfig) *output.Output {
 	c.logger.Debug(ctx, "Using configured timeout of %s for each egress request", timeout.String())
 	// Generate the userData file
+	// As expand replaces all ${var} (using empty srting for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
 		"AWS_REGION":               c.region,
 		"USERDATA_BEGIN":           "USERDATA BEGIN",
@@ -406,6 +407,8 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 		"HTTPS_PROXY":              p.HttpsProxy,
 		"CACERT":                   base64.StdEncoding.EncodeToString([]byte(p.Cacert)),
 		"NOTLS":                    strconv.FormatBool(p.NoTls),
+		"IMAGE":                    "$IMAGE",
+		"VALIDATOR_REFERENCE":      "$VALIDATOR_REFERENCE",
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {
