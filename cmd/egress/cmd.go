@@ -24,20 +24,21 @@ var (
 )
 
 type egressConfig struct {
-	vpcSubnetID  string
-	cloudImageID string
-	instanceType string
-	cloudTags    map[string]string
-	debug        bool
-	region       string
-	timeout      time.Duration
-	kmsKeyID     string
-	httpProxy    string
-	httpsProxy   string
-	CaCert       string
-	noTls        bool
-	gcp          bool
-	awsProfile   string
+	vpcSubnetID     string
+	cloudImageID    string
+	instanceType    string
+	securityGroupId string
+	cloudTags       map[string]string
+	debug           bool
+	region          string
+	timeout         time.Duration
+	kmsKeyID        string
+	httpProxy       string
+	httpsProxy      string
+	CaCert          string
+	noTls           bool
+	gcp             bool
+	awsProfile      string
 }
 
 func getDefaultRegion(cloudProvider string) string {
@@ -164,7 +165,7 @@ are set correctly before execution.
 				NoTls:      config.noTls,
 			}
 
-			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.timeout, p)
+			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.securityGroupId, config.timeout, p)
 
 			out.Summary(config.debug)
 			if !out.IsSuccessful() {
@@ -179,6 +180,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
+	validateEgressCmd.Flags().StringVar(&config.securityGroupId, "security-group-id", "", "(optional) security group id to attach to the created EC2 instance")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")

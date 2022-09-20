@@ -24,11 +24,12 @@ import (
 )
 
 type createEC2InstanceInput struct {
-	amiID         string
-	vpcSubnetID   string
-	userdata      string
-	ebsKmsKeyID   string
-	instanceCount int32
+	amiId           string
+	subnetId        string
+	securityGroupId string
+	userdata        string
+	kmsKeyId        string
+	instanceCount   int32
 }
 
 const (
@@ -155,24 +156,30 @@ func (c *Client) createEC2Instance(ctx context.Context, input *createEC2Instance
 		Encrypted:           aws.Bool(true),
 	}
 	// Check if KMS key was specified for root volume encryption
-	if input.ebsKmsKeyID != "" {
-		ebsBlockDevice.KmsKeyId = aws.String(input.ebsKmsKeyID)
+	if input.kmsKeyId != "" {
+		ebsBlockDevice.KmsKeyId = aws.String(input.kmsKeyId)
+	}
+
+	eniSpecification := ec2Types.InstanceNetworkInterfaceSpecification{
+		AssociatePublicIpAddress: aws.Bool(true),
+		DeviceIndex:              aws.Int32(0),
+		SubnetId:                 aws.String(input.subnetId),
+	}
+
+	// An empty string does not default to the default security group, and returns this error:
+	// error performing ec2:RunInstances: Value () for parameter groupId is invalid. The value cannot be empty
+	if input.securityGroupId != "" {
+		eniSpecification.Groups = []string{input.securityGroupId}
 	}
 
 	// Build our request, converting the go base types into the pointers required by the SDK
 	instanceReq := ec2.RunInstancesInput{
-		ImageId:      aws.String(input.amiID),
+		ImageId:      aws.String(input.amiId),
 		MaxCount:     aws.Int32(input.instanceCount),
 		MinCount:     aws.Int32(input.instanceCount),
 		InstanceType: ec2Types.InstanceType(c.instanceType),
 		// Because we're making this VPC aware, we also have to include a network interface specification
-		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{
-			{
-				AssociatePublicIpAddress: aws.Bool(true),
-				DeviceIndex:              aws.Int32(0),
-				SubnetId:                 aws.String(input.vpcSubnetID),
-			},
-		},
+		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{eniSpecification},
 		// We specify block devices mainly to enable EBS encryption
 		BlockDeviceMappings: []ec2Types.BlockDeviceMapping{
 			{
@@ -404,7 +411,7 @@ func (c *Client) setCloudImage(cloudImageID string) (string, error) {
 // - create instance and wait till it gets ready, wait for userdata script execution
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `c.output` which stores the execution results
-func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, p proxy.ProxyConfig) *output.Output {
+func (c *Client) validateEgress(ctx context.Context, subnetId, amiId, kmsKeyId, securityGroupId string, timeout time.Duration, p proxy.ProxyConfig) *output.Output {
 	c.WriteDebugLogs(ctx, fmt.Sprintf("Using configured timeout of %s for each egress request", timeout.String()))
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty srting for unknown ones), adding the env variables used in userdata.yaml
@@ -429,18 +436,19 @@ func (c *Client) validateEgress(ctx context.Context, vpcSubnetID, cloudImageID s
 	}
 	c.WriteDebugLogs(ctx, fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
 
-	cloudImageID, err = c.setCloudImage(cloudImageID)
+	amiId, err = c.setCloudImage(amiId)
 	if err != nil {
 		return c.output.AddError(err) // fatal
 	}
-	c.WriteDebugLogs(ctx, fmt.Sprintf("Using AMI: %s", cloudImageID))
+	c.logger.Debug(ctx, "Using AMI: %s", amiId)
 
 	instanceID, err := c.createEC2Instance(ctx, &createEC2InstanceInput{
-		amiID:         cloudImageID,
-		vpcSubnetID:   vpcSubnetID,
-		userdata:      userData,
-		ebsKmsKeyID:   kmsKeyID,
-		instanceCount: instanceCount,
+		amiId:           amiId,
+		subnetId:        subnetId,
+		securityGroupId: securityGroupId,
+		userdata:        userData,
+		kmsKeyId:        kmsKeyId,
+		instanceCount:   instanceCount,
 	})
 	if err != nil {
 		return c.output.AddError(err) // fatal

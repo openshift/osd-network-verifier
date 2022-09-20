@@ -31,7 +31,7 @@ func (c *Client) ByoVPCValidator(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID string, kmsKeyID string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
+func (c *Client) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID, kmsKeyID, securityGroupId string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
 	return c.validateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
 }
 

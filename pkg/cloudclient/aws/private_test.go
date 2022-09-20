@@ -41,8 +41,8 @@ func TestCreateEC2Instance(t *testing.T) {
 		logger:    &logging.GlogLogger{},
 	}
 	id, err := cli.createEC2Instance(context.Background(), &createEC2InstanceInput{
-		amiID:         "test-ami",
-		vpcSubnetID:   "test",
+		amiId:         "test-ami",
+		subnetId:      "test",
 		instanceCount: 1,
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func TestValidateEgress(t *testing.T) {
 		logger:    &logging.GlogLogger{},
 	}
 
-	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", time.Duration(1*time.Second), proxy.ProxyConfig{}).IsSuccessful() {
+	if !cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", "", time.Duration(1*time.Second), proxy.ProxyConfig{}).IsSuccessful() {
 		t.Errorf("validateEgress(): should pass")
 	}
 }
@@ -163,7 +163,7 @@ Unable to reach somesample.endpoint
 			ec2Client: FakeEC2Cli,
 			logger:    &logging.GlogLogger{},
 		}
-		if cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "",
+		if cli.validateEgress(context.TODO(), vpcSubnetID, cloudImageID, "", "",
 			time.Duration(1*time.Second), proxy.ProxyConfig{}).IsSuccessful() {
 			t.Errorf("failed %s: validateEgress(): should fail", test.name)
 		}

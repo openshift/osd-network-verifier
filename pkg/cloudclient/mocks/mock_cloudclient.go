@@ -52,17 +52,17 @@ func (mr *MockCloudClientMockRecorder) ByoVPCValidator(ctx interface{}) *gomock.
 }
 
 // ValidateEgress mocks base method.
-func (m *MockCloudClient) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID, kmsKeyID string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
+func (m *MockCloudClient) ValidateEgress(ctx context.Context, vpcSubnetID, cloudImageID, kmsKeyID, securityGroupId string, timeout time.Duration, proxy proxy.ProxyConfig) *output.Output {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateEgress", ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
+	ret := m.ctrl.Call(m, "ValidateEgress", ctx, vpcSubnetID, cloudImageID, kmsKeyID, securityGroupId, timeout, proxy)
 	ret0, _ := ret[0].(*output.Output)
 	return ret0
 }
 
 // ValidateEgress indicates an expected call of ValidateEgress.
-func (mr *MockCloudClientMockRecorder) ValidateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy interface{}) *gomock.Call {
+func (mr *MockCloudClientMockRecorder) ValidateEgress(ctx, vpcSubnetID, cloudImageID, kmsKeyID, securityGroupId, timeout, proxy interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateEgress", reflect.TypeOf((*MockCloudClient)(nil).ValidateEgress), ctx, vpcSubnetID, cloudImageID, kmsKeyID, timeout, proxy)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateEgress", reflect.TypeOf((*MockCloudClient)(nil).ValidateEgress), ctx, vpcSubnetID, cloudImageID, kmsKeyID, securityGroupId, timeout, proxy)
 }
 
 // VerifyDns mocks base method.

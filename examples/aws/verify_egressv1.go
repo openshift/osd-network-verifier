@@ -31,7 +31,7 @@ func extendValidateEgressV1() {
 	//---------ONV egress verifier usage---------
 	cli, _ := cloudclient.NewClient(context.TODO(), logger, *creds, region, instanceType, tags)
 	// Call egress validator
-	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 3*time.Second, proxy.ProxyConfig{})
+	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", "securityGroupId", 3*time.Second, proxy.ProxyConfig{})
 	if !out.IsSuccessful() {
 		// Retrieve errors
 		failures, exceptions, errors := out.Parse()
