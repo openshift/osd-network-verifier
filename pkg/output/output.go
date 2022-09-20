@@ -7,13 +7,19 @@ import (
 )
 
 // Output can be used when showcasing validation results at the end of the execution.
-// `failures` represents the failed validation tests
-// `exceptions` is to show edge cases where a verifier test couldn't be ran as expected
-// `errors` is collection of unhandled errors
 type Output struct {
-	failures   []error
+	// debugLogs
+	debugLogs []string
+	// failures represents the failed validation tests
+	failures []error
+	// exceptions is to show edge cases where a verifier test couldn't be ran as expected
 	exceptions []error
-	errors     []error
+	// errors is collection of unhandled errors
+	errors []error
+}
+
+func (o *Output) AddDebugLogs(log string) {
+	o.debugLogs = append(o.debugLogs, log)
 }
 
 // AddError adds error as generic to the list of errors
@@ -47,7 +53,7 @@ func (o *Output) IsSuccessful() bool {
 }
 
 func (o *Output) printFailures() {
-	if o.failures != nil && len(o.failures) > 0 {
+	if o != nil && len(o.failures) > 0 {
 		fmt.Println("printing out failures:")
 		for _, v := range o.failures {
 			fmt.Println(" - ", v)
@@ -56,7 +62,7 @@ func (o *Output) printFailures() {
 }
 
 func (o *Output) printExceptions() {
-	if o.exceptions != nil && len(o.exceptions) > 0 {
+	if o != nil && len(o.exceptions) > 0 {
 		fmt.Println("printing out exceptions preventing the verifier from running the specific test:")
 		for _, v := range o.exceptions {
 			fmt.Println(" - ", v)
@@ -65,7 +71,7 @@ func (o *Output) printExceptions() {
 }
 
 func (o *Output) printErrors() {
-	if o.errors != nil && len(o.errors) > 0 {
+	if o != nil && len(o.errors) > 0 {
 		fmt.Println("printing out errors faced during the execution:")
 		for _, v := range o.errors {
 			fmt.Println(" - ", v.Error())
@@ -73,9 +79,22 @@ func (o *Output) printErrors() {
 	}
 }
 
+func (o *Output) printDebugLogs() {
+	if o != nil && len(o.debugLogs) > 0 {
+		fmt.Println("printing out debug logs from the execution:")
+		for _, v := range o.debugLogs {
+			fmt.Println(" - ", v)
+		}
+	}
+}
+
 // Summary can be used for printing out output structure
-func (o *Output) Summary() {
+func (o *Output) Summary(debug bool) {
 	fmt.Println("Summary:")
+	if debug {
+		o.printDebugLogs()
+	}
+
 	if o.IsSuccessful() {
 		fmt.Println("All tests pass!")
 	} else {

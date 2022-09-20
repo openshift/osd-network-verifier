@@ -43,5 +43,4 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 	default:
 		return nil, fmt.Errorf("unsupported credentials type %T", c)
 	}
-
 }

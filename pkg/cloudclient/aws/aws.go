@@ -105,3 +105,8 @@ func NewClient(ctx context.Context, logger ocmlog.Logger, creds interface{}, reg
 
 	return
 }
+
+func (c *Client) WriteDebugLogs(ctx context.Context, log string) {
+	c.output.AddDebugLogs(log)
+	c.logger.Debug(ctx, log)
+}
