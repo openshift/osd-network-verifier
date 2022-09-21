@@ -52,7 +52,7 @@ TRVfvGGNFuJkfkh4rR09wHvlmyzSVJ6le6iaQ0wlp2S0j9oC2A==
 	}
 
 	// Call egress validator
-	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", 3*time.Second, p)
+	out := cli.ValidateEgress(context.TODO(), "vpcSubnetID", "cloudImageID", "kmsKeyID", "securityGroupId", 3*time.Second, p)
 	if !out.IsSuccessful() {
 		// Retrieve errors
 		failures, exceptions, errors := out.Parse()
