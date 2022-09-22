@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	defaultTags               = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
+	defaultTags               = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
 	awsRegionEnvVarStr string = "AWS_REGION"
 	awsRegionDefault   string = "us-east-2"
 	gcpRegionEnvVarStr string = "GCP_REGION"
