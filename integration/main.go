@@ -7,23 +7,37 @@ import (
 	"os"
 	"time"
 
-	"github.com/openshift/osd-network-verifier/integration/pkg/aws"
+	inttestaws "github.com/openshift/osd-network-verifier/integration/pkg/aws"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	awsverifier "github.com/openshift/osd-network-verifier/pkg/verifier/aws"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
 func main() {
 	region := flag.String("region", "us-east-1", "AWS Region")
+	profile := flag.String("profile", "", "AWS Profile")
 	flag.Parse()
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(*region))
-	if err != nil {
-		panic(err)
+	var (
+		cfg aws.Config
+		err error
+	)
+
+	if *profile == "" {
+		cfg, err = config.LoadDefaultConfig(context.TODO(), config.WithRegion(*region))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		cfg, err = config.LoadDefaultConfig(context.TODO(), config.WithRegion(*region), config.WithSharedConfigProfile(*profile))
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	data := aws.NewIntegrationTestData(cfg)
+	data := inttestaws.NewIntegrationTestData(cfg)
 	if err := data.Setup(context.TODO()); err != nil {
 		log.Printf("setup err, starting cleanup: %s", err)
 		if err := data.Cleanup(context.TODO()); err != nil {

@@ -14,9 +14,6 @@ import (
 	nfwTypes "github.com/aws/aws-sdk-go-v2/service/networkfirewall/types"
 )
 
-// TODO: remove
-const slug = "-abcd"
-
 // SetupAvailabilityZone chooses a random available AZ (not requiring opt-in) from the selected region
 func (id *OnvIntegrationTestData) SetupAvailabilityZone(ctx context.Context) error {
 	azs, err := id.ec2Api.DescribeAvailabilityZones(ctx, &ec2.DescribeAvailabilityZonesInput{
@@ -362,7 +359,7 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 
 	rulegroup, err := id.networkFirewallApi.CreateRuleGroup(ctx, &networkfirewall.CreateRuleGroupInput{
 		Capacity:      aws.Int32(3),
-		RuleGroupName: aws.String("osd-network-verifier-rule-group" + slug),
+		RuleGroupName: aws.String("osd-network-verifier-rule-group"),
 		Type:          nfwTypes.RuleGroupTypeStateful,
 		Description:   aws.String("Block quay.io"),
 		RuleGroup: &nfwTypes.RuleGroup{
@@ -393,7 +390,7 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 				},
 			},
 		},
-		FirewallPolicyName: aws.String("osd-network-verifier-firewall-policy" + slug),
+		FirewallPolicyName: aws.String("osd-network-verifier-firewall-policy"),
 		Description:        aws.String("Block quay.io"),
 		Tags:               defaultNetworkFirewallTags("osd-network-verifier-firewall-policy"),
 	})
@@ -405,7 +402,7 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 	log.Printf("created firewall policy: %s", *id.firewallPolicyArn)
 
 	firewall, err := id.networkFirewallApi.CreateFirewall(ctx, &networkfirewall.CreateFirewallInput{
-		FirewallName:      aws.String("osd-network-verifier-firewall" + slug),
+		FirewallName:      aws.String("osd-network-verifier-firewall"),
 		FirewallPolicyArn: id.firewallPolicyArn,
 		SubnetMappings: []nfwTypes.SubnetMapping{
 			{

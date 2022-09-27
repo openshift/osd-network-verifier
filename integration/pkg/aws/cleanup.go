@@ -28,33 +28,40 @@ func (id *OnvIntegrationTestData) CleanupVpc(ctx context.Context) error {
 	return nil
 }
 
-// CleanupSubnets deletes the public/private subnets
+// CleanupSubnets deletes the firewall/public/private subnets
 func (id *OnvIntegrationTestData) CleanupSubnets(ctx context.Context) error {
-	if id.publicSubnetId == nil || id.privateSubnetId == nil || id.firewallSubnetId == nil {
-		log.Println("skipping subnet cleanup due to missing subnet ids")
-		return nil
+	if id.privateSubnetId != nil {
+		if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.privateSubnetId}); err != nil {
+			return err
+		}
+
+		log.Printf("deleted private subnet: %s", *id.privateSubnetId)
+		id.privateSubnetId = nil
+	} else {
+		log.Println("skipping private subnet cleanup due to missing subnet id")
 	}
 
-	if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.privateSubnetId}); err != nil {
-		return err
+	if id.firewallSubnetId != nil {
+		if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.firewallSubnetId}); err != nil {
+			return err
+		}
+
+		log.Printf("deleted firewall subnet: %s", *id.firewallSubnetId)
+		id.firewallRuleGroupArn = nil
+	} else {
+		log.Println("skipping firewall subnet cleanup due to missing subnet id")
 	}
 
-	log.Printf("deleted private subnet: %s", *id.privateSubnetId)
-	id.privateSubnetId = nil
+	if id.publicSubnetId != nil {
+		if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.publicSubnetId}); err != nil {
+			return err
+		}
 
-	if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.firewallSubnetId}); err != nil {
-		return err
+		log.Printf("deleted public subnet: %s", *id.publicSubnetId)
+		id.publicSubnetId = nil
+	} else {
+		log.Println("skipping public subnet cleanup due to missing subnet id")
 	}
-
-	log.Printf("deleted firewall subnet: %s", *id.firewallSubnetId)
-	id.firewallRuleGroupArn = nil
-
-	if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.publicSubnetId}); err != nil {
-		return err
-	}
-
-	log.Printf("deleted public subnet: %s", *id.publicSubnetId)
-	id.publicSubnetId = nil
 
 	return nil
 }
