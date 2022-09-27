@@ -20,8 +20,6 @@ write_files:
       fi
       echo "${USERDATA_END}" >> /var/log/userdata-output
 runcmd:
-  - sudo yum upgrade -y 2>1 > /dev/null || echo "Could not update packages"
-  - sudo yum install docker -y 2>1 > /dev/null || echo "didn't install docker"
   - sudo service docker start 2>1 > /dev/null || echo "docker not started by systemctl"
   - /run-container.sh
   - cat /var/log/userdata-output >/dev/console
