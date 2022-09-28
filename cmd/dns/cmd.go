@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/openshift/osd-network-verifier/cmd/utils"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
-	awsverifier "github.com/openshift/osd-network-verifier/pkg/verifier/aws"
-
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +38,7 @@ func NewCmdValidateDns() *cobra.Command {
 		Use: "dns",
 		Run: func(cmd *cobra.Command, args []string) {
 
-			awsVerifier, err := awsverifier.NewAwsVerifier(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"), config.region, "", config.debug)
+			awsVerifier, err := utils.GetAwsVerifier(os.Getenv("AWS_REGION"), config.awsProfile, config.debug)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)

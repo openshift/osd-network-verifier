@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/openshift/osd-network-verifier/cmd/utils"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
-	awsverifier "github.com/openshift/osd-network-verifier/pkg/verifier/aws"
 
 	"github.com/spf13/cobra"
 )
 
 var debug bool
+var awsProfile string
 
 func NewCmdByovpc() *cobra.Command {
 	byovpcCmd := &cobra.Command{
@@ -19,7 +20,7 @@ func NewCmdByovpc() *cobra.Command {
 		Short: "Verify subnet configuration of a specific VPC",
 		Run: func(cmd *cobra.Command, args []string) {
 
-			awsVerifier, err := awsverifier.NewAwsVerifier(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"), os.Getenv("AWS_REGION"), "", debug)
+			awsVerifier, err := utils.GetAwsVerifier(os.Getenv("AWS_REGION"), awsProfile, debug)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -36,6 +37,7 @@ func NewCmdByovpc() *cobra.Command {
 		},
 	}
 
+	byovpcCmd.Flags().StringVar(&awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 	byovpcCmd.Flags().BoolVar(&debug, "debug", false, "If true, enable additional debug-level logging")
 
 	return byovpcCmd
