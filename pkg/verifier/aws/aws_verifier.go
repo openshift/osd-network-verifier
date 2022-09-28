@@ -264,6 +264,9 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 }
 
 func (a *AwsVerifier) createTags(tags map[string]string, ids ...string) error {
+	if len(tags) <= 0 {
+		return nil
+	}
 	_, err := a.AwsClient.CreateTags(context.TODO(), &ec2.CreateTagsInput{
 		Resources: ids,
 		Tags:      buildTags(tags),
