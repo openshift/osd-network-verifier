@@ -58,12 +58,14 @@ func extendValidateEgress() {
 		InstanceType: "m5.2xlarge",
 		Proxy:        p,
 		AWS: verifier.AwsEgressConfig{
-			KmsKeyID: "kmskeyID",
+			KmsKeyID:        "kmskeyID",
+			SecurityGroupId: "SecurityGroupId",
 		},
 	}
 
 	// Call egress function with either gcp or aws client
-	out := verifier.ValidateEgress(awsVerifier, vei)
+	out := verifier.
+		ValidateEgress(awsVerifier, vei)
 	if !out.IsSuccessful() {
 		// Retrieve errors
 		failures, exceptions, errors := out.Parse()

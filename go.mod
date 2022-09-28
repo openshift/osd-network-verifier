@@ -17,9 +17,7 @@ require (
 	github.com/openshift-online/ocm-sdk-go v0.1.224
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.0
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
 	google.golang.org/api v0.84.0
-	google.golang.org/genproto v0.0.0-20220628213854-d9e0b6570c03 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )
