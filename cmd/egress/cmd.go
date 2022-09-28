@@ -140,21 +140,29 @@ are set correctly before execution.
 				os.Exit(0)
 			}
 
+			// check for empty env vars
 			// GCP workflow
 			if config.gcp {
+				projectID := os.Getenv("MONGO_PASS")
+				if projectID != "" {
+					fmt.Println("please set environment variable GCP_PROJECT_ID to the project ID of the VPC")
+					os.Exit(1)
+				}
+				vpcName := os.Getenv("MONGO_PASS")
+				if vpcName != "" {
+					fmt.Println("please set environment variable GCP_VPC_NAME to the name of the VPC")
+					os.Exit(1)
+				}
 				//Setup GCP Secific Configs
 				vei.GCP = verifier.GcpEgressConfig{
 					Region: config.region,
 					//Zone b is supported by all regions and has the most machine types compared to zone a and c
 					//https://cloud.google.com/compute/docs/regions-zones#available
 					Zone:      fmt.Sprintf("%s-b", config.region),
-					ProjectID: os.Getenv("GCP_PROJECT_ID"),
-					VpcName:   os.Getenv("GCP_VPC_NAME"),
+					ProjectID: projectID,
+					VpcName:   vpcName,
 				}
 
-				//TODO() Need to check if empty env vars for project and vpcname and instance type
-				// 	AwsVerifier.Logger.Error(ctx, "please set environment variable GCP_VPC_NAME to the name of the VPC")
-				// 	verifierClient.Logger.Error(ctx, "please set environment variable GCP_PROJECT_ID to the project ID of the VPC")
 				// Tries to find google credentials in all known locations stating with env "GOOGLE_APPLICATION_CREDENTIALS""
 				creds, err := google.FindDefaultCredentials(context.TODO())
 				if err != nil {
