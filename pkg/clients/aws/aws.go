@@ -56,7 +56,6 @@ func NewClient(ctx context.Context, accessID, accessSecret, sessiontoken, region
 
 // Extend EC2Client so that we can mock them all for testing
 // to re-generate mockfile once another interface is added for testing:
-// mockgen -source=pkg/cloudclient/aws/aws.go -package mocks -destination=pkg/cloudclient/mocks/mock_aws.go
 type EC2Client interface {
 	CreateTags(ctx context.Context, params *ec2.CreateTagsInput, optFns ...func(*ec2.Options)) (*ec2.CreateTagsOutput, error)
 	RunInstances(ctx context.Context, params *ec2.RunInstancesInput, optFns ...func(*ec2.Options)) (*ec2.RunInstancesOutput, error)

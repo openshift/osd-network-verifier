@@ -72,14 +72,20 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		tags:         vei.Tags,
 	})
 	if err != nil {
-		g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
+		err = g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
+		if err != nil {
+			g.Output.AddError(err)
+		}
 		return g.Output.AddError(err) // fatal
 	}
 
 	g.Logger.Debug(vei.Ctx, "Waiting for ComputeService instance %s to be running", instance.Name)
 	if instanceReadyErr := g.waitForComputeServiceInstanceCompletion(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name); instanceReadyErr != nil {
-		g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name) // try to terminate the created instance
-		return g.Output.AddError(instanceReadyErr)                                                  // fatal
+		err = g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name) // try to terminate the created instanc
+		if err != nil {
+			g.Output.AddError(err)
+		}
+		return g.Output.AddError(instanceReadyErr) // fatal
 	}
 
 	g.Logger.Info(vei.Ctx, "Gathering and parsing console log output...")
@@ -89,7 +95,10 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		g.Output.AddError(err)
 	}
 
-	g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
+	err = g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
+	if err != nil {
+		g.Output.AddError(err)
+	}
 
 	return &g.Output
 }
