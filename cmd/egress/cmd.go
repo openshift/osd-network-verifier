@@ -65,14 +65,14 @@ func NewCmdValidateEgress() *cobra.Command {
 
 	validateEgressCmd := &cobra.Command{
 		Use:   "egress",
-		Short: "Verify essential openshift domains are reachable from given subnet ID.",
-		Long:  `Verify essential openshift domains are reachable from given subnet ID.`,
+		Short: "Verify essential OpenShift domains are reachable from given subnet ID.",
+		Long:  `Verify essential OpenShift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars 
 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credentials) 
 are set correctly before execution.
 
-# Verify that essential openshift domains are reachable from a given SUBNET_ID
-./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id $(IMAGE_ID)`,
+# Verify that essential OpenShift domains are reachable from a given SUBNET_ID
+./osd-network-verifier egress --subnet-id $(SUBNET_ID)`,
 		Run: func(cmd *cobra.Command, args []string) {
 
 			// Set Region
@@ -114,10 +114,10 @@ are set correctly before execution.
 			// AWS workflow
 			if !config.gcp {
 
-				//Setup AWS Secific Configs
+				//Setup AWS Specific Configs
 				vei.AWS = verifier.AwsEgressConfig{
 					KmsKeyID:        config.kmsKeyID,
-					SecurityGroupId: config.vpcSubnetID,
+					SecurityGroupId: config.securityGroupId,
 				}
 
 				awsVerifier, err := utils.GetAwsVerifier(config.region, config.awsProfile, config.debug)
