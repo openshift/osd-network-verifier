@@ -5,59 +5,21 @@ write_files:
     permissions: 755
     content: |
       #!/bin/bash
+      # based on tls, set up docker run command.
       echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
-
-      if podman pull ${VALIDATOR_IMAGE}; then
-        echo "Using IMAGE: $(podman images ${VALIDATOR_IMAGE} -q)" >> /var/log/userdata-output
-      
-        if [[ "${CACERT}" != "" ]]; then
-          echo "${CACERT}" | base64 --decode > /proxy.pem
-          podman run \
-            -v /proxy.pem:/proxy.pem \
-            --env "HTTP_PROXY=${HTTP_PROXY}" \
-            --env "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --env "AWS_REGION=${AWS_REGION}" \
-            --env "START_VERIFIER=${VALIDATOR_START_VERIFIER}" \
-            --env "END_VERIFIER=${VALIDATOR_END_VERIFIER}" \
-            "$(podman images ${VALIDATOR_IMAGE} -q)" \
-            --cacert=/proxy.pem \
-            --no-tls=${NOTLS}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
-        else
-          podman run \
-            --env "AWS_REGION=${AWS_REGION}" \
-            --env "HTTP_PROXY=${HTTP_PROXY}" \
-            --env "START_VERIFIER=${VALIDATOR_START_VERIFIER}" \
-            --env "END_VERIFIER=${VALIDATOR_END_VERIFIER}" \
-            "$(podman images ${VALIDATOR_IMAGE} -q)" >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
-        fi
-
+      sudo docker pull ${VALIDATOR_IMAGE} || echo "Warning: could not pull the specified docker image, will try to use the prepulled one" >> /var/log/userdata-output
+      VALIDATOR_REFERENCE=`echo ${VALIDATOR_IMAGE} | cut -d : -f 1`
+      # Retrieving the latest image successfully pulled (either from the script, or prepulled in the AMI)
+      IMAGE=`docker images ${VALIDATOR_REPO} -q  | head -n 2 | tail -n 1`
+      echo "Using IMAGE : $IMAGE" >> /var/log/userdata-output
+      if [[ "${CACERT}" != "" ]]; then
+        echo "${CACERT}" | base64 --decode > /proxy.pem
+        sudo docker run -v /proxy.pem:/proxy.pem -e "HTTP_PROXY=${HTTP_PROXY}" -e "HTTPS_PROXY=${HTTPS_PROXY}" --env "AWS_REGION=${AWS_REGION}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${IMAGE} --timeout=${TIMEOUT} --cacert=/proxy.pem --no-tls=${NOTLS}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
       else
-        echo "Warning: could not pull the specified docker image, will try to use the prepulled one" >> /var/log/userdata-output
-        echo "Using IMAGE: $(podman images quay.io/app-sre/osd-network-verifier -q | head -n 1)" >> /var/log/userdata-output
-      
-        if [[ "${CACERT}" != "" ]]; then
-          echo "${CACERT}" | base64 --decode > /proxy.pem
-          podman run \
-            -v /proxy.pem:/proxy.pem \
-            --env "HTTP_PROXY=${HTTP_PROXY}" \
-            --env "HTTPS_PROXY=${HTTPS_PROXY}" \
-            --env "AWS_REGION=${AWS_REGION}" \
-            --env "START_VERIFIER=${VALIDATOR_START_VERIFIER}" \
-            --env "END_VERIFIER=${VALIDATOR_END_VERIFIER}" \
-            "$(podman images quay.io/app-sre/osd-network-verifier -q | head -n 1)" \
-            --cacert=/proxy.pem \
-            --no-tls=${NOTLS}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
-        else
-          podman run \
-            --env "AWS_REGION=${AWS_REGION}" \
-            --env "HTTP_PROXY=${HTTP_PROXY}" \
-            --env "START_VERIFIER=${VALIDATOR_START_VERIFIER}" \
-            --env "END_VERIFIER=${VALIDATOR_END_VERIFIER}" \
-            "$(podman images quay.io/app-sre/osd-network-verifier -q | head -n 1)" >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
-        fi
+        sudo docker run --env "AWS_REGION=${AWS_REGION}" -e "HTTP_PROXY=${HTTP_PROXY}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${IMAGE} --timeout=${TIMEOUT}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
       fi
-
       echo "${USERDATA_END}" >> /var/log/userdata-output
 runcmd:
+  - sudo service docker start 2>1 > /dev/null || echo "docker not started by systemctl"
   - /run-container.sh
   - cat /var/log/userdata-output >/dev/console
