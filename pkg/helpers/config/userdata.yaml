@@ -44,7 +44,7 @@ write_files:
             --env "AWS_REGION=${AWS_REGION}" \
             --env "START_VERIFIER=${VALIDATOR_START_VERIFIER}" \
             --env "END_VERIFIER=${VALIDATOR_END_VERIFIER}" \
-            "$(podman images quay.io/app-sre/osd-network-verifier} -q | head -n 1)" \
+            "$(podman images quay.io/app-sre/osd-network-verifier -q | head -n 1)" \
             --cacert=/proxy.pem \
             --no-tls=${NOTLS}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
         else
