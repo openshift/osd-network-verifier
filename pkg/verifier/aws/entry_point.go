@@ -47,6 +47,8 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"HTTPS_PROXY":              vei.Proxy.HttpsProxy,
 		"CACERT":                   base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
 		"NOTLS":                    strconv.FormatBool(vei.Proxy.NoTls),
+		"IMAGE":                    "$IMAGE",
+		"VALIDATOR_REFERENCE":      "$VALIDATOR_REFERENCE",
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {
