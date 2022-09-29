@@ -35,7 +35,8 @@ func NewCmdValidateDns() *cobra.Command {
 	config := dnsConfig{}
 
 	validateDnsCmd := &cobra.Command{
-		Use: "dns",
+		Use:   "dns",
+		Short: "Verify any prerequisite DNS configuration is set as expected",
 		Run: func(cmd *cobra.Command, args []string) {
 
 			awsVerifier, err := utils.GetAwsVerifier(os.Getenv("AWS_REGION"), config.awsProfile, config.debug)

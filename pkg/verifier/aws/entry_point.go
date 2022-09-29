@@ -13,7 +13,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
-// validateEgress performs validation process for egress
+// ValidateEgress performs validation process for egress
 // Basic workflow is:
 // - prepare for ec2 instance creation
 // - create instance and wait till it gets ready, wait for userdata script execution
@@ -22,7 +22,7 @@ import (
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	a.writeDebugLogs(fmt.Sprintf("Using configured timeout of %s for each egress request", vei.Timeout.String()))
 
-	// Set default instanfe type if non is found
+	// Set default instance type if non is found
 	if vei.InstanceType == "" {
 		vei.InstanceType = "t3.micro"
 	}
@@ -34,7 +34,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// Generate the userData file
-	// As expand replaces all ${var} (using empty srting for unknown ones), adding the env variables used in userdata.yaml
+	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
 		"AWS_REGION":               a.AwsClient.Region,
 		"USERDATA_BEGIN":           "USERDATA BEGIN",
@@ -94,7 +94,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	return &a.Output
 }
 
-// verifyDns performs verification process for VPC's DNS
+// VerifyDns performs verification process for VPC's DNS
 // Basic workflow is:
 // - ask AWS API for VPC attributes
 // - ensure they're set correctly

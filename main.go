@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-
 	flags := pflag.NewFlagSet("osd-network-verifier", pflag.ExitOnError)
 
 	if err := flag.CommandLine.Parse([]string{}); err != nil {
