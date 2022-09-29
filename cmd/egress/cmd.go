@@ -143,12 +143,12 @@ are set correctly before execution.
 			// check for empty env vars
 			// GCP workflow
 			if config.gcp {
-				projectID := os.Getenv("MONGO_PASS")
+				projectID := os.Getenv("GCP_PROJECT_ID")
 				if projectID != "" {
 					fmt.Println("please set environment variable GCP_PROJECT_ID to the project ID of the VPC")
 					os.Exit(1)
 				}
-				vpcName := os.Getenv("MONGO_PASS")
+				vpcName := os.Getenv("GCP_VPC_NAME")
 				if vpcName != "" {
 					fmt.Println("please set environment variable GCP_VPC_NAME to the name of the VPC")
 					os.Exit(1)
