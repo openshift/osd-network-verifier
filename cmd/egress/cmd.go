@@ -17,11 +17,11 @@ import (
 )
 
 var (
-	defaultTags               = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	awsRegionEnvVarStr string = "AWS_REGION"
-	awsRegionDefault   string = "us-east-2"
-	gcpRegionEnvVarStr string = "GCP_REGION"
-	gcpRegionDefault   string = "us-east1"
+	defaultTags        = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	awsRegionEnvVarStr = "AWS_REGION"
+	awsRegionDefault   = "us-east-2"
+	gcpRegionEnvVarStr = "GCP_REGION"
+	gcpRegionDefault   = "us-east1"
 )
 
 type egressConfig struct {
@@ -213,5 +213,4 @@ are set correctly before execution.
 	}
 
 	return validateEgressCmd
-
 }
