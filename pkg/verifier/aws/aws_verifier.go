@@ -129,7 +129,8 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	eniSpecification := ec2Types.InstanceNetworkInterfaceSpecification{
-		AssociatePublicIpAddress: awsTools.Bool(false),
+		// Required for when the EC2 instance is in a public subnet
+		AssociatePublicIpAddress: awsTools.Bool(true),
 		DeviceIndex:              awsTools.Int32(0),
 		SubnetId:                 awsTools.String(input.SubnetID),
 	}
