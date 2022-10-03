@@ -17,7 +17,8 @@ import (
 )
 
 var (
-	defaultTags        = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	awsDefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	gcpDefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
 	awsRegionEnvVarStr = "AWS_REGION"
 	awsRegionDefault   = "us-east-2"
 	gcpRegionEnvVarStr = "GCP_REGION"
@@ -114,6 +115,10 @@ are set correctly before execution.
 			// AWS workflow
 			if !config.gcp {
 
+				if len(vei.Tags) == 0 {
+					vei.Tags = awsDefaultTags
+				}
+
 				//Setup AWS Specific Configs
 				vei.AWS = verifier.AwsEgressConfig{
 					KmsKeyID:        config.kmsKeyID,
@@ -143,13 +148,18 @@ are set correctly before execution.
 			// check for empty env vars
 			// GCP workflow
 			if config.gcp {
+
+				if len(vei.Tags) == 0 {
+					vei.Tags = gcpDefaultTags
+				}
+
 				projectID := os.Getenv("GCP_PROJECT_ID")
-				if projectID != "" {
+				if projectID == "" {
 					fmt.Println("please set environment variable GCP_PROJECT_ID to the project ID of the VPC")
 					os.Exit(1)
 				}
 				vpcName := os.Getenv("GCP_VPC_NAME")
-				if vpcName != "" {
+				if vpcName == "" {
 					fmt.Println("please set environment variable GCP_VPC_NAME to the name of the VPC")
 					os.Exit(1)
 				}
@@ -196,7 +206,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
 	validateEgressCmd.Flags().StringVar(&config.securityGroupId, "security-group-id", "", "(optional) security group id to attach to the created EC2 instance")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 2*time.Second, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")

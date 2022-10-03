@@ -5,7 +5,6 @@ import (
 
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
-	"google.golang.org/api/option"
 )
 
 // Client represents a GCP Client
@@ -20,7 +19,7 @@ func NewClient(credentials *google.Credentials) (*Client, error) {
 	// https://cloud.google.com/docs/authentication/production
 	//service account credentials order/priority - env variable, service account attached to resource, error
 
-	computeService, err := computev1.NewService(context.TODO(), option.WithCredentials(credentials), option.WithScopes("https://www.googleapis.com/auth/cloud-platform"))
+	computeService, err := computev1.NewService(context.TODO())
 	if err != nil {
 		return nil, err
 	}
