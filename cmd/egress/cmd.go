@@ -94,7 +94,7 @@ are set correctly before execution.
 				config.CaCert = bytes.NewBuffer(cert).String()
 			}
 
-			proxy := proxy.ProxyConfig{
+			p := proxy.ProxyConfig{
 				HttpProxy:  config.httpProxy,
 				HttpsProxy: config.httpsProxy,
 				Cacert:     config.CaCert,
@@ -109,7 +109,7 @@ are set correctly before execution.
 				Timeout:      config.timeout,
 				Tags:         config.cloudTags,
 				InstanceType: config.instanceType,
-				Proxy:        proxy,
+				Proxy:        p,
 			}
 
 			// AWS workflow
@@ -143,12 +143,8 @@ are set correctly before execution.
 
 				awsVerifier.Logger.Info(context.TODO(), "Success")
 				os.Exit(0)
-			}
-
-			// check for empty env vars
-			// GCP workflow
-			if config.gcp {
-
+			} else {
+				// GCP workflow
 				if len(vei.Tags) == 0 {
 					vei.Tags = gcpDefaultTags
 				}
@@ -197,7 +193,6 @@ are set correctly before execution.
 				gcpVerifier.Logger.Info(context.TODO(), "Success")
 				os.Exit(0)
 			}
-
 		},
 	}
 
