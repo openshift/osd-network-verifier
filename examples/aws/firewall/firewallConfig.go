@@ -168,7 +168,7 @@ func main() {
 
 func NewClient(region, profile string) Client {
 	var awsClient Client
-	if profile == ""{
+	if profile == "" {
 		creds := credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
 
 		ec2Client := ec2.New(session.New(&aws.Config{
@@ -185,7 +185,7 @@ func NewClient(region, profile string) Client {
 			ec2Client,
 			firewallClient,
 		}
-	}else{
+	} else {
 		sess := session.Must(session.NewSessionWithOptions(session.Options{
 			Config: aws.Config{
 				Region: &region,
@@ -432,7 +432,7 @@ func (c Client) CreateFirewall(FirewallSubnet ec2.CreateSubnetOutput, Vpc ec2.Cr
 }
 
 func (c Client) IsFirewallReady(Firewall string) error {
-	err := wait.PollImmediate(2*time.Second, 240 * time.Second, func() (bool, error) {
+	err := wait.PollImmediate(2*time.Second, 240*time.Second, func() (bool, error) {
 		DescribeFirewall, _ := c.firewallClient.DescribeFirewall(&networkfirewall.DescribeFirewallInput{
 			FirewallName: aws.String(Firewall),
 		})

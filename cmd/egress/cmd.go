@@ -7,20 +7,22 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/cmd/utils"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
-	"github.com/spf13/cobra"
+	"github.com/openshift/osd-network-verifier/pkg/verifier"
+	gcpverifier "github.com/openshift/osd-network-verifier/pkg/verifier/gcp"
 	"golang.org/x/oauth2/google"
+
+	"github.com/spf13/cobra"
 )
 
 var (
-	defaultTags               = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	awsRegionEnvVarStr string = "AWS_REGION"
-	awsRegionDefault   string = "us-east-2"
-	gcpRegionEnvVarStr string = "GCP_REGION"
-	gcpRegionDefault   string = "us-east1"
+	awsDefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	gcpDefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
+	awsRegionEnvVarStr = "AWS_REGION"
+	awsRegionDefault   = "us-east-2"
+	gcpRegionEnvVarStr = "GCP_REGION"
+	gcpRegionDefault   = "us-east1"
 )
 
 type egressConfig struct {
@@ -41,25 +43,22 @@ type egressConfig struct {
 	awsProfile      string
 }
 
-func getDefaultRegion(cloudProvider string) string {
-	if cloudProvider != "gcp" {
-		//aws region
-		val, present := os.LookupEnv(awsRegionEnvVarStr)
-		if present {
-			return val
-		} else {
-			return awsRegionDefault
-		}
-	} else {
+func getDefaultRegion(isGCP bool) string {
+
+	if isGCP {
 		//gcp region
-		val, present := os.LookupEnv(gcpRegionEnvVarStr)
-		if present {
-			return val
-		} else {
+		dRegion, ok := os.LookupEnv(gcpRegionEnvVarStr)
+		if !ok {
 			return gcpRegionDefault
 		}
+		return dRegion
 	}
-
+	//aws region
+	dRegion, ok := os.LookupEnv(awsRegionEnvVarStr)
+	if !ok {
+		return awsRegionDefault
+	}
+	return dRegion
 }
 
 func NewCmdValidateEgress() *cobra.Command {
@@ -67,82 +66,19 @@ func NewCmdValidateEgress() *cobra.Command {
 
 	validateEgressCmd := &cobra.Command{
 		Use:   "egress",
-		Short: "Verify essential openshift domains are reachable from given subnet ID.",
-		Long:  `Verify essential openshift domains are reachable from given subnet ID.`,
+		Short: "Verify essential OpenShift domains are reachable from given subnet ID.",
+		Long:  `Verify essential OpenShift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars 
 AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credentials) 
 are set correctly before execution.
 
-# Verify that essential openshift domains are reachable from a given SUBNET_ID
-./osd-network-verifier egress --subnet-id $(SUBNET_ID) --image-id $(IMAGE_ID)`,
+# Verify that essential OpenShift domains are reachable from a given SUBNET_ID
+./osd-network-verifier egress --subnet-id $(SUBNET_ID)`,
 		Run: func(cmd *cobra.Command, args []string) {
-			// ctx
-			ctx := context.TODO()
 
-			// Create logger
-			builder := ocmlog.NewStdLoggerBuilder()
-			builder.Debug(config.debug)
-			logger, err := builder.Build()
-			if err != nil {
-				fmt.Printf("Unable to build logger: %s\n", err.Error())
-				os.Exit(1)
-			}
-
-			var creds interface{}
-
-			if !config.gcp {
-				//AWS stuff
-				if config.region == "" {
-					config.region = getDefaultRegion("aws")
-				}
-				//default aws machine t3
-				if config.instanceType == "" {
-					config.instanceType = "t3.micro"
-				}
-				if config.awsProfile != "" {
-					creds = config.awsProfile
-					logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
-				} else {
-					creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
-				}
-				if err != nil {
-					logger.Error(ctx, err.Error())
-					os.Exit(1)
-				}
-			} else {
-				// GCP stuff
-				if config.region == "" {
-					config.region = getDefaultRegion("gcp")
-				}
-				if os.Getenv("GCP_VPC_NAME") == "" {
-					logger.Error(ctx, "please set environment variable GCP_VPC_NAME to the name of VPC")
-					os.Exit(1)
-				}
-
-				if os.Getenv("GCP_PROJECT_ID") == "" {
-					logger.Error(ctx, "please set environment variable GCP_PROJECT_ID to the project ID of VPC")
-					os.Exit(1)
-				}
-				creds = &google.Credentials{ProjectID: os.Getenv("GCP_PROJECT_ID")}
-
-				if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
-					logger.Info(ctx, "GOOGLE_APPLICATION_CREDENTIALS not set; using service account attached to %s", os.Getenv("GCP_PROJECT_ID"))
-				} else {
-					logger.Info(ctx, "Using GCP credential json file from %s", os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
-				}
-				//default gcp machine e2
-				if config.instanceType == "" {
-					config.instanceType = "e2-standard-2"
-				}
-				logger.Info(ctx, "Using Project ID %s", os.Getenv("GCP_PROJECT_ID"))
-			}
-
-			logger.Info(ctx, "Using region: %s", config.region)
-
-			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, config.instanceType, config.cloudTags)
-			if err != nil {
-				logger.Error(ctx, err.Error())
-				os.Exit(1)
+			// Set Region
+			if config.region == "" {
+				config.region = getDefaultRegion(config.gcp)
 			}
 
 			// Set Up Proxy
@@ -165,15 +101,98 @@ are set correctly before execution.
 				NoTls:      config.noTls,
 			}
 
-			out := cli.ValidateEgress(ctx, config.vpcSubnetID, config.cloudImageID, config.kmsKeyID, config.securityGroupId, config.timeout, p)
-
-			out.Summary(config.debug)
-			if !out.IsSuccessful() {
-				logger.Error(ctx, "Failure!")
-				os.Exit(1)
+			// setup non cloud config options
+			vei := verifier.ValidateEgressInput{
+				Ctx:          context.TODO(),
+				SubnetID:     config.vpcSubnetID,
+				CloudImageID: config.cloudImageID,
+				Timeout:      config.timeout,
+				Tags:         config.cloudTags,
+				InstanceType: config.instanceType,
+				Proxy:        p,
 			}
 
-			logger.Info(ctx, "Success")
+			// AWS workflow
+			if !config.gcp {
+
+				if len(vei.Tags) == 0 {
+					vei.Tags = awsDefaultTags
+				}
+
+				//Setup AWS Specific Configs
+				vei.AWS = verifier.AwsEgressConfig{
+					KmsKeyID:        config.kmsKeyID,
+					SecurityGroupId: config.securityGroupId,
+				}
+
+				awsVerifier, err := utils.GetAwsVerifier(config.region, config.awsProfile, config.debug)
+				if err != nil {
+					fmt.Printf("could not build awsVerifier %v", err)
+					os.Exit(1)
+				}
+
+				awsVerifier.Logger.Warn(context.TODO(), "Using region: %s", config.region)
+
+				out := verifier.ValidateEgress(awsVerifier, vei)
+				out.Summary(config.debug)
+
+				if !out.IsSuccessful() {
+					awsVerifier.Logger.Error(context.TODO(), "Failure!")
+					os.Exit(1)
+				}
+
+				awsVerifier.Logger.Info(context.TODO(), "Success")
+				os.Exit(0)
+			} else {
+				// GCP workflow
+				if len(vei.Tags) == 0 {
+					vei.Tags = gcpDefaultTags
+				}
+
+				projectID := os.Getenv("GCP_PROJECT_ID")
+				if projectID == "" {
+					fmt.Println("please set environment variable GCP_PROJECT_ID to the project ID of the VPC")
+					os.Exit(1)
+				}
+				vpcName := os.Getenv("GCP_VPC_NAME")
+				if vpcName == "" {
+					fmt.Println("please set environment variable GCP_VPC_NAME to the name of the VPC")
+					os.Exit(1)
+				}
+				//Setup GCP Secific Configs
+				vei.GCP = verifier.GcpEgressConfig{
+					Region: config.region,
+					//Zone b is supported by all regions and has the most machine types compared to zone a and c
+					//https://cloud.google.com/compute/docs/regions-zones#available
+					Zone:      fmt.Sprintf("%s-b", config.region),
+					ProjectID: projectID,
+					VpcName:   vpcName,
+				}
+
+				// Tries to find google credentials in all known locations stating with env "GOOGLE_APPLICATION_CREDENTIALS""
+				creds, err := google.FindDefaultCredentials(context.TODO())
+				if err != nil {
+					fmt.Printf("could not find gcp Credentials file  %v", err)
+					os.Exit(1)
+				}
+				gcpVerifier, err := gcpverifier.NewGcpVerifier(creds, config.debug)
+				if err != nil {
+					fmt.Printf("could not build gcpVerifier %v", err)
+					os.Exit(1)
+				}
+
+				gcpVerifier.Logger.Info(context.TODO(), "Using Project ID %s", vei.GCP.ProjectID)
+				out := verifier.ValidateEgress(gcpVerifier, vei)
+				out.Summary(config.debug)
+
+				if !out.IsSuccessful() {
+					gcpVerifier.Logger.Error(context.TODO(), "Failure!")
+					os.Exit(1)
+				}
+
+				gcpVerifier.Logger.Info(context.TODO(), "Success")
+				os.Exit(0)
+			}
 		},
 	}
 
@@ -182,7 +201,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
 	validateEgressCmd.Flags().StringVar(&config.securityGroupId, "security-group-id", "", "(optional) security group id to attach to the created EC2 instance")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", defaultTags, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", 2*time.Second, "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
@@ -199,5 +218,4 @@ are set correctly before execution.
 	}
 
 	return validateEgressCmd
-
 }

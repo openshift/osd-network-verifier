@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-	"github.com/openshift/osd-network-verifier/pkg/cloudclient"
+	"github.com/openshift/osd-network-verifier/cmd/utils"
+	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	"github.com/spf13/cobra"
 )
 
@@ -36,44 +35,29 @@ func NewCmdValidateDns() *cobra.Command {
 	config := dnsConfig{}
 
 	validateDnsCmd := &cobra.Command{
-		Use: "dns",
+		Use:   "dns",
+		Short: "Verify any prerequisite DNS configuration is set as expected",
 		Run: func(cmd *cobra.Command, args []string) {
-			// ctx
-			ctx := context.TODO()
 
-			// Create logger
-			builder := ocmlog.NewStdLoggerBuilder()
-			builder.Debug(config.debug)
-			logger, err := builder.Build()
+			awsVerifier, err := utils.GetAwsVerifier(os.Getenv("AWS_REGION"), config.awsProfile, config.debug)
 			if err != nil {
-				fmt.Printf("Unable to build logger: %s\n", err.Error())
+				fmt.Println(err)
 				os.Exit(1)
 			}
+			awsVerifier.Logger.Warn(context.TODO(), "Using region: %s", config.region)
 
-			logger.Warn(ctx, "Using region: %s", config.region)
-			var creds interface{}
-			if config.awsProfile != "" {
-				creds = config.awsProfile
-				logger.Info(ctx, "Using AWS profile: %s", config.awsProfile)
-			} else {
-				creds = credentials.NewStaticCredentialsProvider(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), os.Getenv("AWS_SESSION_TOKEN"))
+			vdi := verifier.VerifyDnsInput{
+				VpcID: config.vpcID,
+				Ctx:   context.TODO(),
 			}
-
-			// The use of t3.micro here is arbitrary; we just need to provide any valid machine type
-			cli, err := cloudclient.NewClient(ctx, logger, creds, config.region, "t3.micro", nil)
-			if err != nil {
-				logger.Error(ctx, err.Error())
-				os.Exit(1)
-			}
-
-			out := cli.VerifyDns(ctx, config.vpcID)
+			out := verifier.VerifyDns(awsVerifier, vdi)
 			out.Summary(config.debug)
 			if !out.IsSuccessful() {
-				logger.Error(ctx, "Failure!")
+				awsVerifier.Logger.Error(context.TODO(), "Failure!")
 				os.Exit(1)
 			}
 
-			logger.Info(ctx, "Success")
+			awsVerifier.Logger.Info(context.TODO(), "Success")
 		},
 	}
 
