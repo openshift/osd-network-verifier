@@ -61,6 +61,23 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(err) // fatal
 	}
 
+	cleanupSecurityGroup := false
+	if vei.AWS.SecurityGroupId == "" {
+		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
+		if err != nil {
+			return a.Output.AddError(err)
+		}
+
+		createSecurityGroupOutput, err := a.CreateSecurityGroup(vei.Ctx, vei.Tags, "osd-network-verifier", vpcId)
+		if err != nil {
+			return a.Output.AddError(err)
+		}
+
+		vei.AWS.SecurityGroupId = *createSecurityGroupOutput.GroupId
+		cleanupSecurityGroup = true
+	}
+
+	// Create EC2 instance
 	instanceID, err := a.createEC2Instance(createEC2InstanceInput{
 		amiID:           vei.CloudImageID,
 		SubnetID:        vei.SubnetID,
@@ -82,6 +99,13 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
 		a.Output.AddError(err)
+	}
+
+	if cleanupSecurityGroup {
+		_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(vei.AWS.SecurityGroupId)})
+		if err != nil {
+			a.Output.AddError(err)
+		}
 	}
 
 	return &a.Output
