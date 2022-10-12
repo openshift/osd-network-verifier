@@ -129,10 +129,8 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	eniSpecification := ec2Types.InstanceNetworkInterfaceSpecification{
-		// Required for when the EC2 instance is in a public subnet
-		AssociatePublicIpAddress: awsTools.Bool(true),
-		DeviceIndex:              awsTools.Int32(0),
-		SubnetId:                 awsTools.String(input.SubnetID),
+		DeviceIndex: awsTools.Int32(0),
+		SubnetId:    awsTools.String(input.SubnetID),
 	}
 
 	// An empty string does not default to the default security group, and returns this error:
