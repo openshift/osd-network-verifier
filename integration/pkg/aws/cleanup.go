@@ -243,11 +243,11 @@ func (id *OnvIntegrationTestData) CleanupFirewall(ctx context.Context) error {
 		return err
 	}
 
-	log.Printf("waiting up to %s for the firewall to be deleted", 10*time.Minute)
+	log.Printf("waiting up to %s for the firewall to be deleted", 20*time.Minute)
 	firewallWaiter := NewFirewallDeletedWaiter(id.networkFirewallApi)
 	if err := firewallWaiter.Wait(ctx, &networkfirewall.DescribeFirewallInput{
 		FirewallArn: id.firewallArn,
-	}, 10*time.Minute); err != nil {
+	}, 20*time.Minute); err != nil {
 		return err
 	}
 	log.Printf("firewall deleted: %s", *id.firewallArn)
