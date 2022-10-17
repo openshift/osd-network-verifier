@@ -14,32 +14,27 @@ It currently verifies:
 - Egress from VPC subnets to essential OSD domains
 - BYOVPC config requirements
 
-
 The recommended workflow of diagnostic use of ONV is shown in the following flow diagram:
 
 ![shift](https://user-images.githubusercontent.com/87340776/168323039-ec5269a8-2cf9-44db-ab5f-e490c88d4342.jpg)
-
-
 
 ## Cloud Provider Specific READMEs
 -  [AWS](docs/aws/aws.md)
 -  [GCP](docs/gcp/gcp.md)
 
+### Building
+`make build`: Builds `osd-network-verifier` executable in base directory
 
-## Makefile Targets
-ONV uses openshift/boilerplate https://github.com/openshift/boilerplate
+## Contributing and Maintenance
+If interested, please fork this repo and create pull requests to the `main` branch.
 
-Some useful targets
-- `make build`: Builds `osd-network-verifier` executable in base directory
+### Egress List
 
-
-### Contributing and Maintenance ####
-##### Egress List #####
 This list of essential domains for egress verification should be maintained in `build/config/config.yaml`.
-##### IAM Permission Requirement List #####
-Version ID [required for IAM support role](docs/aws/aws.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html).
-##### To Contribute #####
-Fork the main repository and create pull requests against the `main` branch.
+### IAM Permission Requirement List
 
-## Other Subcommands
-Take a look at <https://github.com/openshift/osd-network-verifier/tree/main/cmd>
+Version ID [required for IAM support role](docs/aws/aws.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html).
+
+## Release Process
+
+See [RELEASE.md](./RELEASE.md)
