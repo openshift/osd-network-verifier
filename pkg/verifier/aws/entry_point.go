@@ -76,15 +76,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(err) // fatal
 	}
 
-	if instanceReadyErr := a.AwsClient.WaitForEC2InstanceCompletion(vei.Ctx, instanceID); instanceReadyErr != nil {
-		// try to terminate the created instance
-		err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID)
-		if err != nil {
-			a.Output.AddError(err)
-		}
-		return a.Output.AddError(instanceReadyErr) // fatal
-	}
-
 	if err := a.findUnreachableEndpoints(vei.Ctx, instanceID); err != nil {
 		a.Output.AddError(err)
 	}

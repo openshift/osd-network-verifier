@@ -56,7 +56,7 @@ Ensure that the AWS credentials being used have the following permissions. (This
       "Action": [
         "ec2:CreateTags",
         "ec2:RunInstances",
-        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeInstances",
         "ec2:DescribeInstanceTypes",
         "ec2:GetConsoleOutput",
         "ec2:TerminateInstances",

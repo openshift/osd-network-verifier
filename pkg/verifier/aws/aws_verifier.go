@@ -56,7 +56,7 @@ const (
 
 // AwsVerifier holds an aws client and knows how to fuifill the VerifierSerice which contains all functions needed for verifier
 type AwsVerifier struct {
-	AwsClient aws.Client
+	AwsClient *aws.Client
 	Logger    ocmlog.Logger
 	Output    output.Output
 }
@@ -75,7 +75,7 @@ func NewAwsVerifier(accessID, accessSecret, sessionToken, region, profile string
 		return &AwsVerifier{}, err
 	}
 
-	return &AwsVerifier{*awsClient, logger, output.Output{}}, nil
+	return &AwsVerifier{awsClient, logger, output.Output{}}, nil
 }
 
 func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType string) error {
@@ -175,6 +175,15 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	if err := a.createTags(input.tags, instanceID); err != nil {
 		// Unable to tag the instance
 		return "", handledErrors.NewGenericError(err)
+	}
+
+	// Wait up to 5 minutes for the instance to be running
+	waiter := ec2.NewInstanceRunningWaiter(a.AwsClient)
+	if err := waiter.Wait(input.ctx, &ec2.DescribeInstancesInput{InstanceIds: []string{instanceID}}, 2*time.Minute); err != nil {
+		if err := a.AwsClient.TerminateEC2Instance(input.ctx, instanceID); err != nil {
+			return instanceID, handledErrors.NewGenericError(err)
+		}
+		return "", fmt.Errorf("terminated %s after timing out waiting for instance to be running", instanceID)
 	}
 
 	return instanceID, nil
