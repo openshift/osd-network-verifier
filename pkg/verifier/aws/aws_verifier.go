@@ -61,6 +61,10 @@ type AwsVerifier struct {
 	Output    output.Output
 }
 
+func GetAMIForRegion(region string) string {
+	return defaultAmi[region]
+}
+
 func NewAwsVerifier(accessID, accessSecret, sessionToken, region, profile string, debug bool) (*AwsVerifier, error) {
 	// Create logger
 	builder := ocmlog.NewStdLoggerBuilder()
