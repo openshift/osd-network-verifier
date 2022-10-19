@@ -23,3 +23,8 @@ runcmd:
   - sudo service docker start 2>1 > /dev/null || echo "docker not started by systemctl"
   - /run-container.sh
   - cat /var/log/userdata-output >/dev/console
+power_state:
+  delay: 5
+  mode: poweroff
+  message: Auto-terminating instance due to timeout
+  timeout: 300
