@@ -2,6 +2,8 @@ package aws
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -59,6 +61,12 @@ type EC2Client interface {
 	GetConsoleOutput(ctx context.Context, input *ec2.GetConsoleOutputInput, optFns ...func(*ec2.Options)) (*ec2.GetConsoleOutputOutput, error)
 	TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput, optFns ...func(*ec2.Options)) (*ec2.TerminateInstancesOutput, error)
 	DescribeVpcAttribute(ctx context.Context, input *ec2.DescribeVpcAttributeInput, optFns ...func(*ec2.Options)) (*ec2.DescribeVpcAttributeOutput, error)
+	CreateSecurityGroup(ctx context.Context, params *ec2.CreateSecurityGroupInput, optFns ...func(*ec2.Options)) (*ec2.CreateSecurityGroupOutput, error)
+	DeleteSecurityGroup(ctx context.Context, params *ec2.DeleteSecurityGroupInput, optFns ...func(*ec2.Options)) (*ec2.DeleteSecurityGroupOutput, error)
+	DescribeSecurityGroups(ctx context.Context, params *ec2.DescribeSecurityGroupsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error)
+	AuthorizeSecurityGroupEgress(ctx context.Context, params *ec2.AuthorizeSecurityGroupEgressInput, optFns ...func(*ec2.Options)) (*ec2.AuthorizeSecurityGroupEgressOutput, error)
+	RevokeSecurityGroupEgress(ctx context.Context, params *ec2.RevokeSecurityGroupEgressInput, optFns ...func(*ec2.Options)) (*ec2.RevokeSecurityGroupEgressOutput, error)
+	DescribeSubnets(ctx context.Context, params *ec2.DescribeSubnetsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error)
 }
 
 func (c *Client) CreateTags(ctx context.Context, params *ec2.CreateTagsInput, optFns ...func(*ec2.Options)) (*ec2.CreateTagsOutput, error) {
@@ -76,6 +84,7 @@ func (c *Client) DescribeInstances(ctx context.Context, params *ec2.DescribeInst
 func (c *Client) RunInstances(ctx context.Context, params *ec2.RunInstancesInput, optFns ...func(*ec2.Options)) (*ec2.RunInstancesOutput, error) {
 	return c.ec2Client.RunInstances(ctx, params, optFns...)
 }
+
 func (c *Client) DescribeInstanceTypes(ctx context.Context, input *ec2.DescribeInstanceTypesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInstanceTypesOutput, error) {
 	return c.ec2Client.DescribeInstanceTypes(ctx, input, optFns...)
 }
@@ -84,12 +93,42 @@ func (c *Client) GetConsoleOutput(ctx context.Context, input *ec2.GetConsoleOutp
 	return c.ec2Client.GetConsoleOutput(ctx, input, optFns...)
 }
 
+func (c *Client) CreateSecurityGroup(ctx context.Context, params *ec2.CreateSecurityGroupInput, optFns ...func(*ec2.Options)) (*ec2.CreateSecurityGroupOutput, error) {
+	return c.ec2Client.CreateSecurityGroup(ctx, params, optFns...)
+}
+
+func (c *Client) DescribeSubnets(ctx context.Context, params *ec2.DescribeSubnetsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error) {
+	return c.ec2Client.DescribeSubnets(ctx, params, optFns...)
+}
+
+func (c *Client) DeleteSecurityGroup(ctx context.Context, params *ec2.DeleteSecurityGroupInput, optFns ...func(*ec2.Options)) (*ec2.DeleteSecurityGroupOutput, error) {
+	return c.ec2Client.DeleteSecurityGroup(ctx, params, optFns...)
+}
+
+func (c *Client) DescribeSecurityGroups(ctx context.Context, params *ec2.DescribeSecurityGroupsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSecurityGroupsOutput, error) {
+	return c.ec2Client.DescribeSecurityGroups(ctx, params, optFns...)
+}
+
+func (c *Client) AuthorizeSecurityGroupEgress(ctx context.Context, params *ec2.AuthorizeSecurityGroupEgressInput, optFns ...func(*ec2.Options)) (*ec2.AuthorizeSecurityGroupEgressOutput, error) {
+	return c.ec2Client.AuthorizeSecurityGroupEgress(ctx, params, optFns...)
+}
+
+func (c *Client) RevokeSecurityGroupEgress(ctx context.Context, params *ec2.RevokeSecurityGroupEgressInput, optFns ...func(*ec2.Options)) (*ec2.RevokeSecurityGroupEgressOutput, error) {
+	return c.ec2Client.RevokeSecurityGroupEgress(ctx, params, optFns...)
+}
+
 // TerminateEC2Instance terminates target ec2 instance
 func (c *Client) TerminateEC2Instance(ctx context.Context, instanceID string) error {
 	input := ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
 	if _, err := c.ec2Client.TerminateInstances(ctx, &input); err != nil {
+		return handledErrors.NewGenericError(err)
+	}
+
+	// Wait up to 5 minutes for the instance to be terminated
+	waiter := ec2.NewInstanceTerminatedWaiter(c)
+	if err := waiter.Wait(ctx, &ec2.DescribeInstancesInput{InstanceIds: []string{instanceID}}, 5*time.Minute); err != nil {
 		return handledErrors.NewGenericError(err)
 	}
 
