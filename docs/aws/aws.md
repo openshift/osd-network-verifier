@@ -60,12 +60,41 @@ Ensure that the AWS credentials being used have the following permissions. (This
         "ec2:DescribeInstanceTypes",
         "ec2:GetConsoleOutput",
         "ec2:TerminateInstances",
-        "ec2:DescribeVpcAttribute"
+        "ec2:DescribeVpcAttribute",
+        "ec2:CreateSecurityGroup",
+        "ec2:DeleteSecurityGroup",
+        "ec2:DescribeSecurityGroup",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:DescribeSubnets"
       ],
       "Resource": "*"
     }
   ]
 }
+```
+
+The SRE only needs below permissions because we should supply Security Group ID by running `./osd-network-verifier egress --security-group-id <SG_ID>`:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:RunInstances",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceTypes",
+        "ec2:GetConsoleOutput",
+        "ec2:TerminateInstances",
+        "ec2:DescribeVpcAttribute",
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+
 ```
  
 ## Available Tools ##

@@ -169,7 +169,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	for _, i := range instanceResp.Instances {
-		a.Logger.Info(context.TODO(), "Created instance with ID: %s", *i.InstanceId)
+		a.Logger.Info(input.ctx, "Created instance with ID: %s", *i.InstanceId)
 	}
 
 	if len(instanceResp.Instances) == 0 {
@@ -330,4 +330,128 @@ func setCloudImage(cloudImageID *string, region string) error {
 func (a *AwsVerifier) writeDebugLogs(log string) {
 	a.Output.AddDebugLogs(log)
 	a.Logger.Debug(context.TODO(), log)
+}
+
+// CreateSecurityGroup creates a security group with the specified name and cluster tag key in a specified VPC
+func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]string, name, vpcId string) (*ec2.CreateSecurityGroupOutput, error) {
+	input := &ec2.CreateSecurityGroupInput{
+		GroupName:   awsTools.String(name + "-" + helpers.RandSeq(5)),
+		VpcId:       &vpcId,
+		Description: awsTools.String("osd-network-verifier security group"),
+	}
+	a.writeDebugLogs("Creating a Security group")
+	output, err := a.AwsClient.CreateSecurityGroup(ctx, input)
+	if err != nil {
+		return &ec2.CreateSecurityGroupOutput{}, err
+	}
+
+	a.writeDebugLogs(fmt.Sprintf("Waiting for the Security Group to exist: %s", *output.GroupId))
+	// Wait up to 1 minutes for the security group to exist
+	waiter := ec2.NewSecurityGroupExistsWaiter(a.AwsClient)
+	if err := waiter.Wait(ctx, &ec2.DescribeSecurityGroupsInput{GroupIds: []string{*output.GroupId}}, 1*time.Minute); err != nil {
+		a.writeDebugLogs(fmt.Sprintf("Error waiting for the security group to exist: %s, attempting to delete the Security Group", *output.GroupId))
+		_, err := a.AwsClient.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: output.GroupId})
+		if err != nil {
+			return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
+		}
+		return &ec2.CreateSecurityGroupOutput{}, fmt.Errorf("deleted %s after timing out waiting for security group to exist", *output.GroupId)
+	}
+
+	a.Logger.Info(ctx, "Created security group with ID: %s", *output.GroupId)
+	if err := a.createTags(tags, *output.GroupId); err != nil {
+		// Unable to tag the instance
+		_, err := a.AwsClient.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: output.GroupId})
+		if err != nil {
+			return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
+		}
+		return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
+	}
+
+	input_rules := &ec2.AuthorizeSecurityGroupEgressInput{
+		GroupId: output.GroupId,
+		IpPermissions: []ec2Types.IpPermission{
+			{
+				FromPort:   awsTools.Int32(80),
+				ToPort:     awsTools.Int32(80),
+				IpProtocol: awsTools.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp: awsTools.String("0.0.0.0/0"),
+					},
+				},
+			},
+			{
+				FromPort:   awsTools.Int32(443),
+				ToPort:     awsTools.Int32(443),
+				IpProtocol: awsTools.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp: awsTools.String("0.0.0.0/0"),
+					},
+				},
+			},
+			{
+				FromPort:   awsTools.Int32(9997),
+				ToPort:     awsTools.Int32(9997),
+				IpProtocol: awsTools.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp: awsTools.String("0.0.0.0/0"),
+					},
+				},
+			},
+		},
+	}
+
+	if _, err := a.AwsClient.AuthorizeSecurityGroupEgress(ctx, input_rules); err != nil {
+		return &ec2.CreateSecurityGroupOutput{}, err
+	}
+
+	revoke_default_egress := &ec2.RevokeSecurityGroupEgressInput{
+		GroupId: output.GroupId,
+		IpPermissions: []ec2Types.IpPermission{
+			{
+				FromPort:   awsTools.Int32(-1),
+				ToPort:     awsTools.Int32(-1),
+				IpProtocol: awsTools.String("-1"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp: awsTools.String("0.0.0.0/0"),
+					},
+				},
+			},
+		},
+	}
+
+	if _, err := a.AwsClient.RevokeSecurityGroupEgress(ctx, revoke_default_egress); err != nil {
+		return &ec2.CreateSecurityGroupOutput{}, err
+	}
+
+	return output, nil
+}
+
+// GetVpcIdFromSubnetId takes in a subnet id and returns the associated VPC id
+func (a *AwsVerifier) GetVpcIdFromSubnetId(ctx context.Context, vpcSubnetID string) (string, error) {
+	input := &ec2.DescribeSubnetsInput{
+
+		SubnetIds: []string{vpcSubnetID},
+	}
+
+	output, err := a.AwsClient.DescribeSubnets(ctx, input)
+	if err != nil {
+		return "", err
+	}
+
+	// What if we get an empty vpc-id for a returned subnet
+	if len(output.Subnets) == 0 {
+		return "", fmt.Errorf("no subnets returned for subnet id: %s", vpcSubnetID)
+	}
+
+	// What if the Subnets array has 0 entries
+	vpcId := *output.Subnets[0].VpcId
+	if vpcId == "" {
+		// return "", errors.New("Empty VPCId for the returned subnet")
+		return "", fmt.Errorf("empty vpc id for the returned subnet: %s", vpcSubnetID)
+	}
+	return vpcId, nil
 }
