@@ -104,7 +104,9 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	if cleanupSecurityGroup {
 		_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(vei.AWS.SecurityGroupId)})
 		if err != nil {
-			a.Output.AddError(err)
+			a.Output.AddError(handledErrors.NewGenericError(err))
+			a.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("unable to cleanup security group %s, please manually clean up", vei.AWS.SecurityGroupId)))
+
 		}
 	}
 
