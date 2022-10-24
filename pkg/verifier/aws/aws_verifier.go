@@ -149,6 +149,8 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		MaxCount:     awsTools.Int32(input.instanceCount),
 		MinCount:     awsTools.Int32(input.instanceCount),
 		InstanceType: ec2Types.InstanceType(input.instanceType),
+		// Tell EC2 to delete this instance if it shuts itself down, in case explicit instance deletion fails
+		InstanceInitiatedShutdownBehavior: ec2Types.ShutdownBehaviorTerminate,
 		// Because we're making this VPC aware, we also have to include a network interface specification
 		NetworkInterfaces: []ec2Types.InstanceNetworkInterfaceSpecification{eniSpecification},
 		// We specify block devices mainly to enable EBS encryption
