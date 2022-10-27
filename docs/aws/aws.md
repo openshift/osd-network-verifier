@@ -195,7 +195,7 @@ Description:
 3. The [`USERDATA`](../../pkg/helpers/config/userdata.yaml) script is in the form of base64-encoded text, and does the following -
 
    1. installs docker
-   2. runs the [osd-network-verifier docker image](https://github.com/openshift/osd-network-verifier/tree/main/build) included with this source.
+   2. runs [validator's docker image](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/bin/network-validator.go) included with this source.
       (The image is also published at: https://quay.io/repository/app-sre/osd-network-verifier)
    3. The entry point of the osd-network-verifier docker image then executes the main egress verification script
       ```shell
