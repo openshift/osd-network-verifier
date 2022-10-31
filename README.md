@@ -29,7 +29,7 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 If interested, please fork this repo and create pull requests to the `main` branch.
 
 ### Golden AMI
-verifier depends on the [AMI](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami) that will be run in the target vpc/subnets to perform [validations](https://github.com/openshift/osd-network-verifier/blob/main/pkg/verifier/aws/aws_verifier.go#L25-L45). AMIs are publicly available so no need extra configuration when running osd-network-verifier.
+osd-network-verifier depends on these publicly available [AMIs](https://github.com/openshift/osd-network-verifier/blob/612be8c5b0ef8ac01e8018eca15dd143ab31cd1f/pkg/verifier/aws/aws_verifier.go#L25-L45) built from the [osd-network-verifier-golden-ami](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami) repo.
 
 Golden AMI provides the following:
 - runtime environment setup (such as container engine, configurations, etc)
