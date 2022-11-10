@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	byovpc "github.com/openshift/osd-network-verifier/cmd/byovpc"
 	"github.com/openshift/osd-network-verifier/cmd/dns"
 	"github.com/openshift/osd-network-verifier/cmd/egress"
 	"github.com/spf13/cobra"
@@ -33,7 +32,6 @@ For more information see https://github.com/openshift/osd-network-verifier/blob/
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
 	// add sub commands
-	rootCmd.AddCommand(byovpc.NewCmdByovpc())
 	rootCmd.AddCommand(egress.NewCmdValidateEgress())
 	rootCmd.AddCommand(dns.NewCmdValidateDns())
 

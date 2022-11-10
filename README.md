@@ -12,7 +12,7 @@ is correctly set up per OSD requirements listed on https://docs.openshift.com/co
 
 It currently verifies:
 - Egress from VPC subnets to [essential OSD domains](https://docs.openshift.com/rosa/rosa_install_access_delete_clusters/rosa_getting_started_iam/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites_prerequisites)
-- BYOVPC config requirements
+- DNS resolution in a [VPC](https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html)
 
 The recommended workflow of diagnostic use of ONV is shown in the following flow diagram:
 
