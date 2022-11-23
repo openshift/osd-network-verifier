@@ -202,6 +202,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	)
 	// Compile the regular expressions once
 	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
+	reSuccess := regexp.MustCompile(`Success!`) // populated from network-validator
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 	reDockerFailure := regexp.MustCompile(`(?m)(docker)`)
@@ -245,6 +246,12 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			if len(userDataComplete) < 1 {
 				a.writeDebugLogs("EC2 console consoleOutput contains data, but end of userdata script not seen, continuing to wait...")
 				return false, nil
+			}
+
+			// Check if the result is success
+			success := reSuccess.FindAllStringSubmatch(consoleLogs, -1)
+			if len(success) > 0 {
+				return true, nil
 			}
 
 			// Check consoleOutput for failures, report as exceptions if they occurred
