@@ -107,8 +107,3 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 func (g *GcpVerifier) VerifyDns(vdi verifier.VerifyDnsInput) *output.Output {
 	return &output.Output{}
 }
-
-// Todo():
-func (g *GcpVerifier) ByoVPCValidator(bvvi verifier.ByoVPCValidatorInput) error {
-	return nil
-}

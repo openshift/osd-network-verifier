@@ -167,10 +167,10 @@ repeat the verification process for each subnet ID.
 ```shell
 ./osd-network-verifier egress \
     --subnet-id <subnet_id>  \
-    --http-proxy http://sre:123@18.234.52.122:8888 \ 
-    --https-proxy https://sre:123@18.234.52.122:8888 \
-    --cacert mitmproxy-ca.pem \
-    --no-tls
+    --http-proxy http://sre:123@18.18.18.18:8888 \
+    --https-proxy https://sre:123@18.18.18.18:8888 \
+    --cacert path-to-ca.pem \
+    --no-tls # optional, used to bypass ca.pem validation (https)
 ```
 
 
@@ -234,6 +234,3 @@ See the egress golang examples above, and replace the line starting with `out :=
 ```go
 out := cli.VerifyDns(context.TODO(), "vpcID")
 ```
-
-### 3. BYOVPC Configurations Verification ###
-(TODO: add doc)

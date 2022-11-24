@@ -160,8 +160,3 @@ func (a *AwsVerifier) VerifyDns(vdi verifier.VerifyDnsInput) *output.Output {
 
 	return &a.Output
 }
-
-// Todo():
-func (a *AwsVerifier) ByoVPCValidator(bvvi verifier.ByoVPCValidatorInput) error {
-	return nil
-}

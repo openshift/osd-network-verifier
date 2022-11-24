@@ -12,9 +12,6 @@ import (
 // will be able to run all verifier test
 type verifierService interface {
 
-	// ByoVPCValidator validates the configuration given by the customer
-	ByoVPCValidator(bvvi ByoVPCValidatorInput) error
-
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
 	// target URLs: https://docs.openshift.com/rosa/rosa_getting_started/rosa-aws-prereqs.html#osd-aws-privatelink-firewall-prerequisites
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
@@ -24,15 +21,6 @@ type verifierService interface {
 	// https://docs.openshift.com/container-platform/4.10/installing/installing_aws/installing-aws-vpc.html
 	// Expected return value is *output.Output that's storing failures, exceptions and errors
 	VerifyDns(vdi VerifyDnsInput) *output.Output
-}
-
-type ByoVPCValidatorInput struct {
-	Ctx context.Context
-}
-
-// ByoVPCValidator pass in a GCP or AWS client that know how to fufill above interface
-func ByoVPCValidator(vs verifierService, Bvvi ByoVPCValidatorInput) error {
-	return vs.ByoVPCValidator(Bvvi)
 }
 
 type ValidateEgressInput struct {
