@@ -12,9 +12,15 @@ import (
 )
 
 // Client represents an AWS Client
+// For mocking the whole aws client, use the following:
+// mockgen -source=pkg/clients/aws/aws.go -package mocks -destination=pkg/mocks/mock_aws.go
 type Client struct {
 	ec2Client EC2Client
 	Region    string
+}
+
+func (c *Client) SetClient(e EC2Client) {
+	c.ec2Client = e
 }
 
 // NewClient creates AWS Client either pass in secret data or profile to work .

@@ -275,7 +275,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			a.writeDebugLogs(fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 
 			a.Output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
-			return true, nil
+			return true, nil // finalize as there's `userdata end`
 		}
 
 		if len(b64ConsoleLogs) > 0 {
