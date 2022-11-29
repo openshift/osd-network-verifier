@@ -41,6 +41,7 @@ type egressConfig struct {
 	noTls           bool
 	gcp             bool
 	awsProfile      string
+	gcpVpcName      string
 }
 
 func getDefaultRegion(isGCP bool) string {
@@ -154,11 +155,13 @@ are set correctly before execution.
 					fmt.Println("please set environment variable GCP_PROJECT_ID to the project ID of the VPC")
 					os.Exit(1)
 				}
-				vpcName := os.Getenv("GCP_VPC_NAME")
+
+				vpcName := config.gcpVpcName
 				if vpcName == "" {
-					fmt.Println("please set environment variable GCP_VPC_NAME to the name of the VPC")
+					fmt.Println("please pass the flag --vpc-name=<VPC-NAME> to identify the VPC")
 					os.Exit(1)
 				}
+
 				//Setup GCP Secific Configs
 				vei.GCP = verifier.GcpEgressConfig{
 					Region: config.region,
@@ -211,6 +214,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, ignore all ssl certificate validations on client-side.")
 	validateEgressCmd.Flags().BoolVar(&config.gcp, "gcp", false, "Set to true if cluster is GCP")
 	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
+	validateEgressCmd.Flags().StringVar(&config.gcpVpcName, "vpc-name", "", "(optional) Vpc Name where GCP cluster is installed mandatory if --gcp=True")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
