@@ -202,6 +202,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	)
 	// Compile the regular expressions once
 	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
+	reSuccess := regexp.MustCompile(`Success!`) // populated from network-validator
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 	reDockerFailure := regexp.MustCompile(`(?m)(docker)`)
@@ -247,6 +248,12 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 				return false, nil
 			}
 
+			// Check if the result is success
+			success := reSuccess.FindAllStringSubmatch(consoleLogs, -1)
+			if len(success) > 0 {
+				return true, nil
+			}
+
 			// Check consoleOutput for failures, report as exceptions if they occurred
 			genericFailures := reGenericFailure.FindAllStringSubmatch(consoleLogs, -1)
 			if len(genericFailures) > 0 {
@@ -268,7 +275,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			a.writeDebugLogs(fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 
 			a.Output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
-			return true, nil
+			return true, nil // finalize as there's `userdata end`
 		}
 
 		if len(b64ConsoleLogs) > 0 {

@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.24.0
 	github.com/aws/smithy-go v1.9.0
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/mock v1.6.0
 	github.com/openshift-online/ocm-sdk-go v0.1.224
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
