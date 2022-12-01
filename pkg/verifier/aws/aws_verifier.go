@@ -61,8 +61,23 @@ type AwsVerifier struct {
 	Output    output.Output
 }
 
+// GetAMIForRegion returns the default AMI given a region.
+// This is unused within this codebase, but exported so that consumers can access the values of defaultAmi
 func GetAMIForRegion(region string) string {
 	return defaultAmi[region]
+}
+
+// NewAwsVerifierFromConfig assembles an AwsVerifier given an aws-sdk-go-v2 config and an ocm logger
+func NewAwsVerifierFromConfig(cfg awsTools.Config, logger ocmlog.Logger) (*AwsVerifier, error) {
+	awsClient, err := aws.NewClientFromConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AwsVerifier{
+		AwsClient: awsClient,
+		Logger:    logger,
+	}, nil
 }
 
 func NewAwsVerifier(accessID, accessSecret, sessionToken, region, profile string, debug bool) (*AwsVerifier, error) {
