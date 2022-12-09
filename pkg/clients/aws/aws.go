@@ -23,6 +23,14 @@ func (c *Client) SetClient(e EC2Client) {
 	c.ec2Client = e
 }
 
+// NewClientFromConfig creates an osd-network-verifier AWS Client from an aws-sdk-go-v2 Config
+func NewClientFromConfig(cfg aws.Config) (*Client, error) {
+	return &Client{
+		ec2Client: ec2.NewFromConfig(cfg),
+		Region:    cfg.Region,
+	}, nil
+}
+
 // NewClient creates AWS Client either pass in secret data or profile to work .
 func NewClient(ctx context.Context, accessID, accessSecret, sessiontoken, region, profile string) (*Client, error) {
 	c := &Client{
