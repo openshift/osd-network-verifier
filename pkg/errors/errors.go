@@ -32,7 +32,7 @@ func NewGenericError(err error) *GenericError {
 			switch {
 			case ae.ErrorCode() == "UnauthorizedOperation":
 				return &GenericError{
-					message: fmt.Sprintf("missing required permission %s:%s", strings.ToLower(oe.Service()), oe.Operation()),
+					message: fmt.Sprintf("missing required permission %s:%s with error: %s", strings.ToLower(oe.Service()), oe.Operation(), oe.Error()),
 				}
 			default:
 				return &GenericError{

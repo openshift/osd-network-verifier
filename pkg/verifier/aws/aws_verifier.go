@@ -205,7 +205,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		if err := a.AwsClient.TerminateEC2Instance(input.ctx, instanceID); err != nil {
 			return instanceID, handledErrors.NewGenericError(err)
 		}
-		return "", fmt.Errorf("terminated %s after timing out waiting for instance to be running", instanceID)
+		return "", fmt.Errorf("%s: terminated %s after timing out waiting for instance to be running", err, instanceID)
 	}
 
 	return instanceID, nil
