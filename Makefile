@@ -12,7 +12,7 @@ build:
 	go build $(GOFLAGS) .
 
 .PHONY: fmt
-fmt: 
+fmt:
 	go fmt ./...
 	go mod tidy
 
