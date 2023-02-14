@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
@@ -33,6 +34,12 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
 
+	// Select config file based on platform type
+	configPath := "aws.conf" // TODO: confirm config file path. does it need to be absolute?
+	if vei.PlatformType == helpers.PLATFORM_HOSTEDCLUSTER {
+		configPath = "hostedcluster.conf" // TODO: see above
+	}
+
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
@@ -49,6 +56,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"NOTLS":                    strconv.FormatBool(vei.Proxy.NoTls),
 		"IMAGE":                    "$IMAGE",
 		"VALIDATOR_REFERENCE":      "$VALIDATOR_REFERENCE",
+		"CONFIG_PATH":              configPath,
 	}
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {

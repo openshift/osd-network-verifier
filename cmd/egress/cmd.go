@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openshift/osd-network-verifier/cmd/utils"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	gcpverifier "github.com/openshift/osd-network-verifier/pkg/verifier/gcp"
@@ -17,12 +18,13 @@ import (
 )
 
 var (
-	awsDefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	gcpDefaultTags     = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
-	awsRegionEnvVarStr = "AWS_REGION"
-	awsRegionDefault   = "us-east-2"
-	gcpRegionEnvVarStr = "GCP_REGION"
-	gcpRegionDefault   = "us-east1"
+	awsDefaultTags      = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	gcpDefaultTags      = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
+	awsRegionEnvVarStr  = "AWS_REGION"
+	awsRegionDefault    = "us-east-2"
+	gcpRegionEnvVarStr  = "GCP_REGION"
+	gcpRegionDefault    = "us-east1"
+	platformTypeDefault = helpers.PLATFORM_AWS
 )
 
 type egressConfig struct {
@@ -39,14 +41,14 @@ type egressConfig struct {
 	httpsProxy      string
 	CaCert          string
 	noTls           bool
-	gcp             bool
 	awsProfile      string
 	gcpVpcName      string
+	platformType    string
 }
 
-func getDefaultRegion(isGCP bool) string {
+func getDefaultRegion(platformType string) string {
 
-	if isGCP {
+	if platformType == helpers.PLATFORM_GCP {
 		//gcp region
 		dRegion, ok := os.LookupEnv(gcpRegionEnvVarStr)
 		if !ok {
@@ -79,7 +81,7 @@ are set correctly before execution.
 
 			// Set Region
 			if config.region == "" {
-				config.region = getDefaultRegion(config.gcp)
+				config.region = getDefaultRegion(config.platformType)
 			}
 
 			// Set Up Proxy
@@ -110,11 +112,12 @@ are set correctly before execution.
 				Timeout:      config.timeout,
 				Tags:         config.cloudTags,
 				InstanceType: config.instanceType,
+				PlatformType: config.platformType,
 				Proxy:        p,
 			}
 
 			// AWS workflow
-			if !config.gcp {
+			if config.platformType == helpers.PLATFORM_AWS || config.platformType == helpers.PLATFORM_HOSTEDCLUSTER {
 
 				if len(vei.Tags) == 0 {
 					vei.Tags = awsDefaultTags
@@ -199,6 +202,7 @@ are set correctly before execution.
 		},
 	}
 
+	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%[1]v' (default), '%[2]v', or '%[3]v' (hypershift)", platformTypeDefault, helpers.PLATFORM_GCP, helpers.PLATFORM_HOSTEDCLUSTER))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
@@ -212,9 +216,8 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.httpsProxy, "https-proxy", "", "(optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978")
 	validateEgressCmd.Flags().StringVar(&config.CaCert, "cacert", "", "(optional) path to cacert file to be used upon https requests being made by verifier")
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, ignore all ssl certificate validations on client-side.")
-	validateEgressCmd.Flags().BoolVar(&config.gcp, "gcp", false, "Set to true if cluster is GCP")
 	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
-	validateEgressCmd.Flags().StringVar(&config.gcpVpcName, "vpc-name", "", "(optional) Vpc Name where GCP cluster is installed mandatory if --gcp=True")
+	validateEgressCmd.Flags().StringVar(&config.gcpVpcName, "vpc-name", "", "(optional unless --platform='gcp') VPC name where GCP cluster is installed")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)

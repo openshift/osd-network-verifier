@@ -24,13 +24,13 @@ type verifierService interface {
 }
 
 type ValidateEgressInput struct {
-	Timeout                              time.Duration
-	Ctx                                  context.Context
-	SubnetID, CloudImageID, InstanceType string
-	Proxy                                proxy.ProxyConfig
-	Tags                                 map[string]string
-	AWS                                  AwsEgressConfig
-	GCP                                  GcpEgressConfig
+	Timeout                                            time.Duration
+	Ctx                                                context.Context
+	SubnetID, CloudImageID, InstanceType, PlatformType string
+	Proxy                                              proxy.ProxyConfig
+	Tags                                               map[string]string
+	AWS                                                AwsEgressConfig
+	GCP                                                GcpEgressConfig
 }
 type AwsEgressConfig struct {
 	KmsKeyID, SecurityGroupId string
