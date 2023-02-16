@@ -9,10 +9,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
+
+// Base path of the config file
+const CONFIG_PATH_FSTRING string = "/app/build/config/%s.yaml"
 
 // ValidateEgress performs validation process for egress
 // Basic workflow is:
@@ -35,10 +37,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// Select config file based on platform type
-	configPath := "aws.conf" // TODO: confirm config file path. does it need to be absolute?
-	if vei.PlatformType == helpers.PLATFORM_HOSTEDCLUSTER {
-		configPath = "hostedcluster.conf" // TODO: see above
-	}
+	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, vei.PlatformType)
 
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
