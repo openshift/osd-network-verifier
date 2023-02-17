@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
@@ -38,6 +39,10 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Select config file based on platform type
 	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, vei.PlatformType)
+	if vei.PlatformType == "" {
+		// Default to AWS
+		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PLATFORM_AWS)
+	}
 
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml

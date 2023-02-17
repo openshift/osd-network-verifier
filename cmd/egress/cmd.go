@@ -202,7 +202,7 @@ are set correctly before execution.
 		},
 	}
 
-	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%[1]v' (default), '%[2]v', or '%[3]v' (hypershift)", platformTypeDefault, helpers.PLATFORM_GCP, helpers.PLATFORM_HOSTEDCLUSTER))
+	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%[1]v', '%[2]v', or '%[3]v' (hypershift)", helpers.PLATFORM_AWS, helpers.PLATFORM_GCP, helpers.PLATFORM_HOSTEDCLUSTER))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
