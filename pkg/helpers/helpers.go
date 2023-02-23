@@ -45,7 +45,7 @@ func PollImmediate(interval time.Duration, timeout time.Duration, condition func
 
 // Enumerated type representing the platform underlying the cluster-under-test
 const (
-	PLATFORM_AWS           string = "aws"
-	PLATFORM_GCP           string = "gcp"
-	PLATFORM_HOSTEDCLUSTER string = "hostedcluster"
+	PlatformAWS           string = "aws"
+	PlatformGCP           string = "gcp"
+	PlatformHostedCluster string = "hostedcluster"
 )

@@ -24,7 +24,7 @@ var (
 	awsRegionDefault    = "us-east-2"
 	gcpRegionEnvVarStr  = "GCP_REGION"
 	gcpRegionDefault    = "us-east1"
-	platformTypeDefault = helpers.PLATFORM_AWS
+	platformTypeDefault = helpers.PlatformAWS
 )
 
 type egressConfig struct {
@@ -48,7 +48,7 @@ type egressConfig struct {
 
 func getDefaultRegion(platformType string) string {
 
-	if platformType == helpers.PLATFORM_GCP {
+	if platformType == helpers.PlatformGCP {
 		//gcp region
 		dRegion, ok := os.LookupEnv(gcpRegionEnvVarStr)
 		if !ok {
@@ -117,7 +117,7 @@ are set correctly before execution.
 			}
 
 			// AWS workflow
-			if config.platformType == helpers.PLATFORM_AWS || config.platformType == helpers.PLATFORM_HOSTEDCLUSTER {
+			if config.platformType == helpers.PlatformAWS || config.platformType == helpers.PlatformHostedCluster {
 
 				if len(vei.Tags) == 0 {
 					vei.Tags = awsDefaultTags
@@ -202,7 +202,7 @@ are set correctly before execution.
 		},
 	}
 
-	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%[1]v', '%[2]v', or '%[3]v' (hypershift)", helpers.PLATFORM_AWS, helpers.PLATFORM_GCP, helpers.PLATFORM_HOSTEDCLUSTER))
+	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%v', '%v', or '%v' (hypershift)", helpers.PlatformAWS, helpers.PlatformGCP, helpers.PlatformHostedCluster))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")

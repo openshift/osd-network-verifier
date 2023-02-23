@@ -41,7 +41,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, vei.PlatformType)
 	if vei.PlatformType == "" {
 		// Default to AWS
-		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PLATFORM_AWS)
+		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PlatformAWS)
 	}
 
 	// Generate the userData file

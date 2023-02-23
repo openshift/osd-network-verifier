@@ -62,7 +62,7 @@ func extendValidateEgress() {
 			KmsKeyID:        "kmskeyID",
 			SecurityGroupId: "SecurityGroupId",
 		},
-		PlatformType: helpers.PLATFORM_AWS,
+		PlatformType: helpers.PlatformAWS,
 	}
 
 	// Call egress function with either gcp or aws client
