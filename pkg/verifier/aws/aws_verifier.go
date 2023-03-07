@@ -176,6 +176,16 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 				Ebs:        ebsBlockDevice,
 			},
 		},
+		TagSpecifications: []ec2Types.TagSpecification{
+			{
+				ResourceType: ec2Types.ResourceTypeInstance,
+				Tags:         buildTags(input.tags),
+			},
+			{
+				ResourceType: ec2Types.ResourceTypeVolume,
+				Tags:         buildTags(input.tags),
+			},
+		},
 		UserData: awsTools.String(input.userdata),
 	}
 	// Finally, we make our request
@@ -194,10 +204,6 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	instanceID := *instanceResp.Instances[0].InstanceId
-	if err := a.createTags(input.tags, instanceID); err != nil {
-		// Unable to tag the instance
-		return "", handledErrors.NewGenericError(err)
-	}
 
 	// Wait up to 5 minutes for the instance to be running
 	waiter := ec2.NewInstanceRunningWaiter(a.AwsClient)
