@@ -31,6 +31,8 @@ type ValidateEgressInput struct {
 	Tags                                 map[string]string
 	AWS                                  AwsEgressConfig
 	GCP                                  GcpEgressConfig
+	SkipInstanceTermination              bool
+	TerminateDebugInstance               string
 }
 type AwsEgressConfig struct {
 	KmsKeyID, SecurityGroupId string
