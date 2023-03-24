@@ -53,6 +53,7 @@ const (
 	// TODO find a location for future docker images
 	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
 	userdataEndVerifier   = "USERDATA END"
+	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
 )
 
 // AwsVerifier holds an aws client and knows how to fuifill the VerifierSerice which contains all functions needed for verifier
@@ -227,7 +228,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	reSuccess := regexp.MustCompile(`Success!`) // populated from network-validator
 	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
-	reDockerFailure := regexp.MustCompile(`(?m)(docker)`)
+	rePrepulledImage := regexp.MustCompile(prepulledImageMessage)
 
 	input := &ec2.GetConsoleOutputInput{
 		InstanceId: awsTools.String(instanceID),
@@ -276,21 +277,20 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 				return true, nil
 			}
 
+			// Add a message to debug logs if we're using the prepulled image
+			prepulledImage := rePrepulledImage.FindAllString(consoleLogs, -1)
+			if len(prepulledImage) > 0 {
+				a.writeDebugLogs(prepulledImageMessage)
+			}
+
 			// Check consoleOutput for failures, report as exceptions if they occurred
 			genericFailures := reGenericFailure.FindAllStringSubmatch(consoleLogs, -1)
 			if len(genericFailures) > 0 {
 				a.writeDebugLogs(fmt.Sprint(genericFailures))
 
-				dockerFailures := reDockerFailure.FindAllString(consoleLogs, -1)
-				if len(dockerFailures) > 0 {
-					// Should be resolved by OSD-13003 and OSD-13007
-					a.Output.AddException(handledErrors.NewGenericError(errors.New("docker was unable to install or run. Further investigation needed")))
-					a.Output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", dockerFailures)))
-				} else {
-					// TODO: Flesh out generic issues, for now we only know about Docker
-					a.Output.AddException(handledErrors.NewGenericError(errors.New("egress tests were not run due to an uncaught error in setup or execution. Further investigation needed")))
-					a.Output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", genericFailures)))
-				}
+				// TODO: Flesh out generic issues
+				a.Output.AddException(handledErrors.NewGenericError(errors.New("egress tests were not run due to an uncaught error in setup or execution. Further investigation needed")))
+				a.Output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", genericFailures)))
 			}
 
 			// If debug logging is enabled, consoleOutput the full console log that appears to include the full userdata run
