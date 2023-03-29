@@ -7,7 +7,7 @@ import (
 	awss "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/golang/mock/gomock"
-	"github.com/openshift-online/ocm-sdk-go/logging"
+	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
 )
@@ -34,7 +34,7 @@ func TestFindUnreachableEndpointsSuccess(t *testing.T) {
 	}
 
 	cli.AwsClient.SetClient(FakeEC2Cli)
-	cli.Logger = &logging.GlogLogger{}
+	cli.Logger = &ocmlog.GlogLogger{}
 
 	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance")
 	if err != nil {
@@ -63,7 +63,7 @@ func TestFindUnreachableEndpointsNoSuccess(t *testing.T) {
 	}
 
 	cli.AwsClient.SetClient(FakeEC2Cli)
-	cli.Logger = &logging.GlogLogger{}
+	cli.Logger = &ocmlog.GlogLogger{}
 
 	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance")
 	if err != nil {
@@ -72,5 +72,51 @@ func TestFindUnreachableEndpointsNoSuccess(t *testing.T) {
 
 	if !cli.Output.IsSuccessful() {
 		t.Errorf("Success! not found, userdata end exists but no regex match for failure, it means success, got : %v", cli.Output)
+	}
+}
+
+func TestIsGenericErrorPresent(t *testing.T) {
+	tests := []struct {
+		name                string
+		consoleOutput       string
+		expectGenericErrors bool
+	}{
+		{
+			name: "Retry error",
+			consoleOutput: `USERDATA BEGIN
+Failed, retrying in 2s to do stuff
+Success!
+USERDATA END`,
+			expectGenericErrors: false,
+		},
+		{
+			name: "Generic error",
+			consoleOutput: `USERDATA BEGIN
+Failed, retrying in 2s to do stuff
+Could not do stuff
+USERDATA END`,
+			expectGenericErrors: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			l, err := ocmlog.NewStdLoggerBuilder().Build()
+			if err != nil {
+				t.Fatal(err)
+			}
+			a := &AwsVerifier{Logger: l}
+
+			actual := a.isGenericErrorPresent(test.consoleOutput)
+			if test.expectGenericErrors != actual {
+				t.Errorf("expected %v, got %v", test.expectGenericErrors, actual)
+			}
+
+			if test.expectGenericErrors {
+				if a.Output.IsSuccessful() {
+					t.Errorf("expected errors, but output still marked as successful")
+				}
+			}
+		})
 	}
 }

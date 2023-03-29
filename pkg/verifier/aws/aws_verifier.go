@@ -53,6 +53,7 @@ const (
 	// TODO find a location for future docker images
 	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
 	userdataEndVerifier   = "USERDATA END"
+	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
 )
 
 // AwsVerifier holds an aws client and knows how to fuifill the VerifierSerice which contains all functions needed for verifier
@@ -222,23 +223,24 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 		b64ConsoleLogs string
 		consoleLogs    string
 	)
-	// Compile the regular expressions once
-	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
-	reSuccess := regexp.MustCompile(`Success!`) // populated from network-validator
-	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
-	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
-	reDockerFailure := regexp.MustCompile(`(?m)(docker)`)
 
-	input := &ec2.GetConsoleOutputInput{
-		InstanceId: awsTools.String(instanceID),
-		Latest:     awsTools.Bool(true),
-	}
+	// reUserDataComplete indicates that the network validation completed
+	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
+	// reSuccess indicates that network validation was successful
+	reSuccess := regexp.MustCompile(`Success!`)
+	// reUnreachableErrors will match a specific egress failure case
+	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
+	// rePrepulledImage indicates that the network verifier is using a prepulled image
+	rePrepulledImage := regexp.MustCompile(prepulledImageMessage)
 
 	a.writeDebugLogs("Scraping console output and waiting for user data script to complete...")
 
 	// Periodically scrape console output and analyze the logs for any errors or a successful completion
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
-		consoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, input)
+		consoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
+			InstanceId: awsTools.String(instanceID),
+			Latest:     awsTools.Bool(true),
+		})
 		if err != nil {
 			return false, handledErrors.NewGenericError(err)
 		}
@@ -276,21 +278,14 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 				return true, nil
 			}
 
-			// Check consoleOutput for failures, report as exceptions if they occurred
-			genericFailures := reGenericFailure.FindAllStringSubmatch(consoleLogs, -1)
-			if len(genericFailures) > 0 {
-				a.writeDebugLogs(fmt.Sprint(genericFailures))
+			// Add a message to debug logs if we're using the prepulled image
+			prepulledImage := rePrepulledImage.FindAllString(consoleLogs, -1)
+			if len(prepulledImage) > 0 {
+				a.writeDebugLogs(prepulledImageMessage)
+			}
 
-				dockerFailures := reDockerFailure.FindAllString(consoleLogs, -1)
-				if len(dockerFailures) > 0 {
-					// Should be resolved by OSD-13003 and OSD-13007
-					a.Output.AddException(handledErrors.NewGenericError(errors.New("docker was unable to install or run. Further investigation needed")))
-					a.Output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", dockerFailures)))
-				} else {
-					// TODO: Flesh out generic issues, for now we only know about Docker
-					a.Output.AddException(handledErrors.NewGenericError(errors.New("egress tests were not run due to an uncaught error in setup or execution. Further investigation needed")))
-					a.Output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", genericFailures)))
-				}
+			if a.isGenericErrorPresent(consoleLogs) {
+				a.writeDebugLogs("generic error found - please help us classify this by sharing it with us so that we can provide a more specific error message")
 			}
 
 			// If debug logging is enabled, consoleOutput the full console log that appears to include the full userdata run
@@ -308,6 +303,33 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	})
 
 	return err
+}
+
+// isGenericErrorPresent checks consoleOutput for generic (unclassified) failures
+func (a *AwsVerifier) isGenericErrorPresent(consoleOutput string) bool {
+	// reGenericFailure is an attempt at a catch-all to help debug failures that we have not accounted for yet
+	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
+	// reRetryAttempt will override reGenericFailure when matching against attempts to retry pulling a container image
+	reRetryAttempt := regexp.MustCompile(`Failed, retrying in`)
+
+	found := false
+
+	genericFailures := reGenericFailure.FindAllString(consoleOutput, -1)
+	if len(genericFailures) > 0 {
+		for _, failure := range genericFailures {
+			switch {
+			// Ignore "Failed, retrying in" messages when retrying container image pulls as they are not terminal failures
+			case reRetryAttempt.FindAllString(failure, -1) != nil:
+				a.writeDebugLogs(fmt.Sprintf("ignoring failure that is retrying: %s", failure))
+			// If we don't otherwise ignore a generic error, consider it one that needs attention
+			default:
+				a.Output.AddError(handledErrors.NewGenericError(errors.New(failure)))
+				found = true
+			}
+		}
+	}
+
+	return found
 }
 
 func (a *AwsVerifier) createTags(tags map[string]string, ids ...string) error {

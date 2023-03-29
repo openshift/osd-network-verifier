@@ -16,4 +16,4 @@ For now, this is mostly manual. It's important to validate that these scenarios 
 
 * [./integration](./integration/) has steps to run the egress test against an AWS account to test that the osd-network-verifier is able to run using the pre-baked image on the default AMI.
 * egress test in AWS with a cluster-wide proxy
-* egress test on GCP
+* ~~egress test on GCP~~ This should be added back when GCP support is functional again

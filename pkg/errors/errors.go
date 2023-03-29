@@ -44,7 +44,7 @@ func NewGenericError(err error) *GenericError {
 
 	// Just feed forward other generic errors
 	return &GenericError{
-		message: fmt.Sprintf("network verifier error: %s", err.Error()),
+		message: fmt.Sprintf("network verifier error: %s", err),
 	}
 }
 
