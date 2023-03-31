@@ -8,12 +8,18 @@ import (
 	"github.com/aws/smithy-go"
 )
 
-// GenericError implements the error interface
 type GenericError struct {
-	message string
+	egressURL string
+	message   string
 }
 
-func (e *GenericError) Error() string { return e.message }
+func (e *GenericError) Error() string {
+	return e.message
+}
+
+func (e *GenericError) EgressURL() string {
+	return e.egressURL
+}
 
 // Ensure GenericError implements the error interface
 var _ error = &GenericError{}
@@ -49,8 +55,9 @@ func NewGenericError(err error) *GenericError {
 }
 
 // NewEgressURLError prepends the provided message with `egressURL error: `
-func NewEgressURLError(message string) error {
+func NewEgressURLError(url string) error {
 	return &GenericError{
-		message: fmt.Sprintf("egressURL error: %s", message),
+		egressURL: url,
+		message:   fmt.Sprintf("egressURL error: %s", url),
 	}
 }

@@ -228,8 +228,6 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
 	// reSuccess indicates that network validation was successful
 	reSuccess := regexp.MustCompile(`Success!`)
-	// reUnreachableErrors will match a specific egress failure case
-	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
 	// rePrepulledImage indicates that the network verifier is using a prepulled image
 	rePrepulledImage := regexp.MustCompile(prepulledImageMessage)
 
@@ -291,7 +289,10 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			// If debug logging is enabled, consoleOutput the full console log that appears to include the full userdata run
 			a.writeDebugLogs(fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 
-			a.Output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
+			if a.isEgressFailurePresent(string(scriptOutput)) {
+				a.writeDebugLogs("egress failures found")
+			}
+
 			return true, nil // finalize as there's `userdata end`
 		}
 
@@ -326,6 +327,27 @@ func (a *AwsVerifier) isGenericErrorPresent(consoleOutput string) bool {
 				a.Output.AddError(handledErrors.NewGenericError(errors.New(failure)))
 				found = true
 			}
+		}
+	}
+
+	return found
+}
+
+// isEgressFailurePresent checks consoleOutput for network egress failures and stores them
+// as NetworkVerifierErrors in a.Output.failures
+func (a *AwsVerifier) isEgressFailurePresent(consoleOutput string) bool {
+	// reEgressFailures will match a specific egress failure case
+	reEgressFailures := regexp.MustCompile(`Unable to reach (\S+)`)
+	found := false
+
+	// egressFailures is a 2D slice of regex matches - egressFailures[0] represents a specific regex match
+	// egressFailures[0][0] is the "Unable to reach" part of the match
+	// egressFailures[0][1] is the "(\S+)" part of the match, i.e. the following string
+	egressFailures := reEgressFailures.FindAllStringSubmatch(consoleOutput, -1)
+	for _, e := range egressFailures {
+		if len(e) == 2 {
+			a.Output.SetEgressFailures([]string{e[1]})
+			found = true
 		}
 	}
 
