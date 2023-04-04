@@ -120,3 +120,51 @@ USERDATA END`,
 		})
 	}
 }
+
+func TestIsEgressFailurePresent(t *testing.T) {
+	tests := []struct {
+		name                   string
+		consoleOutput          string
+		expectedEgressFailures bool
+		expectedCount          int
+	}{
+		{
+			name: "no egress failures",
+			consoleOutput: `USERDATA BEGIN
+Success!
+USERDATA END`,
+			expectedEgressFailures: false,
+		},
+		{
+			name: "egress failures present",
+			consoleOutput: `USERDATA BEGIN
+Unable to reach www.example.com:443 within specified timeout after 3 retries: Get "https://www.example.com": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+Unable to reach www.example.com:80 within specified timeout after 3 retries: Get "http://www.example.com": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+USERDATA END`,
+			expectedEgressFailures: true,
+			expectedCount:          2,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			l, err := ocmlog.NewStdLoggerBuilder().Build()
+			if err != nil {
+				t.Fatal(err)
+			}
+			a := &AwsVerifier{Logger: l}
+
+			actual := a.isEgressFailurePresent(test.consoleOutput)
+			if test.expectedEgressFailures != actual {
+				t.Errorf("expected %v, got %v", test.expectedEgressFailures, actual)
+			}
+			failures := a.Output.GetEgressURLFailures()
+			for _, f := range failures {
+				t.Log(f.EgressURL())
+			}
+			if test.expectedCount != len(failures) {
+				t.Errorf("expected %v egress failures, got %v", test.expectedCount, len(failures))
+			}
+		})
+	}
+}

@@ -1,6 +1,7 @@
 package output
 
 import (
+	"errors"
 	"fmt"
 
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
@@ -110,4 +111,21 @@ func (o *Output) Summary(debug bool) {
 // - errors as []error
 func (o *Output) Parse() ([]error, []error, []error) {
 	return o.failures, o.exceptions, o.errors
+}
+
+// GetEgressURLFailures returns only errors related to network egress failures.
+// Use the EgressURL() method to obtain the specific url for each error.
+func (o *Output) GetEgressURLFailures() []*handledErrors.GenericError {
+	egressErrs := []*handledErrors.GenericError{}
+
+	for _, err := range o.failures {
+		var nve *handledErrors.GenericError
+		if errors.As(err, &nve) {
+			if nve.EgressURL() != "" {
+				egressErrs = append(egressErrs, nve)
+			}
+		}
+	}
+
+	return egressErrs
 }

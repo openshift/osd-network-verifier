@@ -80,6 +80,10 @@ func onvEgressCheck(region, profile, subnetId string) error {
 	log.Println("Starting ONV egress validation")
 	out := verifier.ValidateEgress(awsVerifier, vei)
 	out.Summary(false)
+	egressFailures := out.GetEgressURLFailures()
+	for _, ef := range egressFailures {
+		log.Printf("egress failure: %s", ef.EgressURL())
+	}
 
 	if out.IsSuccessful() {
 		log.Println("ONV egress validation: Success!")
