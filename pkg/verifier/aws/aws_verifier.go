@@ -332,18 +332,6 @@ func (a *AwsVerifier) isGenericErrorPresent(consoleOutput string) bool {
 	return found
 }
 
-func (a *AwsVerifier) createTags(tags map[string]string, ids ...string) error {
-	if len(tags) <= 0 {
-		return nil
-	}
-	_, err := a.AwsClient.CreateTags(context.TODO(), &ec2.CreateTagsInput{
-		Resources: ids,
-		Tags:      buildTags(tags),
-	})
-
-	return err
-}
-
 func buildTags(tags map[string]string) []ec2Types.Tag {
 	tagList := make([]ec2Types.Tag, 0, len(tags))
 	for k, v := range tags {
@@ -389,6 +377,12 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 		GroupName:   awsTools.String(name + "-" + helpers.RandSeq(5)),
 		VpcId:       &vpcId,
 		Description: awsTools.String("osd-network-verifier security group"),
+		TagSpecifications: []ec2Types.TagSpecification{
+			{
+				ResourceType: ec2Types.ResourceTypeSecurityGroup,
+				Tags:         buildTags(tags),
+			},
+		},
 	}
 	a.writeDebugLogs("Creating a Security group")
 	output, err := a.AwsClient.CreateSecurityGroup(ctx, input)
@@ -409,14 +403,6 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 	}
 
 	a.Logger.Info(ctx, "Created security group with ID: %s", *output.GroupId)
-	if err := a.createTags(tags, *output.GroupId); err != nil {
-		// Unable to tag the instance
-		_, err := a.AwsClient.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: output.GroupId})
-		if err != nil {
-			return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
-		}
-		return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
-	}
 
 	input_rules := &ec2.AuthorizeSecurityGroupEgressInput{
 		GroupId: output.GroupId,
