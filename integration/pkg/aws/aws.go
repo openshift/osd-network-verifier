@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,10 +16,13 @@ import (
 const (
 	// These are temporary because CIDR math is hard
 	// A /25 is the minimum CIDR for a single-AZ OpenShift cluster
-	vpcCidr            = "10.0.0.0/23"
-	privateSubnetCidr  = "10.0.0.0/25"
-	firewallSubnetCidr = "10.0.0.128/25"
-	publicSubnetCidr   = "10.0.1.0/25"
+	vpcCidr               = "10.0.0.0/23"
+	privateSubnetCidr     = "10.0.0.0/25"
+	firewallSubnetCidr    = "10.0.0.128/25"
+	publicSubnetCidr      = "10.0.1.0/25"
+	firewallName          = "osd-network-verifier-firewall"
+	firewallPolicyName    = "osd-network-verifier-firewall-policy"
+	firewallRuleGroupName = "osd-network-verifier-rule-group"
 )
 
 type OnvIntegrationTestData struct {
@@ -92,10 +96,13 @@ func (id *OnvIntegrationTestData) Setup(ctx context.Context) error {
 
 func (id *OnvIntegrationTestData) Cleanup(ctx context.Context) error {
 	if err := id.processAwsResources(ctx, []processAwsResourceFunc{
-		id.CleanupFirewall,
-		id.CleanupNatGateway,
-		id.CleanupInternetGateway,
 		id.CleanupRouteTables,
+		id.CleanupFirewall,
+		id.CleanupFirewallPolicy,
+		id.CleanupRuleGroup,
+		id.CleanupNatGateway,
+		id.CleanupElasticIp,
+		id.CleanupInternetGateway,
 		id.CleanupSubnets,
 		id.CleanupVpc,
 	}); err != nil {
@@ -111,12 +118,8 @@ func (id *OnvIntegrationTestData) GetPrivateSubnetId() *string {
 }
 
 // defaultEc2Tags returns the list of all default tags for created EC2 resources
-func defaultEc2Tags(name string) []ec2Types.Tag {
+func defaultEc2Tags() []ec2Types.Tag {
 	return []ec2Types.Tag{
-		{
-			Key:   aws.String("Name"),
-			Value: aws.String(name),
-		},
 		{
 			Key:   aws.String("owned"),
 			Value: aws.String("red-hat-managed"),
@@ -128,13 +131,23 @@ func defaultEc2Tags(name string) []ec2Types.Tag {
 	}
 }
 
+func defaultEc2TagFilters() []ec2Types.Filter {
+	defaultTags := defaultEc2Tags()
+	filters := make([]ec2Types.Filter, len(defaultTags))
+
+	for i, tag := range defaultEc2Tags() {
+		filters[i] = ec2Types.Filter{
+			Name:   aws.String(fmt.Sprintf("tag:%s", *tag.Key)),
+			Values: []string{*tag.Value},
+		}
+	}
+
+	return filters
+}
+
 // defaultNetworkFirewallTags returns the list of all default tags for created network firewall resources
-func defaultNetworkFirewallTags(name string) []nfwTypes.Tag {
+func defaultNetworkFirewallTags() []nfwTypes.Tag {
 	return []nfwTypes.Tag{
-		{
-			Key:   aws.String("Name"),
-			Value: aws.String(name),
-		},
 		{
 			Key:   aws.String("owned"),
 			Value: aws.String("red-hat-managed"),
