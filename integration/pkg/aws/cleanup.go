@@ -2,65 +2,61 @@ package aws
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go-v2/aws"
+	"errors"
+	"github.com/aws/smithy-go"
 	"log"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall"
+	nfwTypes "github.com/aws/aws-sdk-go-v2/service/networkfirewall/types"
 )
 
 // CleanupVpc deletes a VPC
 // Requires CleanupNatGateway, CleanupInternetGateway, CleanupRouteTables, and Cleanup Subnets to be run first
 func (id *OnvIntegrationTestData) CleanupVpc(ctx context.Context) error {
-	if id.vpcId == nil {
-		log.Println("skipping VPC cleanup due to missing vpc id")
-		return nil
-	}
-
-	if _, err := id.ec2Api.DeleteVpc(ctx, &ec2.DeleteVpcInput{VpcId: id.vpcId}); err != nil {
+	resp, err := id.ec2Api.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
+		Filters: defaultEc2TagFilters(),
+	})
+	if err != nil {
 		return err
 	}
 
-	log.Printf("deleted VPC: %s", *id.vpcId)
-	id.vpcId = nil
+	if len(resp.Vpcs) == 0 {
+		log.Println("No VPCs found - skipping cleanup")
+		return nil
+	}
+
+	for _, vpc := range resp.Vpcs {
+		if _, err := id.ec2Api.DeleteVpc(ctx, &ec2.DeleteVpcInput{VpcId: vpc.VpcId}); err != nil {
+			return err
+		}
+		log.Printf("deleted VPC: %s", *vpc.VpcId)
+	}
 
 	return nil
 }
 
 // CleanupSubnets deletes the firewall/public/private subnets
 func (id *OnvIntegrationTestData) CleanupSubnets(ctx context.Context) error {
-	if id.privateSubnetId != nil {
-		if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.privateSubnetId}); err != nil {
-			return err
-		}
-
-		log.Printf("deleted private subnet: %s", *id.privateSubnetId)
-		id.privateSubnetId = nil
-	} else {
-		log.Println("skipping private subnet cleanup due to missing subnet id")
+	resp, err := id.ec2Api.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
+		Filters: defaultEc2TagFilters(),
+	})
+	if err != nil {
+		return err
 	}
 
-	if id.firewallSubnetId != nil {
-		if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.firewallSubnetId}); err != nil {
-			return err
-		}
-
-		log.Printf("deleted firewall subnet: %s", *id.firewallSubnetId)
-		id.firewallRuleGroupArn = nil
-	} else {
-		log.Println("skipping firewall subnet cleanup due to missing subnet id")
+	if len(resp.Subnets) == 0 {
+		log.Println("No Subnets found - skipping cleanup")
+		return nil
 	}
 
-	if id.publicSubnetId != nil {
-		if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: id.publicSubnetId}); err != nil {
+	for _, subnet := range resp.Subnets {
+		if _, err := id.ec2Api.DeleteSubnet(ctx, &ec2.DeleteSubnetInput{SubnetId: subnet.SubnetId}); err != nil {
 			return err
 		}
-
-		log.Printf("deleted public subnet: %s", *id.publicSubnetId)
-		id.publicSubnetId = nil
-	} else {
-		log.Println("skipping public subnet cleanup due to missing subnet id")
+		log.Printf("deleted subnet: %s", *subnet.SubnetId)
 	}
 
 	return nil
@@ -68,194 +64,180 @@ func (id *OnvIntegrationTestData) CleanupSubnets(ctx context.Context) error {
 
 // CleanupRouteTables disassociates and deletes the subnet route tables
 func (id *OnvIntegrationTestData) CleanupRouteTables(ctx context.Context) error {
-	if id.publicSubnetRouteTableAssociationId == nil || id.privateSubnetRouteTableAssociationId == nil || id.firewallSubnetRouteTableAssociationId == nil {
-		log.Println("skipping route table cleanup due to missing association ids")
-		return nil
-	}
-
-	if id.privateSubnetRouteTableId == nil || id.publicSubnetRouteTableId == nil || id.firewallSubnetRouteTableId == nil {
-		log.Println("skipping route table cleanup due to missing route table ids")
-		return nil
-	}
-
-	if _, err := id.ec2Api.DisassociateRouteTable(ctx, &ec2.DisassociateRouteTableInput{
-		AssociationId: id.privateSubnetRouteTableAssociationId,
-	}); err != nil {
+	resp, err := id.ec2Api.DescribeRouteTables(ctx, &ec2.DescribeRouteTablesInput{
+		Filters: defaultEc2TagFilters(),
+	})
+	if err != nil {
 		return err
 	}
 
-	log.Printf("disassociated private subnet route table: %s", *id.privateSubnetRouteTableAssociationId)
-	id.privateSubnetRouteTableAssociationId = nil
+	for _, rt := range resp.RouteTables {
+		log.Printf("cleaning up route table: %s", *rt.RouteTableId)
+		for _, assoc := range rt.Associations {
+			if _, err := id.ec2Api.DisassociateRouteTable(ctx, &ec2.DisassociateRouteTableInput{
+				AssociationId: assoc.RouteTableAssociationId,
+			}); err != nil {
+				return err
+			}
+			log.Printf("disassociated association: %s", *assoc.RouteTableAssociationId)
+		}
 
-	if _, err := id.ec2Api.DisassociateRouteTable(ctx, &ec2.DisassociateRouteTableInput{
-		AssociationId: id.firewallSubnetRouteTableAssociationId,
-	}); err != nil {
-		return err
+		if _, err := id.ec2Api.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{
+			RouteTableId: rt.RouteTableId,
+		}); err != nil {
+			return err
+		}
+		log.Printf("deleted route table: %s", *rt.RouteTableId)
 	}
-
-	log.Printf("disassociated firewall subnet route table: %s", *id.firewallSubnetRouteTableAssociationId)
-	id.firewallSubnetRouteTableAssociationId = nil
-
-	if _, err := id.ec2Api.DisassociateRouteTable(ctx, &ec2.DisassociateRouteTableInput{
-		AssociationId: id.publicSubnetRouteTableAssociationId,
-	}); err != nil {
-		return err
-	}
-
-	log.Printf("disassociated public subnet route table: %s", *id.publicSubnetRouteTableAssociationId)
-	id.publicSubnetRouteTableAssociationId = nil
-
-	if _, err := id.ec2Api.DisassociateRouteTable(ctx, &ec2.DisassociateRouteTableInput{
-		AssociationId: id.internetGatewayRouteTableAssociationId,
-	}); err != nil {
-		return err
-	}
-
-	log.Printf("disassociated internet gateway route table: %s", *id.internetGatewayRouteTableAssociationId)
-	id.privateSubnetRouteTableAssociationId = nil
-
-	if _, err := id.ec2Api.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{
-		RouteTableId: id.privateSubnetRouteTableId,
-	}); err != nil {
-		return err
-	}
-	log.Printf("deleted private subnet route table: %s", *id.privateSubnetRouteTableId)
-	id.privateSubnetRouteTableId = nil
-
-	if _, err := id.ec2Api.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{
-		RouteTableId: id.firewallSubnetRouteTableId,
-	}); err != nil {
-		return err
-	}
-	log.Printf("deleted firewall subnet route table: %s", *id.firewallSubnetRouteTableId)
-	id.firewallSubnetRouteTableId = nil
-
-	if _, err := id.ec2Api.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{
-		RouteTableId: id.publicSubnetRouteTableId,
-	}); err != nil {
-		return err
-	}
-	log.Printf("deleted public subnet route table: %s", *id.publicSubnetRouteTableId)
-	id.publicSubnetRouteTableId = nil
-
-	if _, err := id.ec2Api.DeleteRouteTable(ctx, &ec2.DeleteRouteTableInput{
-		RouteTableId: id.internetGatewayRouteTableId,
-	}); err != nil {
-		return err
-	}
-	log.Printf("deleted internet gateway route table: %s", *id.internetGatewayRouteTableId)
-	id.publicSubnetRouteTableId = nil
 
 	return nil
 }
 
 // CleanupInternetGateway detaches and deletes the IGW
 func (id *OnvIntegrationTestData) CleanupInternetGateway(ctx context.Context) error {
-	if id.vpcId == nil {
-		log.Println("skipping internet gateway cleanup due to missing VPC id")
+	resp, err := id.ec2Api.DescribeInternetGateways(ctx, &ec2.DescribeInternetGatewaysInput{
+		Filters: defaultEc2TagFilters(),
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(resp.InternetGateways) == 0 {
+		log.Println("No internet gateways found - skipping cleanup")
 		return nil
 	}
 
-	if id.internetGatewayId == nil {
-		log.Println("skipping internet gateway cleanup due to missing IGW id")
-		return nil
-	}
+	for _, igw := range resp.InternetGateways {
+		for _, attach := range igw.Attachments {
+			if _, err := id.ec2Api.DetachInternetGateway(ctx, &ec2.DetachInternetGatewayInput{
+				InternetGatewayId: igw.InternetGatewayId,
+				VpcId:             attach.VpcId,
+			}); err != nil {
+				return err
+			}
+			log.Printf("detached internet gateway: %s from vpc: %s", *igw.InternetGatewayId, *attach.VpcId)
+		}
 
-	if _, err := id.ec2Api.DetachInternetGateway(ctx, &ec2.DetachInternetGatewayInput{
-		InternetGatewayId: id.internetGatewayId,
-		VpcId:             id.vpcId,
-	}); err != nil {
-		return err
+		if _, err := id.ec2Api.DeleteInternetGateway(ctx, &ec2.DeleteInternetGatewayInput{
+			InternetGatewayId: igw.InternetGatewayId,
+		}); err != nil {
+			return err
+		}
+		log.Printf("internet gateway deleted: %s", *igw.InternetGatewayId)
 	}
-	log.Printf("detached internet gateway: %s", *id.internetGatewayId)
-
-	if _, err := id.ec2Api.DeleteInternetGateway(ctx, &ec2.DeleteInternetGatewayInput{
-		InternetGatewayId: id.internetGatewayId,
-	}); err != nil {
-		return err
-	}
-	log.Printf("internet gateway deleted: %s", *id.internetGatewayId)
-	id.internetGatewayId = nil
 
 	return nil
 }
 
-// CleanupNatGateway deletes the NAT Gateway and associated EIP
+// CleanupNatGateway deletes NAT Gateways
 func (id *OnvIntegrationTestData) CleanupNatGateway(ctx context.Context) error {
-	if id.natGatewayId == nil {
-		log.Println("skipping NAT gateway cleanup due to missing nat gateway id")
+	resp, err := id.ec2Api.DescribeNatGateways(ctx, &ec2.DescribeNatGatewaysInput{
+		Filter: defaultEc2TagFilters(),
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(resp.NatGateways) == 0 {
+		log.Println("No NAT gateways found - skipping cleanup")
 		return nil
 	}
 
-	log.Printf("deleting NAT Gateway: %s", *id.natGatewayId)
-	if _, err := id.ec2Api.DeleteNatGateway(ctx, &ec2.DeleteNatGatewayInput{NatGatewayId: id.natGatewayId}); err != nil {
-		return err
-	}
+	for _, nat := range resp.NatGateways {
+		log.Printf("deleting NAT Gateway: %s", *nat.NatGatewayId)
+		if _, err := id.ec2Api.DeleteNatGateway(ctx, &ec2.DeleteNatGatewayInput{NatGatewayId: nat.NatGatewayId}); err != nil {
+			return err
+		}
 
-	log.Printf("waiting up to %s for the NAT Gateway to be deleted", 5*time.Minute)
-	natGwWaiter := ec2.NewNatGatewayDeletedWaiter(id.ec2Api)
-	if err := natGwWaiter.Wait(ctx, &ec2.DescribeNatGatewaysInput{
-		NatGatewayIds: []string{*id.natGatewayId},
-	}, 5*time.Minute); err != nil {
-		return err
-	}
-	log.Printf("NAT gateway deleted: %s", *id.natGatewayId)
-	id.natGatewayId = nil
+		log.Printf("waiting up to %s for the NAT Gateway to be deleted", 5*time.Minute)
+		natGwWaiter := ec2.NewNatGatewayDeletedWaiter(id.ec2Api)
 
-	if id.eipAllocationId == nil {
-		log.Println("skipping eip cleanup due to missing eip allocation id")
-		return nil
+		if err := natGwWaiter.Wait(ctx, &ec2.DescribeNatGatewaysInput{
+			NatGatewayIds: []string{*nat.NatGatewayId},
+		}, 5*time.Minute); err != nil {
+			return err
+		}
+		log.Printf("NAT gateway deleted: %s", *nat.NatGatewayId)
 	}
-
-	if _, err := id.ec2Api.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{AllocationId: id.eipAllocationId}); err != nil {
-		return err
-	}
-
-	log.Printf("EIP released: %s", *id.eipAllocationId)
-	id.eipAllocationId = nil
 
 	return nil
 }
 
+// CleanupElasticIp deletes EIPs that should have previously been associated with NAT Gateways
+func (id *OnvIntegrationTestData) CleanupElasticIp(ctx context.Context) error {
+	eipResp, err := id.ec2Api.DescribeAddresses(ctx, &ec2.DescribeAddressesInput{
+		Filters: defaultEc2TagFilters(),
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(eipResp.Addresses) == 0 {
+		log.Println("No Elastic IPs found - skipping cleanup")
+
+	}
+
+	for _, eip := range eipResp.Addresses {
+		if _, err := id.ec2Api.ReleaseAddress(ctx, &ec2.ReleaseAddressInput{AllocationId: eip.AllocationId}); err != nil {
+			return err
+		}
+		log.Printf("EIP released: %s", *eip.AllocationId)
+	}
+
+	return nil
+}
+
+// CleanupFirewall deletes all AWS NetworkFirewall Firewalls
 func (id *OnvIntegrationTestData) CleanupFirewall(ctx context.Context) error {
-	if id.firewallVpcEndpointId != nil && id.internetGatewayRouteTableId != nil && id.publicSubnetRouteTableId != nil {
-		if _, err := id.ec2Api.DeleteRoute(ctx, &ec2.DeleteRouteInput{
-			RouteTableId:         id.internetGatewayRouteTableId,
-			DestinationCidrBlock: aws.String(publicSubnetCidr),
-		}); err != nil {
-			return err
+	if _, err := id.networkFirewallApi.DescribeFirewall(ctx, &networkfirewall.DescribeFirewallInput{
+		FirewallName: aws.String(firewallName),
+	}); err != nil {
+		var ae smithy.APIError
+		if errors.As(err, &ae) {
+			if ae.ErrorCode() == "ResourceNotFoundException" {
+				log.Println("no firewall found - skipping cleanup")
+				return nil
+			}
 		}
-
-		if _, err := id.ec2Api.DeleteRoute(ctx, &ec2.DeleteRouteInput{
-			RouteTableId:         id.publicSubnetRouteTableId,
-			DestinationCidrBlock: aws.String("0.0.0.0/0"),
-		}); err != nil {
-			return err
-		}
-	}
-	if id.firewallArn == nil {
-		log.Println("skipping firewall cleanup due to missing firewall arn")
-		return nil
+		return err
 	}
 
-	log.Printf("deleting firewall %s", *id.firewallArn)
-	if _, err := id.networkFirewallApi.DeleteFirewall(ctx, &networkfirewall.DeleteFirewallInput{FirewallArn: id.firewallArn}); err != nil {
+	log.Printf("deleting firewall %s", firewallName)
+	if _, err := id.networkFirewallApi.DeleteFirewall(ctx, &networkfirewall.DeleteFirewallInput{
+		FirewallName: aws.String(firewallName),
+	}); err != nil {
 		return err
 	}
 
 	log.Printf("waiting up to %s for the firewall to be deleted", 20*time.Minute)
 	firewallWaiter := NewFirewallDeletedWaiter(id.networkFirewallApi)
 	if err := firewallWaiter.Wait(ctx, &networkfirewall.DescribeFirewallInput{
-		FirewallArn: id.firewallArn,
+		FirewallName: aws.String(firewallName),
 	}, 20*time.Minute); err != nil {
 		return err
 	}
-	log.Printf("firewall deleted: %s", *id.firewallArn)
-	id.firewallArn = nil
+	log.Printf("firewall deleted: %s", firewallName)
 
-	log.Printf("deleting firewall policy %s", *id.firewallPolicyArn)
+	return nil
+}
+
+func (id *OnvIntegrationTestData) CleanupFirewallPolicy(ctx context.Context) error {
+	if _, err := id.networkFirewallApi.DescribeFirewallPolicy(ctx, &networkfirewall.DescribeFirewallPolicyInput{
+		FirewallPolicyName: aws.String(firewallPolicyName),
+	}); err != nil {
+		var ae smithy.APIError
+		if errors.As(err, &ae) {
+			if ae.ErrorCode() == "ResourceNotFoundException" {
+				log.Println("no firewall policy found - skipping cleanup")
+				return nil
+			}
+		}
+		return err
+	}
+
+	log.Printf("deleting firewall policy %s", firewallPolicyName)
 	if _, err := id.networkFirewallApi.DeleteFirewallPolicy(ctx, &networkfirewall.DeleteFirewallPolicyInput{
-		FirewallPolicyArn: id.firewallPolicyArn,
+		FirewallPolicyName: aws.String(firewallPolicyName),
 	}); err != nil {
 		return err
 	}
@@ -263,20 +245,38 @@ func (id *OnvIntegrationTestData) CleanupFirewall(ctx context.Context) error {
 	log.Printf("waiting up to %s for the firewall policy to be deleted", 10*time.Minute)
 	firewallPolicyWaiter := NewFirewallPolicyDeletedWaiter(id.networkFirewallApi)
 	if err := firewallPolicyWaiter.Wait(ctx, &networkfirewall.DescribeFirewallPolicyInput{
-		FirewallPolicyArn: id.firewallPolicyArn,
+		FirewallPolicyName: aws.String(firewallPolicyName),
 	}, 10*time.Minute); err != nil {
 		return err
 	}
-	log.Printf("firewall policy deleted: %s", *id.firewallPolicyArn)
-	id.firewallPolicyArn = nil
+	log.Printf("firewall policy deleted: %s", firewallPolicyName)
 
-	log.Printf("deleting firewall rule group %s", *id.firewallRuleGroupArn)
+	return nil
+}
+
+func (id *OnvIntegrationTestData) CleanupRuleGroup(ctx context.Context) error {
+	if _, err := id.networkFirewallApi.DescribeRuleGroup(ctx, &networkfirewall.DescribeRuleGroupInput{
+		RuleGroupName: aws.String(firewallRuleGroupName),
+		Type:          nfwTypes.RuleGroupTypeStateful,
+	}); err != nil {
+		var ae smithy.APIError
+		if errors.As(err, &ae) {
+			if ae.ErrorCode() == "ResourceNotFoundException" {
+				log.Println("no rule group found - skipping cleanup")
+				return nil
+			}
+		}
+		return err
+	}
+
+	log.Printf("deleting firewall rule group %s", firewallRuleGroupName)
 	if _, err := id.networkFirewallApi.DeleteRuleGroup(ctx, &networkfirewall.DeleteRuleGroupInput{
-		RuleGroupArn: id.firewallRuleGroupArn,
+		RuleGroupName: aws.String(firewallRuleGroupName),
+		Type:          nfwTypes.RuleGroupTypeStateful,
 	}); err != nil {
 		return err
 	}
-	log.Printf("rule group deleted: %s", *id.firewallRuleGroupArn)
+	log.Printf("rule group deleted: %s", firewallRuleGroupName)
 
 	return nil
 }

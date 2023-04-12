@@ -18,6 +18,7 @@ import (
 
 type byovpcNetworkFirewallApi interface {
 	CreateRuleGroup(ctx context.Context, params *networkfirewall.CreateRuleGroupInput, optFns ...func(*networkfirewall.Options)) (*networkfirewall.CreateRuleGroupOutput, error)
+	DescribeRuleGroup(ctx context.Context, params *networkfirewall.DescribeRuleGroupInput, optFns ...func(*networkfirewall.Options)) (*networkfirewall.DescribeRuleGroupOutput, error)
 	CreateFirewallPolicy(ctx context.Context, params *networkfirewall.CreateFirewallPolicyInput, optFns ...func(*networkfirewall.Options)) (*networkfirewall.CreateFirewallPolicyOutput, error)
 	DescribeFirewallPolicy(ctx context.Context, params *networkfirewall.DescribeFirewallPolicyInput, optFns ...func(*networkfirewall.Options)) (*networkfirewall.DescribeFirewallPolicyOutput, error)
 	CreateFirewall(ctx context.Context, params *networkfirewall.CreateFirewallInput, optFns ...func(*networkfirewall.Options)) (*networkfirewall.CreateFirewallOutput, error)

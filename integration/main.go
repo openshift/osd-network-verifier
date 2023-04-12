@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
-	"os"
 	"time"
 
+	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	inttestaws "github.com/openshift/osd-network-verifier/integration/pkg/aws"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	awsverifier "github.com/openshift/osd-network-verifier/pkg/verifier/aws"
@@ -18,6 +19,8 @@ import (
 func main() {
 	region := flag.String("region", "us-east-1", "AWS Region")
 	profile := flag.String("profile", "", "AWS Profile")
+	createOnly := flag.Bool("create-only", false, "When specified, only create infrastructure and do not delete")
+	deleteOnly := flag.Bool("delete-only", false, "When specified, delete infrastructure in an idempotent fashion")
 	flag.Parse()
 
 	var (
@@ -38,6 +41,14 @@ func main() {
 	}
 
 	data := inttestaws.NewIntegrationTestData(cfg)
+	if *deleteOnly {
+		if err := data.Cleanup(context.TODO()); err != nil {
+			panic(err)
+		}
+
+		return
+	}
+
 	if err := data.Setup(context.TODO()); err != nil {
 		log.Printf("setup err, starting cleanup: %s", err)
 		if err := data.Cleanup(context.TODO()); err != nil {
@@ -45,7 +56,12 @@ func main() {
 		}
 	}
 
-	if err := onvEgressCheck(*region, *profile, *data.GetPrivateSubnetId()); err != nil {
+	if *createOnly {
+		// Don't run egress check and cleanup afterwards
+		return
+	}
+
+	if err := onvEgressCheck(cfg, *data.GetPrivateSubnetId()); err != nil {
 		panic(err)
 	}
 
@@ -54,13 +70,14 @@ func main() {
 	}
 }
 
-func onvEgressCheck(region, profile, subnetId string) error {
-	// Read AWS credentials from environment
-	key, _ := os.LookupEnv("AWS_ACCESS_KEY_ID")
-	secret, _ := os.LookupEnv("AWS_SECRET_ACCESS_KEY")
-	session, _ := os.LookupEnv("AWS_SESSION_TOKEN")
+func onvEgressCheck(cfg aws.Config, subnetId string) error {
+	builder := ocmlog.NewStdLoggerBuilder()
+	logger, err := builder.Build()
+	if err != nil {
+		return fmt.Errorf("unable to build logger: %s", err)
+	}
 
-	awsVerifier, err := awsverifier.NewAwsVerifier(key, secret, session, region, profile, false)
+	awsVerifier, err := awsverifier.NewAwsVerifierFromConfig(cfg, logger)
 	if err != nil {
 		return err
 	}

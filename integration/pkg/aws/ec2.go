@@ -3,7 +3,6 @@ package aws
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -15,17 +14,20 @@ import (
 type byovpcEc2Api interface {
 	DescribeAvailabilityZones(ctx context.Context, params *ec2.DescribeAvailabilityZonesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeAvailabilityZonesOutput, error)
 	CreateVpc(ctx context.Context, params *ec2.CreateVpcInput, optFns ...func(*ec2.Options)) (*ec2.CreateVpcOutput, error)
+	DescribeVpcs(ctx context.Context, params *ec2.DescribeVpcsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeVpcsOutput, error)
 	CreateTags(ctx context.Context, params *ec2.CreateTagsInput, optFns ...func(*ec2.Options)) (*ec2.CreateTagsOutput, error)
 	ModifyVpcAttribute(ctx context.Context, params *ec2.ModifyVpcAttributeInput, optFns ...func(*ec2.Options)) (*ec2.ModifyVpcAttributeOutput, error)
 	CreateSubnet(ctx context.Context, params *ec2.CreateSubnetInput, optFns ...func(*ec2.Options)) (*ec2.CreateSubnetOutput, error)
 	DescribeSubnets(ctx context.Context, params *ec2.DescribeSubnetsInput, optFns ...func(*ec2.Options)) (*ec2.DescribeSubnetsOutput, error)
-	CreateRouteTable(ctx context.Context, params *ec2.CreateRouteTableInput, optFns ...func(*ec2.Options)) (*ec2.CreateRouteTableOutput, error)
 	AssociateRouteTable(ctx context.Context, params *ec2.AssociateRouteTableInput, optFns ...func(*ec2.Options)) (*ec2.AssociateRouteTableOutput, error)
+	CreateRouteTable(ctx context.Context, params *ec2.CreateRouteTableInput, optFns ...func(*ec2.Options)) (*ec2.CreateRouteTableOutput, error)
+	DescribeRouteTables(ctx context.Context, params *ec2.DescribeRouteTablesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeRouteTablesOutput, error)
 	CreateInternetGateway(ctx context.Context, params *ec2.CreateInternetGatewayInput, optFns ...func(*ec2.Options)) (*ec2.CreateInternetGatewayOutput, error)
 	AttachInternetGateway(ctx context.Context, params *ec2.AttachInternetGatewayInput, optFns ...func(*ec2.Options)) (*ec2.AttachInternetGatewayOutput, error)
 	DescribeInternetGateways(ctx context.Context, params *ec2.DescribeInternetGatewaysInput, optFns ...func(*ec2.Options)) (*ec2.DescribeInternetGatewaysOutput, error)
 	CreateRoute(ctx context.Context, params *ec2.CreateRouteInput, optFns ...func(*ec2.Options)) (*ec2.CreateRouteOutput, error)
 	AllocateAddress(ctx context.Context, params *ec2.AllocateAddressInput, optFns ...func(*ec2.Options)) (*ec2.AllocateAddressOutput, error)
+	DescribeAddresses(ctx context.Context, params *ec2.DescribeAddressesInput, optFns ...func(*ec2.Options)) (*ec2.DescribeAddressesOutput, error)
 	CreateNatGateway(ctx context.Context, params *ec2.CreateNatGatewayInput, optFns ...func(*ec2.Options)) (*ec2.CreateNatGatewayOutput, error)
 	DescribeNatGateways(context.Context, *ec2.DescribeNatGatewaysInput, ...func(*ec2.Options)) (*ec2.DescribeNatGatewaysOutput, error)
 
@@ -65,13 +67,6 @@ func (id *OnvIntegrationTestData) createAndWaitForSubnet(ctx context.Context, na
 	}
 	log.Printf("subnet available: %s", *subnet.Subnet.SubnetId)
 
-	if _, err := id.ec2Api.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: []string{*subnet.Subnet.SubnetId},
-		Tags:      defaultEc2Tags(name),
-	}); err != nil {
-		return nil, err
-	}
-
 	return subnet.Subnet.SubnetId, nil
 }
 
@@ -82,18 +77,17 @@ func (id *OnvIntegrationTestData) createAndAssociateRouteTable(ctx context.Conte
 
 	rt, err := id.ec2Api.CreateRouteTable(ctx, &ec2.CreateRouteTableInput{
 		VpcId: id.vpcId,
+		TagSpecifications: []ec2Types.TagSpecification{
+			{
+				ResourceType: ec2Types.ResourceTypeRouteTable,
+				Tags:         defaultEc2Tags(),
+			},
+		},
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 	log.Printf("created %s subnet route table: %s", name, *rt.RouteTable.RouteTableId)
-
-	if _, err := id.ec2Api.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: []string{*rt.RouteTable.RouteTableId},
-		Tags:      defaultEc2Tags(fmt.Sprintf("onv-integration-test-%s-subnet", name)),
-	}); err != nil {
-		return nil, nil, err
-	}
 
 	rtAssoc, err := id.ec2Api.AssociateRouteTable(ctx, &ec2.AssociateRouteTableInput{
 		RouteTableId: rt.RouteTable.RouteTableId,
