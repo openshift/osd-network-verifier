@@ -143,21 +143,25 @@ repeat the verification process for each subnet ID.
    
         Additional optional flags for overriding defaults:
         ```shell
-          --cacert string               (optional) path to cacert file to be used upon https requests being made by verifier
-          --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [])
-          --debug                       (optional) if true, enable additional debug-level logging
-          --http-proxy string           (optional) http-proxy to be used upon http requests being made by verifier, format: http://user:pass@x.x.x.x:8978
-          --https-proxy string          (optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978
-          --instance-type string        (optional) compute instance type
-          --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
-          --no-tls                      (optional) if true, ignore all ssl certificate validations on client-side.
-          --platform string             (optional) infra platform type, which determines which endpoints to test. Either 'aws' (default), 'gcp', or 'hostedcluster' (hypershift) (default "aws")
-          --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored.
-          --region string               (optional) compute instance region. If absent, environment var AWS_REGION = us-east-2 and GCP_REGION = us-east1 will be used
-          --security-group-id string    security group id to attach to the created EC2 instance
-          --subnet-id string            source subnet ID
-          --timeout duration            (optional) timeout for individual egress verification requests (default 2s)
-          ```
+        --cacert string               (optional) path to cacert file to be used upon https requests being made by verifier
+        --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [])
+        --debug                       (optional) if true, enable additional debug-level logging
+        --http-proxy string           (optional) http-proxy to be used upon http requests being made by verifier, format: http://user:pass@x.x.x.x:8978
+        --https-proxy string          (optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978
+        --image-id string             (optional) cloud image for the compute instance
+        --instance-type string        (optional) compute instance type
+        --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
+        --no-tls                      (optional) if true, skip client-side SSL certificate validation
+        --platform string             (optional) infra platform type, which determines which endpoints to test. Either 'aws', 'gcp', or 'hostedcluster' (hypershift) (default "aws")
+        --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored
+        --region string               (optional) compute instance region. If absent, environment var AWS_REGION = us-east-2 and GCP_REGION = us-east1 will be used
+        --security-group-id string    security group ID to attach to the created EC2 instance
+        --skip-termination            (optional) Skip instance termination to allow further debugging
+        --subnet-id string            source subnet ID
+        --terminate-debug string      (optional) Takes the debug instance ID and terminates it
+        --timeout duration            (optional) timeout for individual egress verification requests (default 2s)
+        --vpc-name string             (optional unless --platform='gcp') VPC name where GCP cluster is installed
+        ```
    
        Get cli help:
     
