@@ -21,29 +21,28 @@ import (
 
 var (
 	defaultAmi = map[string]string{
-		// using AMI from
-		"af-south-1":     "ami-0796661f16a2901d2",
-		"ap-east-1":      "ami-09567ce0c50c03f2a",
-		"ap-northeast-1": "ami-0770102fe206b1b41",
-		"ap-northeast-2": "ami-0220c321526ae067c",
-		"ap-northeast-3": "ami-0295fe37e0b8e8fa0",
-		"ap-south-1":     "ami-05583c7a377eb27b8",
-		"ap-southeast-1": "ami-0ee18ee3e6d85c605",
-		"ap-southeast-2": "ami-00e1da591ab5efffb",
-		"ap-southeast-3": "ami-0a124e1d8f60ba64d",
-		"ca-central-1":   "ami-0fa8dd70f2970edb2",
-		"eu-central-1":   "ami-06835827344c81f48",
-		"eu-north-1":     "ami-089c5c39f2bd44372",
-		"eu-south-1":     "ami-0f0d5fd84ef33d2ca",
-		"eu-west-1":      "ami-0c31967be4d553385",
-		"eu-west-2":      "ami-0eaf3235c1440df3e",
-		"eu-west-3":      "ami-012b63740588be4d3",
-		"me-south-1":     "ami-04f95a305c7b98b80",
-		"sa-east-1":      "ami-06d27387ac40cb5f9",
-		"us-east-1":      "ami-054b37806ad65fe6a",
-		"us-east-2":      "ami-00dffdff49713d15f",
-		"us-west-1":      "ami-0c343d7a3012071a5",
-		"us-west-2":      "ami-018f9d98154fffcee",
+		"af-south-1":     "ami-064cc6257e747fa51",
+		"ap-east-1":      "ami-0b347ac7563c9296c",
+		"ap-northeast-1": "ami-010444830b4fba68e",
+		"ap-northeast-2": "ami-0dbe703da875e35c3",
+		"ap-northeast-3": "ami-022158090adc2699b",
+		"ap-south-1":     "ami-07b4d951523bcdfb5",
+		"ap-southeast-1": "ami-01b82edf6e3b562b9",
+		"ap-southeast-2": "ami-0d10dfefd6c1890e9",
+		"ap-southeast-3": "ami-07b714d867bf33af2",
+		"ca-central-1":   "ami-0a7327cb2a9762b8e",
+		"eu-central-1":   "ami-00cb8cc66d8c27f22",
+		"eu-north-1":     "ami-0fcf965efaed98f30",
+		"eu-south-1":     "ami-0ba3463b22b9404b6",
+		"eu-west-1":      "ami-0a98ea2252ecc3063",
+		"eu-west-2":      "ami-05ffa810d800421b3",
+		"eu-west-3":      "ami-0a421a9e8ef486cb7",
+		"me-south-1":     "ami-0e31c60bfa72fa41e",
+		"sa-east-1":      "ami-0e2bf8f47eaf4781f",
+		"us-east-1":      "ami-0f64f06fdbcdd9955",
+		"us-east-2":      "ami-093a94f8f9f67f545",
+		"us-west-1":      "ami-035d849d5ea1343b6",
+		"us-west-2":      "ami-03c606cd84ac58e24",
 	}
 )
 
@@ -51,8 +50,10 @@ const (
 	instanceCount int32 = 1
 
 	// TODO find a location for future docker images
-	networkValidatorImage = "quay.io/app-sre/osd-network-verifier:v0.1.212-5f88b83"
+	// This corresponds with the tag: v0.1.58-5229a7b
+	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:7801341b65fd37b1ae89af1a99374166062a0008cb1b6ad97ae2f17f5cbe8787"
 	userdataEndVerifier   = "USERDATA END"
+	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
 )
 
 // AwsVerifier holds an aws client and knows how to fuifill the VerifierSerice which contains all functions needed for verifier
@@ -176,6 +177,16 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 				Ebs:        ebsBlockDevice,
 			},
 		},
+		TagSpecifications: []ec2Types.TagSpecification{
+			{
+				ResourceType: ec2Types.ResourceTypeInstance,
+				Tags:         buildTags(input.tags),
+			},
+			{
+				ResourceType: ec2Types.ResourceTypeVolume,
+				Tags:         buildTags(input.tags),
+			},
+		},
 		UserData: awsTools.String(input.userdata),
 	}
 	// Finally, we make our request
@@ -194,10 +205,6 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	instanceID := *instanceResp.Instances[0].InstanceId
-	if err := a.createTags(input.tags, instanceID); err != nil {
-		// Unable to tag the instance
-		return "", handledErrors.NewGenericError(err)
-	}
 
 	// Wait up to 5 minutes for the instance to be running
 	waiter := ec2.NewInstanceRunningWaiter(a.AwsClient)
@@ -216,23 +223,22 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 		b64ConsoleLogs string
 		consoleLogs    string
 	)
-	// Compile the regular expressions once
-	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
-	reSuccess := regexp.MustCompile(`Success!`) // populated from network-validator
-	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
-	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
-	reDockerFailure := regexp.MustCompile(`(?m)(docker)`)
 
-	input := &ec2.GetConsoleOutputInput{
-		InstanceId: awsTools.String(instanceID),
-		Latest:     awsTools.Bool(true),
-	}
+	// reUserDataComplete indicates that the network validation completed
+	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
+	// reSuccess indicates that network validation was successful
+	reSuccess := regexp.MustCompile(`Success!`)
+	// rePrepulledImage indicates that the network verifier is using a prepulled image
+	rePrepulledImage := regexp.MustCompile(prepulledImageMessage)
 
 	a.writeDebugLogs("Scraping console output and waiting for user data script to complete...")
 
 	// Periodically scrape console output and analyze the logs for any errors or a successful completion
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
-		consoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, input)
+		consoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
+			InstanceId: awsTools.String(instanceID),
+			Latest:     awsTools.Bool(true),
+		})
 		if err != nil {
 			return false, handledErrors.NewGenericError(err)
 		}
@@ -270,27 +276,23 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 				return true, nil
 			}
 
-			// Check consoleOutput for failures, report as exceptions if they occurred
-			genericFailures := reGenericFailure.FindAllStringSubmatch(consoleLogs, -1)
-			if len(genericFailures) > 0 {
-				a.writeDebugLogs(fmt.Sprint(genericFailures))
+			// Add a message to debug logs if we're using the prepulled image
+			prepulledImage := rePrepulledImage.FindAllString(consoleLogs, -1)
+			if len(prepulledImage) > 0 {
+				a.writeDebugLogs(prepulledImageMessage)
+			}
 
-				dockerFailures := reDockerFailure.FindAllString(consoleLogs, -1)
-				if len(dockerFailures) > 0 {
-					// Should be resolved by OSD-13003 and OSD-13007
-					a.Output.AddException(handledErrors.NewGenericError(errors.New("docker was unable to install or run. Further investigation needed")))
-					a.Output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", dockerFailures)))
-				} else {
-					// TODO: Flesh out generic issues, for now we only know about Docker
-					a.Output.AddException(handledErrors.NewGenericError(errors.New("egress tests were not run due to an uncaught error in setup or execution. Further investigation needed")))
-					a.Output.AddError(handledErrors.NewGenericError(fmt.Errorf("%v", genericFailures)))
-				}
+			if a.isGenericErrorPresent(consoleLogs) {
+				a.writeDebugLogs("generic error found - please help us classify this by sharing it with us so that we can provide a more specific error message")
 			}
 
 			// If debug logging is enabled, consoleOutput the full console log that appears to include the full userdata run
 			a.writeDebugLogs(fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 
-			a.Output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
+			if a.isEgressFailurePresent(string(scriptOutput)) {
+				a.writeDebugLogs("egress failures found")
+			}
+
 			return true, nil // finalize as there's `userdata end`
 		}
 
@@ -304,16 +306,52 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	return err
 }
 
-func (a *AwsVerifier) createTags(tags map[string]string, ids ...string) error {
-	if len(tags) <= 0 {
-		return nil
-	}
-	_, err := a.AwsClient.CreateTags(context.TODO(), &ec2.CreateTagsInput{
-		Resources: ids,
-		Tags:      buildTags(tags),
-	})
+// isGenericErrorPresent checks consoleOutput for generic (unclassified) failures
+func (a *AwsVerifier) isGenericErrorPresent(consoleOutput string) bool {
+	// reGenericFailure is an attempt at a catch-all to help debug failures that we have not accounted for yet
+	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
+	// reRetryAttempt will override reGenericFailure when matching against attempts to retry pulling a container image
+	reRetryAttempt := regexp.MustCompile(`Failed, retrying in`)
 
-	return err
+	found := false
+
+	genericFailures := reGenericFailure.FindAllString(consoleOutput, -1)
+	if len(genericFailures) > 0 {
+		for _, failure := range genericFailures {
+			switch {
+			// Ignore "Failed, retrying in" messages when retrying container image pulls as they are not terminal failures
+			case reRetryAttempt.FindAllString(failure, -1) != nil:
+				a.writeDebugLogs(fmt.Sprintf("ignoring failure that is retrying: %s", failure))
+			// If we don't otherwise ignore a generic error, consider it one that needs attention
+			default:
+				a.Output.AddError(handledErrors.NewGenericError(errors.New(failure)))
+				found = true
+			}
+		}
+	}
+
+	return found
+}
+
+// isEgressFailurePresent checks consoleOutput for network egress failures and stores them
+// as NetworkVerifierErrors in a.Output.failures
+func (a *AwsVerifier) isEgressFailurePresent(consoleOutput string) bool {
+	// reEgressFailures will match a specific egress failure case
+	reEgressFailures := regexp.MustCompile(`Unable to reach (\S+)`)
+	found := false
+
+	// egressFailures is a 2D slice of regex matches - egressFailures[0] represents a specific regex match
+	// egressFailures[0][0] is the "Unable to reach" part of the match
+	// egressFailures[0][1] is the "(\S+)" part of the match, i.e. the following string
+	egressFailures := reEgressFailures.FindAllStringSubmatch(consoleOutput, -1)
+	for _, e := range egressFailures {
+		if len(e) == 2 {
+			a.Output.SetEgressFailures([]string{e[1]})
+			found = true
+		}
+	}
+
+	return found
 }
 
 func buildTags(tags map[string]string) []ec2Types.Tag {
@@ -361,6 +399,12 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 		GroupName:   awsTools.String(name + "-" + helpers.RandSeq(5)),
 		VpcId:       &vpcId,
 		Description: awsTools.String("osd-network-verifier security group"),
+		TagSpecifications: []ec2Types.TagSpecification{
+			{
+				ResourceType: ec2Types.ResourceTypeSecurityGroup,
+				Tags:         buildTags(tags),
+			},
+		},
 	}
 	a.writeDebugLogs("Creating a Security group")
 	output, err := a.AwsClient.CreateSecurityGroup(ctx, input)
@@ -381,14 +425,6 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 	}
 
 	a.Logger.Info(ctx, "Created security group with ID: %s", *output.GroupId)
-	if err := a.createTags(tags, *output.GroupId); err != nil {
-		// Unable to tag the instance
-		_, err := a.AwsClient.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: output.GroupId})
-		if err != nil {
-			return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
-		}
-		return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
-	}
 
 	input_rules := &ec2.AuthorizeSecurityGroupEgressInput{
 		GroupId: output.GroupId,

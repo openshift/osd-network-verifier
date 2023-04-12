@@ -56,7 +56,7 @@ func (id *OnvIntegrationTestData) SetupVpc(ctx context.Context) error {
 
 	if _, err := id.ec2Api.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: []string{*id.vpcId},
-		Tags:      defaultEc2Tags("onv-integration-test-vpc"),
+		Tags:      defaultEc2Tags(),
 	}); err != nil {
 		return err
 	}
@@ -98,6 +98,12 @@ func (id *OnvIntegrationTestData) SetupSubnets(ctx context.Context) error {
 			VpcId:            id.vpcId,
 			AvailabilityZone: id.availabilityZoneName,
 			CidrBlock:        aws.String(privateSubnetCidr),
+			TagSpecifications: []ec2Types.TagSpecification{
+				{
+					ResourceType: ec2Types.ResourceTypeSubnet,
+					Tags:         defaultEc2Tags(),
+				},
+			},
 		})
 	if err != nil {
 		return err
@@ -112,6 +118,12 @@ func (id *OnvIntegrationTestData) SetupSubnets(ctx context.Context) error {
 			VpcId:            id.vpcId,
 			AvailabilityZone: id.availabilityZoneName,
 			CidrBlock:        aws.String(firewallSubnetCidr),
+			TagSpecifications: []ec2Types.TagSpecification{
+				{
+					ResourceType: ec2Types.ResourceTypeSubnet,
+					Tags:         defaultEc2Tags(),
+				},
+			},
 		})
 	if err != nil {
 		return err
@@ -126,6 +138,12 @@ func (id *OnvIntegrationTestData) SetupSubnets(ctx context.Context) error {
 			VpcId:            id.vpcId,
 			AvailabilityZone: id.availabilityZoneName,
 			CidrBlock:        aws.String(publicSubnetCidr),
+			TagSpecifications: []ec2Types.TagSpecification{
+				{
+					ResourceType: ec2Types.ResourceTypeSubnet,
+					Tags:         defaultEc2Tags(),
+				},
+			},
 		})
 	if err != nil {
 		return err
@@ -195,7 +213,7 @@ func (id *OnvIntegrationTestData) SetupRouteTables(ctx context.Context) error {
 
 	if _, err := id.ec2Api.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: []string{*id.internetGatewayRouteTableId},
-		Tags:      defaultEc2Tags("onv-integration-test-igw"),
+		Tags:      defaultEc2Tags(),
 	}); err != nil {
 		return err
 	}
@@ -286,7 +304,7 @@ func (id *OnvIntegrationTestData) SetupInternetGateway(ctx context.Context) erro
 
 	if _, err := id.ec2Api.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: []string{*id.internetGatewayId},
-		Tags:      defaultEc2Tags("osd-network-verifier-igw"),
+		Tags:      defaultEc2Tags(),
 	}); err != nil {
 		return err
 	}
@@ -311,24 +329,30 @@ func (id *OnvIntegrationTestData) SetupNatGateway(ctx context.Context) error {
 		return errors.New("public subnet id must not be nil when creating NAT gateway")
 	}
 
-	eip, err := id.ec2Api.AllocateAddress(ctx, &ec2.AllocateAddressInput{})
+	eip, err := id.ec2Api.AllocateAddress(ctx, &ec2.AllocateAddressInput{
+		TagSpecifications: []ec2Types.TagSpecification{
+			{
+				ResourceType: ec2Types.ResourceTypeElasticIp,
+				Tags:         defaultEc2Tags(),
+			},
+		},
+	})
 	if err != nil {
 		return err
 	}
 	id.eipAllocationId = eip.AllocationId
 	log.Printf("allocated EIP address: %s", *id.eipAllocationId)
 
-	if _, err := id.ec2Api.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: []string{*id.eipAllocationId},
-		Tags:      defaultEc2Tags("osd-network-verifier-nat"),
-	}); err != nil {
-		return err
-	}
-
 	nat, err := id.ec2Api.CreateNatGateway(ctx, &ec2.CreateNatGatewayInput{
 		SubnetId:         id.publicSubnetId,
 		AllocationId:     id.eipAllocationId,
 		ConnectivityType: "public",
+		TagSpecifications: []ec2Types.TagSpecification{
+			{
+				ResourceType: ec2Types.ResourceTypeNatgateway,
+				Tags:         defaultEc2Tags(),
+			},
+		},
 	})
 	if err != nil {
 		return err
@@ -336,13 +360,6 @@ func (id *OnvIntegrationTestData) SetupNatGateway(ctx context.Context) error {
 
 	id.natGatewayId = nat.NatGateway.NatGatewayId
 	log.Printf("created NAT gateway: %s", *id.natGatewayId)
-
-	if _, err := id.ec2Api.CreateTags(ctx, &ec2.CreateTagsInput{
-		Resources: []string{*id.natGatewayId},
-		Tags:      defaultEc2Tags("osd-network-verifier-nat"),
-	}); err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -359,7 +376,7 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 
 	rulegroup, err := id.networkFirewallApi.CreateRuleGroup(ctx, &networkfirewall.CreateRuleGroupInput{
 		Capacity:      aws.Int32(3),
-		RuleGroupName: aws.String("osd-network-verifier-rule-group"),
+		RuleGroupName: aws.String(firewallRuleGroupName),
 		Type:          nfwTypes.RuleGroupTypeStateful,
 		Description:   aws.String("Block quay.io"),
 		RuleGroup: &nfwTypes.RuleGroup{
@@ -371,7 +388,7 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 				},
 			},
 		},
-		Tags: defaultNetworkFirewallTags("osd-network-verifier-rule-group"),
+		Tags: defaultNetworkFirewallTags(),
 	})
 	if err != nil {
 		return err
@@ -390,9 +407,9 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 				},
 			},
 		},
-		FirewallPolicyName: aws.String("osd-network-verifier-firewall-policy"),
+		FirewallPolicyName: aws.String(firewallPolicyName),
 		Description:        aws.String("Block quay.io"),
-		Tags:               defaultNetworkFirewallTags("osd-network-verifier-firewall-policy"),
+		Tags:               defaultNetworkFirewallTags(),
 	})
 	if err != nil {
 		return err
@@ -402,7 +419,7 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 	log.Printf("created firewall policy: %s", *id.firewallPolicyArn)
 
 	firewall, err := id.networkFirewallApi.CreateFirewall(ctx, &networkfirewall.CreateFirewallInput{
-		FirewallName:      aws.String("osd-network-verifier-firewall"),
+		FirewallName:      aws.String(firewallName),
 		FirewallPolicyArn: id.firewallPolicyArn,
 		SubnetMappings: []nfwTypes.SubnetMapping{
 			{
@@ -411,11 +428,10 @@ func (id *OnvIntegrationTestData) SetupFirewall(ctx context.Context) error {
 		},
 		VpcId:                          id.vpcId,
 		DeleteProtection:               false,
-		Description:                    aws.String("osd-network-verifier-firewall"),
-		EncryptionConfiguration:        nil,
+		Description:                    aws.String(firewallName),
 		FirewallPolicyChangeProtection: false,
 		SubnetChangeProtection:         false,
-		Tags:                           defaultNetworkFirewallTags("osd-network-verifier-firewall"),
+		Tags:                           defaultNetworkFirewallTags(),
 	})
 	if err != nil {
 		return err

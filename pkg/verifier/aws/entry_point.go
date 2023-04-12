@@ -44,6 +44,14 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PlatformAWS)
 	}
 
+	// Terminate a debug instance leftover from a previous run
+	if vei.TerminateDebugInstance != "" {
+		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, vei.TerminateDebugInstance); err != nil {
+			a.Output.AddError(err)
+		}
+		return &a.Output
+	}
+
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
@@ -61,7 +69,13 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"IMAGE":                    "$IMAGE",
 		"VALIDATOR_REFERENCE":      "$VALIDATOR_REFERENCE",
 		"CONFIG_PATH":              configPath,
+		"DELAY":                    "5",
 	}
+
+	if vei.SkipInstanceTermination {
+		userDataVariables["DELAY"] = "60"
+	}
+
 	userData, err := generateUserData(userDataVariables)
 	if err != nil {
 		return a.Output.AddError(err)
@@ -109,8 +123,10 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		a.Output.AddError(err)
 	}
 
-	if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
-		a.Output.AddError(err)
+	if !vei.SkipInstanceTermination {
+		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
+			a.Output.AddError(err)
+		}
 	}
 
 	if cleanupSecurityGroup {

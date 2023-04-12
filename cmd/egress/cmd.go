@@ -28,22 +28,24 @@ var (
 )
 
 type egressConfig struct {
-	vpcSubnetID     string
-	cloudImageID    string
-	instanceType    string
-	securityGroupId string
-	cloudTags       map[string]string
-	debug           bool
-	region          string
-	timeout         time.Duration
-	kmsKeyID        string
-	httpProxy       string
-	httpsProxy      string
-	CaCert          string
-	noTls           bool
-	awsProfile      string
-	gcpVpcName      string
-	platformType    string
+	vpcSubnetID                string
+	cloudImageID               string
+	instanceType               string
+	securityGroupId            string
+	cloudTags                  map[string]string
+	debug                      bool
+	region                     string
+	timeout                    time.Duration
+	kmsKeyID                   string
+	httpProxy                  string
+	httpsProxy                 string
+	CaCert                     string
+	noTls                      bool
+	platformType               string
+	awsProfile                 string
+	gcpVpcName                 string
+	skipAWSInstanceTermination bool
+	terminateDebugInstance     string
 }
 
 func getDefaultRegion(platformType string) string {
@@ -137,6 +139,9 @@ are set correctly before execution.
 
 				awsVerifier.Logger.Warn(context.TODO(), "Using region: %s", config.region)
 
+				vei.SkipInstanceTermination = config.skipAWSInstanceTermination
+				vei.TerminateDebugInstance = config.terminateDebugInstance
+
 				out := verifier.ValidateEgress(awsVerifier, vei)
 				out.Summary(config.debug)
 
@@ -218,6 +223,8 @@ are set correctly before execution.
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, ignore all ssl certificate validations on client-side.")
 	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored.")
 	validateEgressCmd.Flags().StringVar(&config.gcpVpcName, "vpc-name", "", "(optional unless --platform='gcp') VPC name where GCP cluster is installed")
+	validateEgressCmd.Flags().BoolVar(&config.skipAWSInstanceTermination, "skip-termination", false, "(optional) Skip Debug Instance Termination to allow further debug.")
+	validateEgressCmd.Flags().StringVar(&config.terminateDebugInstance, "terminate-debug", "", "(optional) Takes the debug instance ID and terminates it.")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)

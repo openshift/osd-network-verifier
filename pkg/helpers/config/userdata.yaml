@@ -24,7 +24,7 @@ runcmd:
   - /run-container.sh
   - cat /var/log/userdata-output >/dev/console
 power_state:
-  delay: 5
+  delay: ${DELAY}
   mode: poweroff
   message: Auto-terminating instance due to timeout
   timeout: 300
