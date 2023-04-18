@@ -29,15 +29,15 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 If interested, please fork this repo and create pull requests to the `main` branch.
 
 ### Golden AMI
-osd-network-verifier depends on these publicly available [AMIs](https://github.com/openshift/osd-network-verifier/blob/612be8c5b0ef8ac01e8018eca15dd143ab31cd1f/pkg/verifier/aws/aws_verifier.go#L25-L45) built from the [osd-network-verifier-golden-ami](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami) repo.
+osd-network-verifier depends on these publicly available [AMIs](pkg/verifier/aws/aws_verifier.go#L24-L45) built from the [osd-network-verifier-golden-ami](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami) repo.
 
 Golden AMI provides the following:
-- runtime environment setup (such as container engine, configurations, etc)
+- runtime environment setup (such as container engine, configurations, etc.)
 - building and embedding the validator binary which performs the individual checks to the endpoints
 
-### Egress List
+### Egress Lists
 
-This list of essential domains for egress verification should be maintained in [gitlab repo](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/config/config.yaml).
+This lists of essential domains for egress verification should be maintained in the [GitLab repo](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/config/). Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L46) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
 
 ### IAM Permission Requirement List
 
