@@ -133,7 +133,7 @@ are set correctly before execution.
 
 				awsVerifier, err := utils.GetAwsVerifier(config.region, config.awsProfile, config.debug)
 				if err != nil {
-					fmt.Printf("could not build awsVerifier %v", err)
+					fmt.Printf("could not build awsVerifier %v\n", err)
 					os.Exit(1)
 				}
 
@@ -152,8 +152,11 @@ are set correctly before execution.
 
 				awsVerifier.Logger.Info(context.TODO(), "Success")
 				os.Exit(0)
-			} else {
-				// GCP workflow
+			}
+
+			// GCP workflow
+			if config.platformType == helpers.PlatformGCP {
+
 				if len(vei.Tags) == 0 {
 					vei.Tags = gcpDefaultTags
 				}
@@ -183,12 +186,12 @@ are set correctly before execution.
 				// Tries to find google credentials in all known locations stating with env "GOOGLE_APPLICATION_CREDENTIALS""
 				creds, err := google.FindDefaultCredentials(context.TODO())
 				if err != nil {
-					fmt.Printf("could not find gcp Credentials file  %v", err)
+					fmt.Printf("could not find GCP credentials file: %v\n", err)
 					os.Exit(1)
 				}
 				gcpVerifier, err := gcpverifier.NewGcpVerifier(creds, config.debug)
 				if err != nil {
-					fmt.Printf("could not build gcpVerifier %v", err)
+					fmt.Printf("could not build GcpVerifier: %v\n", err)
 					os.Exit(1)
 				}
 
@@ -204,6 +207,10 @@ are set correctly before execution.
 				gcpVerifier.Logger.Info(context.TODO(), "Success")
 				os.Exit(0)
 			}
+
+			// Unknown platformType specified
+			fmt.Printf("unknown platform type '%v'\n", config.platformType)
+			os.Exit(1)
 		},
 	}
 
