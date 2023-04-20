@@ -102,17 +102,18 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		tags:            vei.Tags,
 		securityGroupId: vei.AWS.SecurityGroupId,
 	})
+
 	if err != nil {
-		return a.Output.AddError(err) // fatal
-	}
-
-	if err := a.findUnreachableEndpoints(vei.Ctx, instanceID); err != nil {
 		a.Output.AddError(err)
-	}
-
-	if !vei.SkipInstanceTermination {
-		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
+	} else {
+		if err := a.findUnreachableEndpoints(vei.Ctx, instanceID); err != nil {
 			a.Output.AddError(err)
+		}
+
+		if !vei.SkipInstanceTermination {
+			if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
+				a.Output.AddError(err)
+			}
 		}
 	}
 
