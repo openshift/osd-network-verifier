@@ -18,3 +18,8 @@ For now, this is mostly manual. It's important to validate that these scenarios 
 * [./integration](./integration/) has steps to run the egress test against an AWS account to test that the osd-network-verifier is able to run using the pre-baked image on the default AMI.
 * egress test in AWS with a cluster-wide proxy
 * ~~egress test on GCP~~ This should be added back when GCP support is functional again
+
+After a new release has been created, please create an MR for the downstream projects to use the latest verifier version:
+
+* Cluster Service (https://gitlab.cee.redhat.com/service/uhc-clusters-service): After cloning the repo, do `go get github.com/openshift/osd-network-verifier@<the new tag>`
+* osdctl (https://github.com/openshift/osdctl)
