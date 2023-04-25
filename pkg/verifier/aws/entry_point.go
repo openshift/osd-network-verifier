@@ -9,9 +9,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
+
+// Base path of the config file
+const CONFIG_PATH_FSTRING string = "/app/build/config/%s.yaml"
 
 // ValidateEgress performs validation process for egress
 // Basic workflow is:
@@ -33,6 +37,14 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
 
+	// Select config file based on platform type
+	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, vei.PlatformType)
+	if vei.PlatformType == "" {
+		// Default to AWS
+		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PlatformAWS)
+	}
+
+	// Terminate a debug instance leftover from a previous run
 	if vei.TerminateDebugInstance != "" {
 		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, vei.TerminateDebugInstance); err != nil {
 			a.Output.AddError(err)
@@ -56,6 +68,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"NOTLS":                    strconv.FormatBool(vei.Proxy.NoTls),
 		"IMAGE":                    "$IMAGE",
 		"VALIDATOR_REFERENCE":      "$VALIDATOR_REFERENCE",
+		"CONFIG_PATH":              configPath,
 		"DELAY":                    "5",
 	}
 
