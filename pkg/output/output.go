@@ -7,6 +7,8 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 )
 
+const logFormat = " - %v\n"
+
 // Output can be used when showcasing validation results at the end of the execution.
 type Output struct {
 	// debugLogs
@@ -53,56 +55,44 @@ func (o *Output) IsSuccessful() bool {
 	return true
 }
 
-func (o *Output) printFailures() {
-	if o != nil && len(o.failures) > 0 {
-		fmt.Println("printing out failures:")
-		for _, v := range o.failures {
-			fmt.Println(" - ", v)
-		}
+// Format can be used to retrieve the string for the output structure
+func (o *Output) Format(debug bool) string {
+	if o == nil {
+		return ""
 	}
+	output := ""
+	if debug {
+		output += "printing out debug logs from the execution:\n"
+		output += format(o.debugLogs)
+	}
+	if o.IsSuccessful() {
+		output += "All tests passed!\n"
+		return output
+	}
+	output += "printing out failures:\n"
+	output += format(o.failures)
+	output += "printing out exceptions preventing the verifier from running the specific test:\n"
+	output += format(o.exceptions)
+	output += "printing out errors faced during the execution:\n"
+	output += format(o.errors)
+	return output
 }
 
-func (o *Output) printExceptions() {
-	if o != nil && len(o.exceptions) > 0 {
-		fmt.Println("printing out exceptions preventing the verifier from running the specific test:")
-		for _, v := range o.exceptions {
-			fmt.Println(" - ", v)
-		}
+func format[T any](slice []T) string {
+	if len(slice) == 0 {
+		return ""
 	}
-}
-
-func (o *Output) printErrors() {
-	if o != nil && len(o.errors) > 0 {
-		fmt.Println("printing out errors faced during the execution:")
-		for _, v := range o.errors {
-			fmt.Println(" - ", v.Error())
-		}
+	output := ""
+	for _, value := range slice {
+		output += fmt.Sprintf(logFormat, value)
 	}
-}
-
-func (o *Output) printDebugLogs() {
-	if o != nil && len(o.debugLogs) > 0 {
-		fmt.Println("printing out debug logs from the execution:")
-		for _, v := range o.debugLogs {
-			fmt.Println(" - ", v)
-		}
-	}
+	return output + "\n"
 }
 
 // Summary can be used for printing out output structure
 func (o *Output) Summary(debug bool) {
 	fmt.Println("Summary:")
-	if debug {
-		o.printDebugLogs()
-	}
-
-	if o.IsSuccessful() {
-		fmt.Println("All tests pass!")
-	} else {
-		o.printFailures()
-		o.printExceptions()
-		o.printErrors()
-	}
+	fmt.Print(o.Format(debug))
 }
 
 // Parse returns the data being stored on output
