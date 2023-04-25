@@ -46,6 +46,7 @@ type egressConfig struct {
 	gcpVpcName                 string
 	skipAWSInstanceTermination bool
 	terminateDebugInstance     string
+	importKeyPair              string
 }
 
 func getDefaultRegion(platformType string) string {
@@ -141,6 +142,7 @@ are set correctly before execution.
 
 				vei.SkipInstanceTermination = config.skipAWSInstanceTermination
 				vei.TerminateDebugInstance = config.terminateDebugInstance
+				vei.ImportKeyPair = config.importKeyPair
 
 				out := verifier.ValidateEgress(awsVerifier, vei)
 				out.Summary(config.debug)
@@ -232,6 +234,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.gcpVpcName, "vpc-name", "", "(optional unless --platform='gcp') VPC name where GCP cluster is installed")
 	validateEgressCmd.Flags().BoolVar(&config.skipAWSInstanceTermination, "skip-termination", false, "(optional) Skip instance termination to allow further debugging")
 	validateEgressCmd.Flags().StringVar(&config.terminateDebugInstance, "terminate-debug", "", "(optional) Takes the debug instance ID and terminates it")
+	validateEgressCmd.Flags().StringVar(&config.importKeyPair, "import-keypair", "", "(optional) Takes the path to your public key used to connect to Debug Instance. Automatically skips Termination")
 
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)

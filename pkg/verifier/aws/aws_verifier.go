@@ -137,6 +137,7 @@ type createEC2InstanceInput struct {
 	instanceType    string
 	tags            map[string]string
 	ctx             context.Context
+	keyPair         string
 }
 
 func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, error) {
@@ -188,6 +189,10 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 			},
 		},
 		UserData: awsTools.String(input.userdata),
+	}
+
+	if input.keyPair != "" {
+		instanceReq.KeyName = awsTools.String(DEBUG_KEY_NAME)
 	}
 	// Finally, we make our request
 	instanceResp, err := a.AwsClient.RunInstances(input.ctx, &instanceReq)
