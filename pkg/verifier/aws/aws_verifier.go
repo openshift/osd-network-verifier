@@ -137,6 +137,7 @@ type createEC2InstanceInput struct {
 	instanceType    string
 	tags            map[string]string
 	ctx             context.Context
+	keyPair         string
 }
 
 func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, error) {
@@ -150,8 +151,9 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	eniSpecification := ec2Types.InstanceNetworkInterfaceSpecification{
-		DeviceIndex: awsTools.Int32(0),
-		SubnetId:    awsTools.String(input.SubnetID),
+		DeviceIndex:              awsTools.Int32(0),
+		SubnetId:                 awsTools.String(input.SubnetID),
+		AssociatePublicIpAddress: awsTools.Bool(true),
 	}
 
 	// An empty string does not default to the default security group, and returns this error:
@@ -189,6 +191,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		},
 		UserData: awsTools.String(input.userdata),
 	}
+
 	// Finally, we make our request
 	instanceResp, err := a.AwsClient.RunInstances(input.ctx, &instanceReq)
 	if err != nil {

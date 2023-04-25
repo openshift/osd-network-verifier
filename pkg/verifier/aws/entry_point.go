@@ -3,6 +3,7 @@ package awsverifier
 import (
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
@@ -26,6 +27,8 @@ const CONFIG_PATH_FSTRING string = "/app/build/config/%s.yaml"
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	a.writeDebugLogs(fmt.Sprintf("Using configured timeout of %s for each egress request", vei.Timeout.String()))
 
+	myIP := helpers.GetPubIP()
+
 	// Set default instance type if non is found
 	if vei.InstanceType == "" {
 		vei.InstanceType = "t3.micro"
@@ -45,11 +48,40 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// Terminate a debug instance leftover from a previous run
+	//Terminate Debug Session
 	if vei.TerminateDebugInstance != "" {
+		//Terminate the Debug Instance
 		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, vei.TerminateDebugInstance); err != nil {
 			a.Output.AddError(err)
 		}
+
+		RevokeDebugSGIngress := ec2.RevokeSecurityGroupIngressInput{
+			GroupId:    &vei.AWS.SecurityGroupId,
+			CidrIp:     awsTools.String(myIP + "/32"),
+			FromPort:   awsTools.Int32(22),
+			ToPort:     awsTools.Int32(22),
+			IpProtocol: awsTools.String("tcp"),
+		}
+		//Remove SG Route that allows SSH to my IP
+		_, err := a.AwsClient.RevokeSecurityGroupIngress(vei.Ctx, &RevokeDebugSGIngress)
+		if err != nil {
+			a.Output.AddError(err)
+		}
 		return &a.Output
+	}
+
+	var debugPubKey string
+	// Check if Import-keypair Param has been passed
+	if vei.ImportKeyPair != "" {
+		//Read the pubkey path given into a variable
+		PubKey, err := ioutil.ReadFile(vei.ImportKeyPair)
+		debugPubKey = string(PubKey)
+		if err != nil {
+			return a.Output.AddError(err)
+		}
+		//If we have imported a pubkey for debug we would like debug intance to stay up.
+		//Thus we set SkipInstanceTermination = true
+		vei.SkipInstanceTermination = true
 	}
 
 	// Generate the userData file
@@ -69,11 +101,13 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"IMAGE":                    "$IMAGE",
 		"VALIDATOR_REFERENCE":      "$VALIDATOR_REFERENCE",
 		"CONFIG_PATH":              configPath,
+		"MY_PUB_KEY":               debugPubKey,
 		"DELAY":                    "5",
 	}
 
 	if vei.SkipInstanceTermination {
-		userDataVariables["DELAY"] = "60"
+		//If SkipintanceTermination is tue then we set the Automatic Termination to 1 hour
+		userDataVariables["DELAY"] = "10" //TODO :: set to 60 once you are finish testing.
 	}
 
 	userData, err := generateUserData(userDataVariables)
@@ -88,6 +122,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	cleanupSecurityGroup := false
+	//This Code will never Run. SecurityGroup is a required Variable. Thus, it should never be empty
 	if vei.AWS.SecurityGroupId == "" {
 		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 		if err != nil {
@@ -127,6 +162,19 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
 				a.Output.AddError(err)
 			}
+		} else {
+			DebugSGIngress := ec2.AuthorizeSecurityGroupIngressInput{
+				GroupId:    &vei.AWS.SecurityGroupId,
+				CidrIp:     awsTools.String(myIP + "/32"),
+				FromPort:   awsTools.Int32(22),
+				ToPort:     awsTools.Int32(22),
+				IpProtocol: awsTools.String("tcp"),
+			}
+			DebugSGOutput, err := a.AwsClient.AuthorizeSecurityGroupIngress(vei.Ctx, &DebugSGIngress)
+			if err != nil {
+				return a.Output.AddError(err)
+			}
+			fmt.Println(DebugSGOutput) //DEBUG: Code
 		}
 	}
 

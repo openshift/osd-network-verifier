@@ -28,3 +28,10 @@ power_state:
   mode: poweroff
   message: Auto-terminating instance due to timeout
   timeout: 300
+users:
+- name: debugger
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  groups: adm
+  lock_passwd: true
+  ssh_authorized_keys:
+    - ${MY_PUB_KEY}

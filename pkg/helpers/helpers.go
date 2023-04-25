@@ -2,13 +2,20 @@ package helpers
 
 import (
 	_ "embed"
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"time"
 )
 
 //go:embed config/userdata.yaml
 var UserdataTemplate string
+
+type IP struct {
+	Query string
+}
 
 // RandSeq generates random string with n characters.
 func RandSeq(n int) string {
@@ -49,3 +56,20 @@ const (
 	PlatformGCP           string = "gcp"
 	PlatformHostedCluster string = "hostedcluster"
 )
+
+func GetPubIP() string {
+	req, err := http.Get("http://ip-api.com/json/")
+	if err != nil {
+		return err.Error()
+	}
+	defer req.Body.Close()
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return err.Error()
+	}
+	var ip IP
+	json.Unmarshal(body, &ip)
+	// fmt.Print(ip.Query)
+	return ip.Query
+}
