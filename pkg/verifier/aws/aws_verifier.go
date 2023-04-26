@@ -52,6 +52,7 @@ const (
 	// TODO find a location for future docker images
 	// This corresponds with the tag: v0.1.58-5229a7b
 	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:7801341b65fd37b1ae89af1a99374166062a0008cb1b6ad97ae2f17f5cbe8787"
+	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
 	userdataEndVerifier   = "USERDATA END"
 	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
 )
