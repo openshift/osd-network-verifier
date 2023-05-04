@@ -24,7 +24,7 @@ const CONFIG_PATH_FSTRING string = "/app/build/config/%s.yaml"
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `a.output` which stores the execution results
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
-	a.writeDebugLogs(fmt.Sprintf("Using configured timeout of %s for each egress request", vei.Timeout.String()))
+	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Using configured timeout of %s for each egress request", vei.Timeout.String()))
 
 	// Set default instance type if non is found
 	if vei.InstanceType == "" {
@@ -80,7 +80,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	if err != nil {
 		return a.Output.AddError(err)
 	}
-	a.writeDebugLogs(fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
+	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
 
 	err = setCloudImage(&vei.CloudImageID, a.AwsClient.Region)
 	if err != nil {

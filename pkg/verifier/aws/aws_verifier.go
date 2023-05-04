@@ -105,7 +105,7 @@ func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType str
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(instanceType)},
 	}
 
-	a.writeDebugLogs(fmt.Sprintf("Gathering description of instance type %s from EC2", instanceType))
+	a.writeDebugLogs(ctx, fmt.Sprintf("Gathering description of instance type %s from EC2", instanceType))
 	descOut, err := a.AwsClient.DescribeInstanceTypes(ctx, &descInput)
 	if err != nil {
 		return handledErrors.NewGenericError(err)
@@ -115,7 +115,7 @@ func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType str
 	// and placing it as the only InstanceType filter. Otherwise, ec2:DescribeInstanceTypes also accepts multiple as
 	// an array of InstanceTypes which could return multiple matches.
 	if len(descOut.InstanceTypes) != 1 {
-		a.writeDebugLogs(fmt.Sprintf("matched instance types: %v", descOut.InstanceTypes))
+		a.writeDebugLogs(ctx, fmt.Sprintf("matched instance types: %v", descOut.InstanceTypes))
 		return fmt.Errorf("expected one instance type match for %s, got %d", instanceType, len(descOut.InstanceTypes))
 	}
 
@@ -232,7 +232,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	// rePrepulledImage indicates that the network verifier is using a prepulled image
 	rePrepulledImage := regexp.MustCompile(prepulledImageMessage)
 
-	a.writeDebugLogs("Scraping console output and waiting for user data script to complete...")
+	a.writeDebugLogs(ctx, "Scraping console output and waiting for user data script to complete...")
 
 	// Periodically scrape console output and analyze the logs for any errors or a successful completion
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
@@ -247,7 +247,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 		if consoleOutput.Output != nil {
 			// In the early stages, an ec2 instance may be running but the console is not populated with any data
 			if len(*consoleOutput.Output) == 0 {
-				a.writeDebugLogs("EC2 console consoleOutput not yet populated with data, continuing to wait...")
+				a.writeDebugLogs(ctx, "EC2 console consoleOutput not yet populated with data, continuing to wait...")
 				return false, nil
 			}
 
@@ -257,7 +257,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			// The console consoleOutput starts out base64 encoded
 			scriptOutput, err := base64.StdEncoding.DecodeString(*consoleOutput.Output)
 			if err != nil {
-				a.writeDebugLogs(fmt.Sprintf("Error decoding console consoleOutput, will retry on next check interval: %s", err))
+				a.writeDebugLogs(ctx, fmt.Sprintf("Error decoding console consoleOutput, will retry on next check interval: %s", err))
 				return false, nil
 			}
 
@@ -267,7 +267,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			// It is possible we get EC2 console consoleOutput, but the userdata script has not yet completed.
 			userDataComplete := reUserDataComplete.FindString(consoleLogs)
 			if len(userDataComplete) < 1 {
-				a.writeDebugLogs("EC2 console consoleOutput contains data, but end of userdata script not seen, continuing to wait...")
+				a.writeDebugLogs(ctx, "EC2 console consoleOutput contains data, but end of userdata script not seen, continuing to wait...")
 				return false, nil
 			}
 
@@ -280,25 +280,25 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			// Add a message to debug logs if we're using the prepulled image
 			prepulledImage := rePrepulledImage.FindAllString(consoleLogs, -1)
 			if len(prepulledImage) > 0 {
-				a.writeDebugLogs(prepulledImageMessage)
+				a.writeDebugLogs(ctx, prepulledImageMessage)
 			}
 
-			if a.isGenericErrorPresent(consoleLogs) {
-				a.writeDebugLogs("generic error found - please help us classify this by sharing it with us so that we can provide a more specific error message")
+			if a.isGenericErrorPresent(ctx, consoleLogs) {
+				a.writeDebugLogs(ctx, "generic error found - please help us classify this by sharing it with us so that we can provide a more specific error message")
 			}
 
 			// If debug logging is enabled, consoleOutput the full console log that appears to include the full userdata run
-			a.writeDebugLogs(fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
+			a.writeDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 
 			if a.isEgressFailurePresent(string(scriptOutput)) {
-				a.writeDebugLogs("egress failures found")
+				a.writeDebugLogs(ctx, "egress failures found")
 			}
 
 			return true, nil // finalize as there's `userdata end`
 		}
 
 		if len(b64ConsoleLogs) > 0 {
-			a.writeDebugLogs(fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
+			a.writeDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 		}
 
 		return false, nil
@@ -308,7 +308,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 }
 
 // isGenericErrorPresent checks consoleOutput for generic (unclassified) failures
-func (a *AwsVerifier) isGenericErrorPresent(consoleOutput string) bool {
+func (a *AwsVerifier) isGenericErrorPresent(ctx context.Context, consoleOutput string) bool {
 	// reGenericFailure is an attempt at a catch-all to help debug failures that we have not accounted for yet
 	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
 	// reRetryAttempt will override reGenericFailure when matching against attempts to retry pulling a container image
@@ -322,7 +322,7 @@ func (a *AwsVerifier) isGenericErrorPresent(consoleOutput string) bool {
 			switch {
 			// Ignore "Failed, retrying in" messages when retrying container image pulls as they are not terminal failures
 			case reRetryAttempt.FindAllString(failure, -1) != nil:
-				a.writeDebugLogs(fmt.Sprintf("ignoring failure that is retrying: %s", failure))
+				a.writeDebugLogs(ctx, fmt.Sprintf("ignoring failure that is retrying: %s", failure))
 			// If we don't otherwise ignore a generic error, consider it one that needs attention
 			default:
 				a.Output.AddError(handledErrors.NewGenericError(errors.New(failure)))
@@ -389,9 +389,9 @@ func setCloudImage(cloudImageID *string, region string) error {
 	return nil
 }
 
-func (a *AwsVerifier) writeDebugLogs(log string) {
+func (a *AwsVerifier) writeDebugLogs(ctx context.Context, log string) {
 	a.Output.AddDebugLogs(log)
-	a.Logger.Debug(context.TODO(), log)
+	a.Logger.Debug(ctx, log)
 }
 
 // CreateSecurityGroup creates a security group with the specified name and cluster tag key in a specified VPC
@@ -407,17 +407,17 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 			},
 		},
 	}
-	a.writeDebugLogs("Creating a Security group")
+	a.writeDebugLogs(ctx, "Creating a Security group")
 	output, err := a.AwsClient.CreateSecurityGroup(ctx, input)
 	if err != nil {
 		return &ec2.CreateSecurityGroupOutput{}, err
 	}
 
-	a.writeDebugLogs(fmt.Sprintf("Waiting for the Security Group to exist: %s", *output.GroupId))
+	a.writeDebugLogs(ctx, fmt.Sprintf("Waiting for the Security Group to exist: %s", *output.GroupId))
 	// Wait up to 1 minutes for the security group to exist
 	waiter := ec2.NewSecurityGroupExistsWaiter(a.AwsClient)
 	if err := waiter.Wait(ctx, &ec2.DescribeSecurityGroupsInput{GroupIds: []string{*output.GroupId}}, 1*time.Minute); err != nil {
-		a.writeDebugLogs(fmt.Sprintf("Error waiting for the security group to exist: %s, attempting to delete the Security Group", *output.GroupId))
+		a.writeDebugLogs(ctx, fmt.Sprintf("Error waiting for the security group to exist: %s, attempting to delete the Security Group", *output.GroupId))
 		_, err := a.AwsClient.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: output.GroupId})
 		if err != nil {
 			return &ec2.CreateSecurityGroupOutput{}, handledErrors.NewGenericError(err)
