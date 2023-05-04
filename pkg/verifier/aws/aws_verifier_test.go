@@ -107,7 +107,7 @@ USERDATA END`,
 			}
 			a := &AwsVerifier{Logger: l}
 
-			actual := a.isGenericErrorPresent(test.consoleOutput)
+			actual := a.isGenericErrorPresent(context.TODO(), test.consoleOutput)
 			if test.expectGenericErrors != actual {
 				t.Errorf("expected %v, got %v", test.expectGenericErrors, actual)
 			}
