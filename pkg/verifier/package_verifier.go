@@ -33,6 +33,7 @@ type ValidateEgressInput struct {
 	GCP                                                GcpEgressConfig
 	SkipInstanceTermination                            bool
 	TerminateDebugInstance                             string
+	ImportKeyPair                                      string
 }
 type AwsEgressConfig struct {
 	KmsKeyID, SecurityGroupId string

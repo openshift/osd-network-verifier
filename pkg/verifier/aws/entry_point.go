@@ -3,6 +3,7 @@ package awsverifier
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strconv"
 
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
@@ -14,8 +15,11 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
-// Base path of the config file
-const CONFIG_PATH_FSTRING string = "/app/build/config/%s.yaml"
+const (
+	// Base path of the config file
+	CONFIG_PATH_FSTRING = "/app/build/config/%s.yaml"
+	DEBUG_KEY_NAME      = "onv-debug-key"
+)
 
 // ValidateEgress performs validation process for egress
 // Basic workflow is:
@@ -44,11 +48,59 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PlatformAWS)
 	}
 
+	var debugPubKey []byte
+	// Check if Import-keypair flag has been passed
+	if vei.ImportKeyPair != "" {
+		//Read the pubkey file content into a variable
+		PubKey, err := os.ReadFile(vei.ImportKeyPair)
+		debugPubKey = PubKey
+		if err != nil {
+			return a.Output.AddError(err)
+		}
+
+		//Import Keypair into aws keypairs to be attached later to the created debug instance
+		_, err = a.AwsClient.ImportKeyPair(vei.Ctx, &ec2.ImportKeyPairInput{
+			KeyName:           awsTools.String(DEBUG_KEY_NAME),
+			PublicKeyMaterial: debugPubKey,
+		})
+		if err != nil {
+			return a.Output.AddError(err)
+		}
+
+		//If we have imported a pubkey for debug we would like debug intance to stay up.
+		//Thus we set SkipInstanceTermination = true
+		vei.SkipInstanceTermination = true
+
+	}
+
 	// Terminate a debug instance leftover from a previous run
 	if vei.TerminateDebugInstance != "" {
+
+		//Terminate the debug instance
 		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, vei.TerminateDebugInstance); err != nil {
 			a.Output.AddError(err)
 		}
+
+		//Check if a keypair was uploaded
+		searchKeys := []string{DEBUG_KEY_NAME}
+		_, err := a.AwsClient.DescribeKeyPairs(vei.Ctx, &ec2.DescribeKeyPairsInput{
+			KeyNames: searchKeys,
+		})
+		if err != nil {
+			//if no key was found continue without executing deletion code
+			fmt.Printf("Debug KeyPair %v not found \n", DEBUG_KEY_NAME)
+		} else {
+			//if there was a key found, then delete it.
+			_, err = a.AwsClient.DeleteKeyPair(vei.Ctx, &ec2.DeleteKeyPairInput{
+				KeyName: awsTools.String(DEBUG_KEY_NAME),
+			})
+			//if there was any issues deleting the keypair.
+			if err != nil {
+				a.Output.AddError(err)
+			}
+
+		}
+
 		return &a.Output
 	}
 
@@ -114,6 +166,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		instanceType:    vei.InstanceType,
 		tags:            vei.Tags,
 		securityGroupId: vei.AWS.SecurityGroupId,
+		keyPair:         vei.ImportKeyPair,
 	})
 
 	if err != nil {
