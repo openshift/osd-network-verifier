@@ -51,6 +51,19 @@ func (id *OnvIntegrationTestData) SetupVpc(ctx context.Context) error {
 		return err
 	}
 
+	log.Printf("waiting up to %s for vpc to become available", 10*time.Second)
+	subnetWaiter := ec2.NewVpcAvailableWaiter(id.ec2Api)
+	if err := subnetWaiter.Wait(ctx, &ec2.DescribeVpcsInput{
+		Filters: []ec2Types.Filter{
+			{
+				Name:   aws.String("vpc-id"),
+				Values: []string{*vpc.Vpc.VpcId},
+			},
+		},
+	}, 10*time.Second); err != nil {
+		return err
+	}
+
 	id.vpcId = vpc.Vpc.VpcId
 	log.Printf("created VPC: %s", *id.vpcId)
 
