@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
@@ -17,11 +18,14 @@ import (
 )
 
 func main() {
-	region := flag.String("region", "us-east-1", "AWS Region")
-	profile := flag.String("profile", "", "AWS Profile")
-	createOnly := flag.Bool("create-only", false, "When specified, only create infrastructure and do not delete")
-	deleteOnly := flag.Bool("delete-only", false, "When specified, delete infrastructure in an idempotent fashion")
-	flag.Parse()
+	f := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	region := f.String("region", "us-east-1", "AWS Region")
+	profile := f.String("profile", "", "AWS Profile")
+	createOnly := f.Bool("create-only", false, "When specified, only create infrastructure and do not delete")
+	deleteOnly := f.Bool("delete-only", false, "When specified, delete infrastructure in an idempotent fashion")
+	if err := f.Parse(os.Args[1:]); err != nil {
+		panic(err)
+	}
 
 	var (
 		cfg aws.Config
