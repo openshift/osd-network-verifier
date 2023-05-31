@@ -21,28 +21,29 @@ import (
 
 var (
 	defaultAmi = map[string]string{
-		"af-south-1":     "ami-0d839f7a2ec1fb21a",
-		"ap-east-1":      "ami-0228bc3276f2577ac",
-		"ap-northeast-1": "ami-06781703396c03861",
-		"ap-northeast-2": "ami-0a4778bbd67dce74e",
-		"ap-northeast-3": "ami-06fef0e3d72471d95",
-		"ap-south-1":     "ami-07e6ef6f51e4b755a",
-		"ap-southeast-1": "ami-0ba469cfeafcb3f88",
-		"ap-southeast-2": "ami-011e0e2b03dedc185",
-		"ap-southeast-3": "ami-0c10bbee950a03d44",
-		"ca-central-1":   "ami-085e5999c054f7443",
-		"eu-central-1":   "ami-08eca5bab97189074",
-		"eu-north-1":     "ami-0e45b07485d1c8418",
-		"eu-south-1":     "ami-0ec65dd668bb57b13",
-		"eu-west-1":      "ami-0d50fc23a64d30ce3",
-		"eu-west-2":      "ami-066d04a95ec5d05ec",
-		"eu-west-3":      "ami-0733e8005c70edd73",
-		"me-south-1":     "ami-0c68c550304d25c1b",
-		"sa-east-1":      "ami-03bc0c48d7b1be18f",
-		"us-east-1":      "ami-05b2dda5360205a5e",
-		"us-east-2":      "ami-05ad12f6a895cfe18",
-		"us-west-1":      "ami-02aca02fdf867b44e",
-		"us-west-2":      "ami-0f3545f36033bd149",
+		"af-south-1":     "ami-058366609e22d236c",
+		"ap-east-1":      "ami-05c504972a83bb707",
+		"ap-northeast-1": "ami-0ae96a58772eb3fee",
+		"ap-northeast-2": "ami-04af82fd7ade74d0c",
+		"ap-northeast-3": "ami-0c353b4b3fd722315",
+		"ap-south-1":     "ami-09ac10928e4613eb8",
+		"ap-southeast-1": "ami-0b934e5759760c619",
+		"ap-southeast-2": "ami-02ffafb015ea5d2b6",
+		"ap-southeast-3": "ami-0432b0929298da020",
+		"ca-central-1":   "ami-068f378dce5c267c6",
+		"eu-central-1":   "ami-01bce990fc15677ae",
+		"eu-north-1":     "ami-0fc7550bd719ea892",
+		"eu-south-1":     "ami-09f55a94633b5ee0f",
+		"eu-west-1":      "ami-06e3bcae2dd1094b3",
+		"eu-west-2":      "ami-0a43c5ee82fcafc7e",
+		"eu-west-3":      "ami-0338ef435387e56f5",
+		"me-central-1":   "ami-0e52000083d86631f",
+		"me-south-1":     "ami-04b01514ae0d9cb02",
+		"sa-east-1":      "ami-09eecff20e296880d",
+		"us-east-1":      "ami-0ac8caddb54876856",
+		"us-east-2":      "ami-06c3c5a8d32a87309",
+		"us-west-1":      "ami-0ce875206d1b7f395",
+		"us-west-2":      "ami-092d4784c0ed8dd7b",
 	}
 )
 
@@ -51,7 +52,7 @@ const (
 
 	// TODO find a location for future docker images
 	// This corresponds with the tag: v0.1.58-5229a7b
-	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:c0e6528c36cf9a7958fefaf5d1b33f4d810660ac95a35da9dd3265677c5438d7"
+	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:522a64f49b5546c44ff732d554bd221bae326d4314e92f5ab761add643c8f191"
 	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
 	userdataEndVerifier   = "USERDATA END"
 	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
