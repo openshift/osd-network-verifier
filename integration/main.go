@@ -21,6 +21,7 @@ func main() {
 	f := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	region := f.String("region", "us-east-1", "AWS Region")
 	profile := f.String("profile", "", "AWS Profile")
+	platform := f.String("platform", "aws", "(Optional) Platform type to validate, defaults to `aws`")
 	createOnly := f.Bool("create-only", false, "When specified, only create infrastructure and do not delete")
 	deleteOnly := f.Bool("delete-only", false, "When specified, delete infrastructure in an idempotent fashion")
 	if err := f.Parse(os.Args[1:]); err != nil {
@@ -65,7 +66,7 @@ func main() {
 		return
 	}
 
-	if err := onvEgressCheck(cfg, *data.GetPrivateSubnetId()); err != nil {
+	if err := onvEgressCheck(cfg, *platform, *data.GetPrivateSubnetId()); err != nil {
 		panic(err)
 	}
 
@@ -74,7 +75,7 @@ func main() {
 	}
 }
 
-func onvEgressCheck(cfg aws.Config, subnetId string) error {
+func onvEgressCheck(cfg aws.Config, platform, subnetId string) error {
 	builder := ocmlog.NewStdLoggerBuilder()
 	logger, err := builder.Build()
 	if err != nil {
@@ -92,6 +93,7 @@ func onvEgressCheck(cfg aws.Config, subnetId string) error {
 	vei := verifier.ValidateEgressInput{
 		Timeout:      2 * time.Second,
 		Ctx:          context.TODO(),
+		PlatformType: platform,
 		SubnetID:     subnetId,
 		InstanceType: "t3.micro",
 		Tags:         defaultTags,

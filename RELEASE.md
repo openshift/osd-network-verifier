@@ -15,7 +15,9 @@ These changes don't automatically mean a change is a breaking or significant cha
 For now, this is mostly manual. It's important to validate that these scenarios are working before making a new release:
 
 * The `networkValidatorImage` in [./pkg/verifier/aws/aws_verifier.go](./pkg/verifier/aws/aws_verifier.go) is the same image that is pre-baked on the `defaultAMI`'s.
-* [./integration](./integration/) has steps to run the egress test against an AWS account to test that the osd-network-verifier is able to run using the pre-baked image on the default AMI.
+* The integration test in [./integration](./integration) is run using the `aws` and `hostedcluster` configurations
+  * `./integration --platform aws`
+  * `./integration --platform hostedcluster`
 * egress test in AWS with a cluster-wide proxy
 * ~~egress test on GCP~~ This should be added back when GCP support is functional again
 

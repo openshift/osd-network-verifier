@@ -47,6 +47,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		// Default to AWS
 		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PlatformAWS)
 	}
+	a.Logger.Debug(vei.Ctx, fmt.Sprintf("using config file: %s", configPath))
 
 	var debugPubKey []byte
 	// Check if Import-keypair flag has been passed
