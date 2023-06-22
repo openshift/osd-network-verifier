@@ -2,9 +2,8 @@ package awsverifier
 
 import (
 	"context"
-	"testing"
 	"strings"
-
+	"testing"
 
 	awss "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -173,17 +172,17 @@ USERDATA END`,
 
 // TestGenerateUserData tests generateUserData function when the user data exceeds the maximum size.
 func TestGenerateUserData_ExceededMaxSize(t *testing.T) {
-    const kiloByte = 1024
-    maxUserDataSize := 16 * kiloByte
-    value := strings.Repeat("a", maxUserDataSize+1)
+	const kiloByte = 1024
+	maxUserDataSize := 16 * kiloByte
+	value := strings.Repeat("a", maxUserDataSize+1)
 
-    maxUserData := map[string]string{
-        "CACERT": value,
-    }
+	maxUserData := map[string]string{
+		"CACERT": value,
+	}
 
-    // generateUserData should return an error if userData exceeds maximum size.
-    _, err := generateUserData(maxUserData)
-    if err == nil {
-        t.Error("generateUserData should return an error if userData exceeds maximum size")
-    }
+	// generateUserData should return an error if userData exceeds maximum size.
+	_, err := generateUserData(maxUserData)
+	if err == nil {
+		t.Error("generateUserData should return an error if userData exceeds maximum size")
+	}
 }
