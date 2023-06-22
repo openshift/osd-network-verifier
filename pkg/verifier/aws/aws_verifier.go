@@ -377,10 +377,19 @@ func buildTags(tags map[string]string) []ec2Types.Tag {
 }
 
 func generateUserData(variables map[string]string) (string, error) {
+	const maxDataSize = 16 * 1024 // 16KB
+
 	variableMapper := func(varName string) string {
 		return variables[varName]
 	}
 	data := os.Expand(helpers.UserdataTemplate, variableMapper)
+
+	// Convert data to a byte slice and check its length
+	// User data is limited to 16 KB, in raw form, before it is base64-encoded
+	dataBytes := []byte(data)
+	if len(dataBytes) > maxDataSize {
+		return "", fmt.Errorf("userData size exceeds the maximum limit of 16KB, if you used '--cacert', please check the cacert file size")
+	}
 
 	return base64.StdEncoding.EncodeToString([]byte(data)), nil
 }
