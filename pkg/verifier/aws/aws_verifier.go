@@ -388,7 +388,7 @@ func generateUserData(variables map[string]string) (string, error) {
 	// User data is limited to 16 KB, in raw form, before it is base64-encoded
 	dataBytes := []byte(data)
 	if len(dataBytes) > maxDataSize {
-		return "", fmt.Errorf("UserData size exceeds the maximum limit of 16KB, if you used '--cacert', please check the cacert file size")
+		return "", fmt.Errorf("userData size exceeds the maximum limit of 16KB, if you used '--cacert', please check the cacert file size")
 	}
 
 	return base64.StdEncoding.EncodeToString([]byte(data)), nil
