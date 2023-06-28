@@ -170,6 +170,11 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		keyPair:         vei.ImportKeyPair,
 	})
 
+	//If securitygroup was created by network-verifier, delete it as part of cleanup
+	if cleanupSecurityGroup {
+		defer CleanupSecurityGroup(vei, a)
+	}
+
 	if err != nil {
 		a.Output.AddError(err)
 	} else {
@@ -181,15 +186,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
 				a.Output.AddError(err)
 			}
-		}
-	}
-
-	if cleanupSecurityGroup {
-		_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(vei.AWS.SecurityGroupId)})
-		if err != nil {
-			a.Output.AddError(handledErrors.NewGenericError(err))
-			a.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("unable to cleanup security group %s, please manually clean up", vei.AWS.SecurityGroupId)))
-
 		}
 	}
 
@@ -241,5 +237,16 @@ func (a *AwsVerifier) VerifyDns(vdi verifier.VerifyDnsInput) *output.Output {
 		))
 	}
 
+	return &a.Output
+}
+
+// Cleans up the security groups created by network-verifier
+func CleanupSecurityGroup(vei verifier.ValidateEgressInput, a *AwsVerifier) *output.Output {
+	_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(vei.AWS.SecurityGroupId)})
+	if err != nil {
+		a.Output.AddError(handledErrors.NewGenericError(err))
+		a.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("unable to cleanup security group %s, please manually clean up", vei.AWS.SecurityGroupId)))
+
+	}
 	return &a.Output
 }
