@@ -1,0 +1,40 @@
+# Your AWS Profile
+# Replace "default" with the name of the profile you want to use
+# This profile should be configured in your AWS credentials file, typically located at ~/.aws/credentials on Unix-based systems and C:\Users\USERNAME\.aws\credentials on Windows. 
+# The profile configuration should look something like this:
+# 
+# [default]
+# aws_access_key_id = YOUR_ACCESS_KEY
+# aws_secret_access_key = YOUR_SECRET_KEY
+#
+profile = "default"
+
+# The AWS region where you want to create your resources
+region = "us-east-1"
+
+# The availability zone within the region where you want to create your subnets
+availability_zone = "us-east-1a"
+
+# The CIDR block for your VPC
+vpc_cidr_block = "10.0.0.0/16"
+
+# The CIDR block for your public subnet within your VPC
+public_subnet_cidr_block = "10.0.0.0/24"
+
+# The CIDR block for your private subnet within your VPC
+private_subnet_cidr_block = "10.0.1.0/24"
+
+# The CIDR block for your firewall subnet within your VPC
+firewall_subnet_cidr_block = "10.0.2.0/24"
+
+# A list of domains that you want to block
+block_domains = [".quay.io", "api.openshift.com", ".redhat.io"]
+
+# Name of the network firewall
+firewall_name = "myFirewall"
+
+# Name of the firewall policy
+firewall_policy_name = "myPolicy"
+
+# Name of the stateful rule group for the firewall
+rule_group_name = "myRuleGroup"
