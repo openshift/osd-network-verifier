@@ -37,6 +37,7 @@ var (
 		"eu-central-2":   "ami-0c9cd51945a26d2d7",
 		"eu-north-1":     "ami-05de3c8fc38d53b0e",
 		"eu-south-1":     "ami-02f3c2b3f95ec5471",
+		"eu-south-2":     "ami-0d1dda6711743ddd4",
 		"eu-west-1":      "ami-04faa6d68d9fda4dd",
 		"eu-west-2":      "ami-01c4c11d06660214c",
 		"eu-west-3":      "ami-0ab155e4e470cf8ba",
@@ -55,7 +56,7 @@ const (
 
 	// TODO find a location for future docker images
 	// This corresponds with the tag: v0.1.73-b096215
-	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:55d74f02bc46673d9d0f7f1511a3fd4be2e5cf0a773501a23a87b85dd8ab233f"
+	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:cb0822c72cd970675d79a58e1c3fbe2d6e703f6417fc3fdf961664800030ac73"
 	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
 	userdataEndVerifier   = "USERDATA END"
 	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
