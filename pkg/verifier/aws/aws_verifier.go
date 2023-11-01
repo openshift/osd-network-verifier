@@ -180,6 +180,10 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		// We specify block devices mainly to enable EBS encryption
 		BlockDeviceMappings: []ec2Types.BlockDeviceMapping{
 			{
+				DeviceName: awsTools.String("/dev/sda1"),
+				Ebs:        ebsBlockDevice,
+			},
+			{
 				DeviceName: awsTools.String("/dev/xvda"),
 				Ebs:        ebsBlockDevice,
 			},
