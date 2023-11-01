@@ -148,6 +148,7 @@ type createEC2InstanceInput struct {
 
 func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, error) {
 	ebsBlockDevice := &ec2Types.EbsBlockDevice{
+		VolumeSize:          awsTools.Int32(10),
 		DeleteOnTermination: awsTools.Bool(true),
 		Encrypted:           awsTools.Bool(true),
 	}
@@ -180,7 +181,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		// We specify block devices mainly to enable EBS encryption
 		BlockDeviceMappings: []ec2Types.BlockDeviceMapping{
 			{
-				DeviceName: awsTools.String("/dev/xvda"),
+				DeviceName: awsTools.String("/dev/sda1"),
 				Ebs:        ebsBlockDevice,
 			},
 		},
