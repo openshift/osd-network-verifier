@@ -5,8 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/netip"
+	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"time"
 
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
@@ -508,6 +511,96 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 	}
 
 	return output, nil
+}
+
+// ipPermissionFromURL generates an EC2 IpPermission (for use in sec. group rules) from a given IP address
+// -based http(s) URL (e.g. "https://10.0.8.1:8080") with the given human-readable description (ipPermDescription)
+func ipPermissionFromURL(ipUrlStr string, ipPermDescription string) (*ec2Types.IpPermission, error) {
+	// First validate URL by parsing it
+	ipUrl, err := url.Parse(ipUrlStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Then attempt to extract IP address
+	ipAddr, err := netip.ParseAddr(ipUrl.Hostname())
+	if err != nil {
+		return nil, errors.New("URL must be valid IP address")
+	}
+
+	// Then attempt to extract port number and cast to int32
+	ipUrlPortStr := ipUrl.Port()
+	if ipUrlPortStr == "" {
+		// Infer port from URL scheme (http/https)
+		switch ipUrl.Scheme {
+		case "http":
+			ipUrlPortStr = "80"
+		case "https":
+			ipUrlPortStr = "443"
+		default:
+			return nil, errors.New("unsupported URL scheme")
+		}
+	}
+	proxyUrlPortInt64, err := strconv.ParseInt(ipUrlPortStr, 10, 32)
+	if err != nil {
+		return nil, errors.New("invalid port")
+	}
+	proxyUrlPort := int32(proxyUrlPortInt64)
+
+	// Construct egress rule (ipPermission) and add to array
+	ipPerm := &ec2Types.IpPermission{
+		FromPort:   awsTools.Int32(proxyUrlPort),
+		ToPort:     awsTools.Int32(proxyUrlPort),
+		IpProtocol: awsTools.String("tcp"),
+	}
+	// Set CIDR range based on IP version (/32 for IPv4, /128 for IPv6)
+	if ipAddr.Is4() {
+		ipPerm.IpRanges = []ec2Types.IpRange{
+			{
+				CidrIp:      awsTools.String(ipAddr.String() + "/32"),
+				Description: awsTools.String(ipPermDescription),
+			},
+		}
+	}
+	if ipAddr.Is6() {
+		ipPerm.Ipv6Ranges = []ec2Types.Ipv6Range{
+			{
+				CidrIpv6:    awsTools.String(ipAddr.String() + "/128"),
+				Description: awsTools.String(ipPermDescription),
+			},
+		}
+	}
+
+	return ipPerm, nil
+}
+
+// AllowSecurityGroupProxyEgress adds rules to an existing security group that allow egress to the specified proxies
+func (a *AwsVerifier) AllowSecurityGroupProxyEgress(ctx context.Context, securityGroupId string, proxyUrls []string) (*ec2.AuthorizeSecurityGroupEgressOutput, error) {
+	// Create array of ipPermissions with the same length as the # of proxy URLs provided
+	var ipPermissions = make([]ec2Types.IpPermission, len(proxyUrls))
+
+	// Iterate over provided proxy URLs, converting each to an IpPermission
+	for idx, proxyUrlStr := range proxyUrls {
+		ipp, err := ipPermissionFromURL(proxyUrlStr, "Egress to user-provided proxy "+proxyUrlStr)
+		if err != nil {
+			return nil, handledErrors.NewGenericError(
+				fmt.Errorf("unable to create security group rule from proxy URL '%s': %w", proxyUrlStr, err),
+			)
+		}
+		ipPermissions[idx] = *ipp
+	}
+
+	// Make AWS call to add rule to security group
+	authSecGrpIngInput := &ec2.AuthorizeSecurityGroupEgressInput{
+		GroupId:       awsTools.String(securityGroupId),
+		IpPermissions: ipPermissions,
+	}
+	out, err := a.AwsClient.AuthorizeSecurityGroupEgress(ctx, authSecGrpIngInput)
+	if err != nil {
+		return nil, handledErrors.NewGenericError(err)
+	}
+
+	return out, nil
 }
 
 // GetVpcIdFromSubnetId takes in a subnet id and returns the associated VPC id
