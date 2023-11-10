@@ -140,6 +140,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(err) // fatal
 	}
 
+	// If security group not given, create a temporary one
 	cleanupSecurityGroup := false
 	if vei.AWS.SecurityGroupId == "" {
 		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
@@ -151,9 +152,28 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		if err != nil {
 			return a.Output.AddError(err)
 		}
-
-		vei.AWS.SecurityGroupId = *createSecurityGroupOutput.GroupId
 		cleanupSecurityGroup = true
+		vei.AWS.SecurityGroupId = *createSecurityGroupOutput.GroupId
+
+		// If proxy information given, add rules for it to the security group
+		if vei.Proxy.HttpProxy != "" || vei.Proxy.HttpsProxy != "" {
+
+			// Build a slice of proxy URLs (up to 2)
+			proxyUrls := make([]string, 0, 2)
+			if vei.Proxy.HttpProxy != "" {
+				proxyUrls = append(proxyUrls, vei.Proxy.HttpProxy)
+			}
+			if vei.Proxy.HttpsProxy != "" {
+				proxyUrls = append(proxyUrls, vei.Proxy.HttpsProxy)
+			}
+
+			// Add the new rules to the temp security group
+			_, err := a.AllowSecurityGroupProxyEgress(vei.Ctx, vei.AWS.SecurityGroupId, proxyUrls)
+			if err != nil {
+				return a.Output.AddError(err)
+			}
+		}
+
 	}
 
 	// Create EC2 instance

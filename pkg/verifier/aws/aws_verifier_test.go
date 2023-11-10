@@ -2,11 +2,13 @@ package awsverifier
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"testing"
 
 	awss "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/golang/mock/gomock"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
@@ -184,5 +186,109 @@ func TestGenerateUserData_ExceededMaxSize(t *testing.T) {
 	_, err := generateUserData(maxUserData)
 	if err == nil {
 		t.Error("generateUserData should return an error if userData exceeds maximum size")
+	}
+}
+
+func TestIpPermissionFromURL(t *testing.T) {
+	type args struct {
+		ipUrlStr          string
+		ipPermDescription string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *ec2Types.IpPermission
+		wantErr bool
+	}{
+		{
+			name: "IPv4 happy path",
+			args: args{
+				ipUrlStr:          "http://1.2.3.4:567",
+				ipPermDescription: "test4",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(567),
+				ToPort:     awss.Int32(567),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("1.2.3.4/32"),
+						Description: awss.String("test4"),
+					},
+				},
+			},
+		},
+		{
+			name: "IPv6 happy path",
+			args: args{
+				ipUrlStr:          "http://[ff06::c3]:567",
+				ipPermDescription: "test6",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(567),
+				ToPort:     awss.Int32(567),
+				IpProtocol: awss.String("tcp"),
+				Ipv6Ranges: []ec2Types.Ipv6Range{
+					{
+						CidrIpv6:    awss.String("ff06::c3/128"),
+						Description: awss.String("test6"),
+					},
+				},
+			},
+		},
+		{
+			name: "Inferred port",
+			args: args{
+				ipUrlStr:          "https://10.0.8.8",
+				ipPermDescription: "testi",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(443),
+				ToPort:     awss.Int32(443),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("10.0.8.8/32"),
+						Description: awss.String("testi"),
+					},
+				},
+			},
+		},
+		{
+			name: "Error on non-IP",
+			args: args{
+				ipUrlStr:          "https://example.com:8080",
+				ipPermDescription: "teste",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Error on inferring non-http(s) scheme",
+			args: args{
+				ipUrlStr:          "ssh://example.com",
+				ipPermDescription: "teste",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Error on bad URL",
+			args: args{
+				ipUrlStr:          "not a URL",
+				ipPermDescription: "teste",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ipPermissionFromURL(tt.args.ipUrlStr, tt.args.ipPermDescription)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ipPermissionFromURL() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ipPermissionFromURL() = %+v, want %+v", got, tt.want)
+			}
+		})
 	}
 }
