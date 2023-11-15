@@ -49,7 +49,7 @@ var (
 		"sa-east-1":      "ami-0a7afe4c752036137",
 		"us-east-1":      "ami-0b7a0afd02d5752da",
 		"us-east-2":      "ami-001936a8fdfd4fe17",
-		"us-west-1":      "ami-06ec2bc7e3a8e5c77",
+		"us-west-1":      "ami-05816879f7927df75",
 		"us-west-2":      "ami-0ad0474764ad2b0fb",
 	}
 )
@@ -282,6 +282,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			userDataComplete := reUserDataComplete.FindString(consoleLogs)
 			if len(userDataComplete) < 1 {
 				a.writeDebugLogs(ctx, "EC2 console consoleOutput contains data, but end of userdata script not seen, continuing to wait...")
+				a.writeDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 				return false, nil
 			}
 
