@@ -1,20 +1,10 @@
 #cloud-config
-repo_update: true
-write_files:
-  - path: /run-container.sh
-    permissions: 755
-    content: |
-      #!/bin/bash
-      echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
-      curl --version >> /var/log/userdata-output
-      curl --retry 2 --retry-connrefused -Z -s -I -m 2 -w "%{stderr}%{url} %{exitcode} %{errormsg}\n" https://cloud.redhat.com:443 https://registry.redhat.io:443 2>> /var/log/userdata-output
-      echo "${USERDATA_END}" >> /var/log/userdata-output
 runcmd:
-  - echo Hello TTYS0 World >/dev/ttyS0
-  - echo Hello TTY0 World >/dev/tty0
-  - echo Hello console World >/dev/console
-  - HTTP_PROXY=${HTTP_PROXY} HTTPS_PROXY=${HTTPS_PROXY} /run-container.sh
-  - cat /var/log/userdata-output >/dev/ttyS0
+  - systemctl mask --now serial-getty@ttyS0.service
+  - dmesg -n 1
+  - echo "${USERDATA_BEGIN}" >/dev/ttyS0
+  - curl --retry 2 --retry-connrefused -Z -s -I -m 2 -w "%{stderr}%{url} %{exitcode} %{errormsg}\n" https://cloud.redhat.com:443 https://registry.redhat.io:443 2> /dev/ttyS0
+  - echo "${USERDATA_END}" >/dev/ttyS0
 power_state:
   delay: ${DELAY}
   mode: poweroff
