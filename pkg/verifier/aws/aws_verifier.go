@@ -282,7 +282,6 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			userDataComplete := reUserDataComplete.FindString(consoleLogs)
 			if len(userDataComplete) < 1 {
 				a.writeDebugLogs(ctx, "EC2 console consoleOutput contains data, but end of userdata script not seen, continuing to wait...")
-				a.writeDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
 				return false, nil
 			}
 
@@ -352,19 +351,25 @@ func (a *AwsVerifier) isGenericErrorPresent(ctx context.Context, consoleOutput s
 // isEgressFailurePresent checks consoleOutput for network egress failures and stores them
 // as NetworkVerifierErrors in a.Output.failures
 func (a *AwsVerifier) isEgressFailurePresent(consoleOutput string) bool {
-	// reEgressFailures will match a specific egress failure case
-	reEgressFailures := regexp.MustCompile(`Unable to reach (\S+)`)
+	// reEgressResults will match every line of cURL output, success or failure
+	reEgressResults := regexp.MustCompile(`\w+:\/\/(?P<hostPort>\S+\.\S+)\/ (?P<errCode>\d+) ?(?P<errMsg>[[:print:]]*)[\r\n]+`)
 	found := false
 
-	// egressFailures is a 2D slice of regex matches - egressFailures[0] represents a specific regex match
-	// egressFailures[0][0] is the "Unable to reach" part of the match
-	// egressFailures[0][1] is the "(\S+)" part of the match, i.e. the following string
-	egressFailures := reEgressFailures.FindAllStringSubmatch(consoleOutput, -1)
-	for _, e := range egressFailures {
-		if len(e) == 2 {
+	// egressResults is a 2D slice of regex matches - egressResults[0] represents a specific regex match
+	// egressResults[0][0] contains the whole log line
+	// egressResults[0][1] contains the host:port part of the URL probed
+	// egressResults[0][2] contains the cURL error code
+	// egressResults[0][3] contains the cURL error message, if present
+	egressResults := reEgressResults.FindAllStringSubmatch(consoleOutput, -1)
+	for _, e := range egressResults {
+		a.writeDebugLogs(context.TODO(), fmt.Sprintf("Found egress result match: %q", e))
+		// Error codes 0 and 49 indicate success (49 b/c we use a cURL hack for non-80
+		// and non-443 ports; see https://stackoverflow.com/a/71962683)
+		if e[2] != "0" && e[2] != "49" {
 			a.Output.SetEgressFailures([]string{e[1]})
 			found = true
 		}
+		// TODO for REFACTOR: e[3] contains a helpful error message!
 	}
 
 	return found

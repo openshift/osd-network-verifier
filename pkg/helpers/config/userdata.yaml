@@ -3,7 +3,7 @@ runcmd:
   - systemctl mask --now serial-getty@ttyS0.service
   - dmesg -n 1
   - echo "${USERDATA_BEGIN}" >/dev/ttyS0
-  - curl --retry 2 --retry-connrefused -Z -s -I -m 2 -w "%{stderr}%{url} %{exitcode} %{errormsg}\n" https://cloud.redhat.com:443 https://registry.redhat.io:443 2> /dev/ttyS0
+  - curl --retry 2 --retry-connrefused -t B -Z -s -I -m 2 -w "%{stderr}%{url_effective} %{exitcode} %{errormsg}\n" https://cloud.redhat.com:443 https://registry.redhat.io:443 telnet://inputs1.osdsecuritylogs.splunkcloud.com:9997 2> /dev/ttyS0
   - echo "${USERDATA_END}" >/dev/ttyS0
 power_state:
   delay: ${DELAY}
