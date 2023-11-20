@@ -50,7 +50,7 @@ var (
 		"us-east-1":      "ami-0b7a0afd02d5752da",
 		"us-east-2":      "ami-001936a8fdfd4fe17",
 		"us-west-1":      "ami-05816879f7927df75",
-		"us-west-2":      "ami-0ad0474764ad2b0fb",
+		"us-west-2":      "ami-069e2550526be8101",
 	}
 )
 
@@ -362,7 +362,7 @@ func (a *AwsVerifier) isEgressFailurePresent(consoleOutput string) bool {
 	// egressResults[0][3] contains the cURL error message, if present
 	egressResults := reEgressResults.FindAllStringSubmatch(consoleOutput, -1)
 	for _, e := range egressResults {
-		a.writeDebugLogs(context.TODO(), fmt.Sprintf("Found egress result match: %q", e))
+		// a.writeDebugLogs(context.TODO(), fmt.Sprintf("Found egress result match: %q", e))
 		// Error codes 0 and 49 indicate success (49 b/c we use a cURL hack for non-80
 		// and non-443 ports; see https://stackoverflow.com/a/71962683)
 		if e[2] != "0" && e[2] != "49" {
