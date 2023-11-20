@@ -142,7 +142,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// If security group not given, create a temporary one
 	cleanupSecurityGroup := false
-	if vei.AWS.SecurityGroupId == "" {
+	if len(vei.AWS.SecurityGroupIds) == 0 {
 		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 		if err != nil {
 			return a.Output.AddError(err)
@@ -153,7 +153,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			return a.Output.AddError(err)
 		}
 		cleanupSecurityGroup = true
-		vei.AWS.SecurityGroupId = *createSecurityGroupOutput.GroupId
+		vei.AWS.SecurityGroupIds = append(vei.AWS.SecurityGroupIds, *createSecurityGroupOutput.GroupId)
 
 		// If proxy information given, add rules for it to the security group
 		if vei.Proxy.HttpProxy != "" || vei.Proxy.HttpsProxy != "" {
@@ -168,9 +168,11 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			}
 
 			// Add the new rules to the temp security group
-			_, err := a.AllowSecurityGroupProxyEgress(vei.Ctx, vei.AWS.SecurityGroupId, proxyUrls)
-			if err != nil {
-				return a.Output.AddError(err)
+			for _, sgid := range vei.AWS.SecurityGroupIds {
+				_, err := a.AllowSecurityGroupProxyEgress(vei.Ctx, sgid, proxyUrls)
+				if err != nil {
+					return a.Output.AddError(err)
+				}
 			}
 		}
 
@@ -178,16 +180,16 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Create EC2 instance
 	instanceID, err := a.createEC2Instance(createEC2InstanceInput{
-		amiID:           vei.CloudImageID,
-		SubnetID:        vei.SubnetID,
-		userdata:        userData,
-		KmsKeyID:        vei.AWS.KmsKeyID,
-		instanceCount:   instanceCount,
-		ctx:             vei.Ctx,
-		instanceType:    vei.InstanceType,
-		tags:            vei.Tags,
-		securityGroupId: vei.AWS.SecurityGroupId,
-		keyPair:         vei.ImportKeyPair,
+		amiID:            vei.CloudImageID,
+		SubnetID:         vei.SubnetID,
+		userdata:         userData,
+		KmsKeyID:         vei.AWS.KmsKeyID,
+		instanceCount:    instanceCount,
+		ctx:              vei.Ctx,
+		instanceType:     vei.InstanceType,
+		tags:             vei.Tags,
+		securityGroupIds: vei.AWS.SecurityGroupIds,
+		keyPair:          vei.ImportKeyPair,
 	})
 
 	//If securitygroup was created by network-verifier, delete it as part of cleanup
@@ -262,11 +264,13 @@ func (a *AwsVerifier) VerifyDns(vdi verifier.VerifyDnsInput) *output.Output {
 
 // Cleans up the security groups created by network-verifier
 func CleanupSecurityGroup(vei verifier.ValidateEgressInput, a *AwsVerifier) *output.Output {
-	_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(vei.AWS.SecurityGroupId)})
-	if err != nil {
-		a.Output.AddError(handledErrors.NewGenericError(err))
-		a.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("unable to cleanup security group %s, please manually clean up", vei.AWS.SecurityGroupId)))
+	for _, sGroupId := range vei.AWS.SecurityGroupIds {
+		_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(sGroupId)})
+		if err != nil {
+			a.Output.AddError(handledErrors.NewGenericError(err))
+			a.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("unable to cleanup security group %s, please manually clean up", sGroupId)))
 
+		}
 	}
 	return &a.Output
 }
