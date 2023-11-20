@@ -19,6 +19,7 @@ const (
 	// Base path of the config file
 	CONFIG_PATH_FSTRING = "/app/build/config/%s.yaml"
 	DEBUG_KEY_NAME      = "onv-debug-key"
+	URLS                = "http://sso.redhat.com:80 https://registry.redhat.io:443 https://cloud.redhat.com:443 telnet://inputs1.osdsecuritylogs.splunkcloud.com:9997"
 )
 
 // ValidateEgress performs validation process for egress
@@ -122,6 +123,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"NOTLS":                    strconv.FormatBool(vei.Proxy.NoTls),
 		"IMAGE":                    "$IMAGE",
 		"CONFIG_PATH":              configPath,
+		"URLS":                     URLS,
 		"DELAY":                    "5",
 	}
 
