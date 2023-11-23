@@ -142,7 +142,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// If security group not given, create a temporary one
 	cleanupSecurityGroup := false
-	if vei.AWS.SecurityGroupId == "" {
+	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupsIds) == 0 {
 		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 		if err != nil {
 			return a.Output.AddError(err)
@@ -178,16 +178,17 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Create EC2 instance
 	instanceID, err := a.createEC2Instance(createEC2InstanceInput{
-		amiID:           vei.CloudImageID,
-		SubnetID:        vei.SubnetID,
-		userdata:        userData,
-		KmsKeyID:        vei.AWS.KmsKeyID,
-		instanceCount:   instanceCount,
-		ctx:             vei.Ctx,
-		instanceType:    vei.InstanceType,
-		tags:            vei.Tags,
-		securityGroupId: vei.AWS.SecurityGroupId,
-		keyPair:         vei.ImportKeyPair,
+		amiID:             vei.CloudImageID,
+		SubnetID:          vei.SubnetID,
+		userdata:          userData,
+		KmsKeyID:          vei.AWS.KmsKeyID,
+		instanceCount:     instanceCount,
+		ctx:               vei.Ctx,
+		instanceType:      vei.InstanceType,
+		tags:              vei.Tags,
+		securityGroupId:   vei.AWS.SecurityGroupId,
+		securityGroupsIDs: vei.AWS.SecurityGroupsIds,
+		keyPair:           vei.ImportKeyPair,
 	})
 
 	//If securitygroup was created by network-verifier, delete it as part of cleanup
