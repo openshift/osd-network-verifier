@@ -10,7 +10,7 @@ require (
 	github.com/aws/smithy-go v1.9.0
 	github.com/golang/mock v1.6.0
 	github.com/openshift-online/ocm-sdk-go v0.1.224
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.8.0
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
 	google.golang.org/api v0.84.0
 )
@@ -29,7 +29,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.0.0-20220520183353-fd19c99a87aa // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.opencensus.io v0.23.0 // indirect

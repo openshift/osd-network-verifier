@@ -37,6 +37,7 @@ type ValidateEgressInput struct {
 }
 type AwsEgressConfig struct {
 	KmsKeyID, SecurityGroupId string
+	SecurityGroupsIds         []string
 }
 type GcpEgressConfig struct {
 	Region, Zone, ProjectID, VpcName string

@@ -137,16 +137,17 @@ func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType str
 }
 
 type createEC2InstanceInput struct {
-	amiID           string
-	SubnetID        string
-	userdata        string
-	KmsKeyID        string
-	securityGroupId string
-	instanceCount   int32
-	instanceType    string
-	tags            map[string]string
-	ctx             context.Context
-	keyPair         string
+	amiID             string
+	SubnetID          string
+	userdata          string
+	KmsKeyID          string
+	securityGroupId   string
+	securityGroupsIDs []string
+	instanceCount     int32
+	instanceType      string
+	tags              map[string]string
+	ctx               context.Context
+	keyPair           string
 }
 
 func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, error) {
@@ -169,6 +170,10 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	// error performing ec2:RunInstances: Value () for parameter groupId is invalid. The value cannot be empty
 	if input.securityGroupId != "" {
 		eniSpecification.Groups = []string{input.securityGroupId}
+	}
+
+	if len(input.securityGroupsIDs) > 0 {
+		eniSpecification.Groups = input.securityGroupsIDs
 	}
 
 	// Build our request, converting the go base types into the pointers required by the SDK
