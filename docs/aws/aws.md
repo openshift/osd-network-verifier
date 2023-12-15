@@ -155,7 +155,7 @@ repeat the verification process for each subnet ID.
         --platform string             (optional) infra platform type, which determines which endpoints to test. Either 'aws', 'gcp', or 'hostedcluster' (hypershift) (default "aws")
         --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored
         --region string               (optional) compute instance region. If absent, environment var AWS_REGION = us-east-2 and GCP_REGION = us-east1 will be used
-        --security-group-id string    security group ID to attach to the created EC2 instance
+        --security-group-ids strings  (optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created
         --skip-termination            (optional) Skip instance termination to allow further debugging
         --subnet-id string            source subnet ID
         --terminate-debug string      (optional) Takes the debug instance ID and terminates it

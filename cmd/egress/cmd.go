@@ -31,8 +31,8 @@ type egressConfig struct {
 	vpcSubnetID                string
 	cloudImageID               string
 	instanceType               string
-	securityGroupId            string
-	securityGroupsIds          []string
+	securityGroupId            string // Deprecated: prefer securityGroupIds
+	securityGroupIds           []string
 	cloudTags                  map[string]string
 	debug                      bool
 	region                     string
@@ -129,9 +129,9 @@ are set correctly before execution.
 
 				//Setup AWS Specific Configs
 				vei.AWS = verifier.AwsEgressConfig{
-					KmsKeyID:          config.kmsKeyID,
-					SecurityGroupId:   config.securityGroupId,
-					SecurityGroupsIds: config.securityGroupsIds,
+					KmsKeyID:         config.kmsKeyID,
+					SecurityGroupId:  config.securityGroupId,
+					SecurityGroupIds: config.securityGroupIds,
 				}
 
 				awsVerifier, err := utils.GetAwsVerifier(config.region, config.awsProfile, config.debug)
@@ -222,8 +222,8 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "source subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
-	validateEgressCmd.Flags().StringVar(&config.securityGroupId, "security-group-id", "", "(optional) sec. group to attach to the created EC2 instance. If absent, one will be created (Deprecated)")
-	validateEgressCmd.Flags().StringSliceVar(&config.securityGroupsIds, "security-groups-ids", []string{}, "(Optional) Takes a list of security groups to attach to the created EC2 instance.")
+	validateEgressCmd.Flags().StringVar(&config.securityGroupId, "security-group-id", "", "(deprecated in favor of --security-group-ids)")
+	validateEgressCmd.Flags().StringSliceVar(&config.securityGroupIds, "security-group-ids", []string{}, "(optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
@@ -243,6 +243,6 @@ are set correctly before execution.
 	}
 
 	//Mark securityGroupId and securityGroupsIDs flags as mutually exclusive (one or the other should be passed, not both).
-	validateEgressCmd.MarkFlagsMutuallyExclusive("security-group-id", "security-groups-ids")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("security-group-id", "security-group-ids")
 	return validateEgressCmd
 }

@@ -141,7 +141,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// If security group not given, create a temporary one
-	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupsIds) == 0 {
+	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupIds) == 0 {
 		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 		if err != nil {
 			return a.Output.AddError(err)
@@ -179,17 +179,17 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Create EC2 instance
 	instanceID, err := a.createEC2Instance(createEC2InstanceInput{
-		amiID:             vei.CloudImageID,
-		SubnetID:          vei.SubnetID,
-		userdata:          userData,
-		KmsKeyID:          vei.AWS.KmsKeyID,
-		instanceCount:     instanceCount,
-		ctx:               vei.Ctx,
-		instanceType:      vei.InstanceType,
-		tags:              vei.Tags,
-		securityGroupId:   vei.AWS.SecurityGroupId,
-		securityGroupsIDs: vei.AWS.SecurityGroupsIds,
-		keyPair:           vei.ImportKeyPair,
+		amiID:            vei.CloudImageID,
+		SubnetID:         vei.SubnetID,
+		userdata:         userData,
+		KmsKeyID:         vei.AWS.KmsKeyID,
+		instanceCount:    instanceCount,
+		ctx:              vei.Ctx,
+		instanceType:     vei.InstanceType,
+		tags:             vei.Tags,
+		securityGroupId:  vei.AWS.SecurityGroupId,
+		securityGroupIds: vei.AWS.SecurityGroupIds,
+		keyPair:          vei.ImportKeyPair,
 	})
 	if err != nil {
 		return a.Output.AddError(err)
