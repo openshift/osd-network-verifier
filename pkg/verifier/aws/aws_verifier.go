@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"reflect"
 	"regexp"
 	"strconv"
 	"time"
@@ -581,18 +582,26 @@ func ipPermissionFromURL(ipUrlStr string, ipPermDescription string) (*ec2Types.I
 
 // AllowSecurityGroupProxyEgress adds rules to an existing security group that allow egress to the specified proxies
 func (a *AwsVerifier) AllowSecurityGroupProxyEgress(ctx context.Context, securityGroupId string, proxyUrls []string) (*ec2.AuthorizeSecurityGroupEgressOutput, error) {
-	// Create array of ipPermissions with the same length as the # of proxy URLs provided
-	var ipPermissions = make([]ec2Types.IpPermission, len(proxyUrls))
+	// Create zero-length slice of ipPermissions with a capacity equal to the quantity
+	// of proxy URLs provided
+	var ipPermissions = make([]ec2Types.IpPermission, 0, len(proxyUrls))
 
 	// Iterate over provided proxy URLs, converting each to an IpPermission
-	for idx, proxyUrlStr := range proxyUrls {
+	for _, proxyUrlStr := range proxyUrls {
 		ipp, err := ipPermissionFromURL(proxyUrlStr, "Egress to user-provided proxy "+proxyUrlStr)
 		if err != nil {
 			return nil, handledErrors.NewGenericError(
 				fmt.Errorf("unable to create security group rule from proxy URL '%s': %w", proxyUrlStr, err),
 			)
 		}
-		ipPermissions[idx] = *ipp
+		// Add ipp to ipPermissions only if not already there (AWS will reject duplicates)
+		ippAlreadyExists := false
+		for _, existingIpp := range ipPermissions {
+			ippAlreadyExists = ippAlreadyExists || reflect.DeepEqual(*ipp, existingIpp)
+		}
+		if !ippAlreadyExists {
+			ipPermissions = append(ipPermissions, *ipp)
+		}
 	}
 
 	// Make AWS call to add rule to security group
