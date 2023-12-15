@@ -141,7 +141,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// If security group not given, create a temporary one
-	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupIds) == 0 {
+	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupIDs) == 0 {
 		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 		if err != nil {
 			return a.Output.AddError(err)
@@ -188,7 +188,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		instanceType:     vei.InstanceType,
 		tags:             vei.Tags,
 		securityGroupId:  vei.AWS.SecurityGroupId,
-		securityGroupIds: vei.AWS.SecurityGroupIds,
+		securityGroupIDs: vei.AWS.SecurityGroupIDs,
 		keyPair:          vei.ImportKeyPair,
 	})
 	if err != nil {

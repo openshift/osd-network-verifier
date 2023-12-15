@@ -141,8 +141,8 @@ type createEC2InstanceInput struct {
 	SubnetID         string
 	userdata         string
 	KmsKeyID         string
-	securityGroupId  string // Deprecated: prefer securityGroupIds
-	securityGroupIds []string
+	securityGroupId  string // Deprecated: prefer securityGroupIDs
+	securityGroupIDs []string
 	instanceCount    int32
 	instanceType     string
 	tags             map[string]string
@@ -172,8 +172,8 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		eniSpecification.Groups = []string{input.securityGroupId}
 	}
 
-	if len(input.securityGroupIds) > 0 {
-		eniSpecification.Groups = input.securityGroupIds
+	if len(input.securityGroupIDs) > 0 {
+		eniSpecification.Groups = input.securityGroupIDs
 	}
 
 	// Build our request, converting the go base types into the pointers required by the SDK
