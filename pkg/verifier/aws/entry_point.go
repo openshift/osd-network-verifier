@@ -141,8 +141,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// If security group not given, create a temporary one
-	cleanupSecurityGroup := false
-	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupsIds) == 0 {
+	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupIDs) == 0 {
 		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 		if err != nil {
 			return a.Output.AddError(err)
@@ -152,8 +151,10 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		if err != nil {
 			return a.Output.AddError(err)
 		}
-		cleanupSecurityGroup = true
 		vei.AWS.SecurityGroupId = *createSecurityGroupOutput.GroupId
+
+		// Now that security group has been created, ensure we clean it up
+		defer CleanupSecurityGroup(vei, a)
 
 		// If proxy information given, add rules for it to the security group
 		if vei.Proxy.HttpProxy != "" || vei.Proxy.HttpsProxy != "" {
@@ -178,35 +179,32 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Create EC2 instance
 	instanceID, err := a.createEC2Instance(createEC2InstanceInput{
-		amiID:             vei.CloudImageID,
-		SubnetID:          vei.SubnetID,
-		userdata:          userData,
-		KmsKeyID:          vei.AWS.KmsKeyID,
-		instanceCount:     instanceCount,
-		ctx:               vei.Ctx,
-		instanceType:      vei.InstanceType,
-		tags:              vei.Tags,
-		securityGroupId:   vei.AWS.SecurityGroupId,
-		securityGroupsIDs: vei.AWS.SecurityGroupsIds,
-		keyPair:           vei.ImportKeyPair,
+		amiID:            vei.CloudImageID,
+		SubnetID:         vei.SubnetID,
+		userdata:         userData,
+		KmsKeyID:         vei.AWS.KmsKeyID,
+		instanceCount:    instanceCount,
+		ctx:              vei.Ctx,
+		instanceType:     vei.InstanceType,
+		tags:             vei.Tags,
+		securityGroupId:  vei.AWS.SecurityGroupId,
+		securityGroupIDs: vei.AWS.SecurityGroupIDs,
+		keyPair:          vei.ImportKeyPair,
 	})
-
-	//If securitygroup was created by network-verifier, delete it as part of cleanup
-	if cleanupSecurityGroup {
-		defer CleanupSecurityGroup(vei, a)
+	if err != nil {
+		return a.Output.AddError(err)
 	}
 
-	if err != nil {
+	// Run the result fetcher, which will store egress failures in a.Output.failures
+	if err := a.findUnreachableEndpoints(vei.Ctx, instanceID); err != nil {
 		a.Output.AddError(err)
-	} else {
-		if err := a.findUnreachableEndpoints(vei.Ctx, instanceID); err != nil {
-			a.Output.AddError(err)
-		}
+		// Don't return yet; still need to terminate instance
+	}
 
-		if !vei.SkipInstanceTermination {
-			if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
-				a.Output.AddError(err)
-			}
+	// Terminate the EC2 instance (unless user requests otherwise)
+	if !vei.SkipInstanceTermination {
+		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
+			a.Output.AddError(err)
 		}
 	}
 

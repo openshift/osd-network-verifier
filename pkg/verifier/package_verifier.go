@@ -36,8 +36,9 @@ type ValidateEgressInput struct {
 	ImportKeyPair                                      string
 }
 type AwsEgressConfig struct {
-	KmsKeyID, SecurityGroupId string
-	SecurityGroupsIds         []string
+	KmsKeyID         string
+	SecurityGroupId  string // Deprecated: prefer securityGroupIDs
+	SecurityGroupIDs []string
 }
 type GcpEgressConfig struct {
 	Region, Zone, ProjectID, VpcName string

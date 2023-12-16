@@ -137,17 +137,17 @@ func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType str
 }
 
 type createEC2InstanceInput struct {
-	amiID             string
-	SubnetID          string
-	userdata          string
-	KmsKeyID          string
-	securityGroupId   string
-	securityGroupsIDs []string
-	instanceCount     int32
-	instanceType      string
-	tags              map[string]string
-	ctx               context.Context
-	keyPair           string
+	amiID            string
+	SubnetID         string
+	userdata         string
+	KmsKeyID         string
+	securityGroupId  string // Deprecated: prefer securityGroupIDs
+	securityGroupIDs []string
+	instanceCount    int32
+	instanceType     string
+	tags             map[string]string
+	ctx              context.Context
+	keyPair          string
 }
 
 func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, error) {
@@ -172,8 +172,8 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		eniSpecification.Groups = []string{input.securityGroupId}
 	}
 
-	if len(input.securityGroupsIDs) > 0 {
-		eniSpecification.Groups = input.securityGroupsIDs
+	if len(input.securityGroupIDs) > 0 {
+		eniSpecification.Groups = input.securityGroupIDs
 	}
 
 	// Build our request, converting the go base types into the pointers required by the SDK

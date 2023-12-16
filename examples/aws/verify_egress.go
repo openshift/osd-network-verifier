@@ -59,8 +59,8 @@ func extendValidateEgress() {
 		InstanceType: "m5.2xlarge",
 		Proxy:        p,
 		AWS: verifier.AwsEgressConfig{
-			KmsKeyID:        "kmskeyID",
-			SecurityGroupId: "SecurityGroupId",
+			KmsKeyID:         "kmskeyID",
+			SecurityGroupIDs: []string{"SecurityGroupID1", "OptionalSecurityGroupID2"},
 		},
 		PlatformType: helpers.PlatformAWS,
 	}
