@@ -580,33 +580,47 @@ func ipPermissionFromURL(ipUrlStr string, ipPermDescription string) (*ec2Types.I
 	return ipPerm, nil
 }
 
-// AllowSecurityGroupProxyEgress adds rules to an existing security group that allow egress to the specified proxies
-func (a *AwsVerifier) AllowSecurityGroupProxyEgress(ctx context.Context, securityGroupId string, proxyUrls []string) (*ec2.AuthorizeSecurityGroupEgressOutput, error) {
-	// Create zero-length slice of ipPermissions with a capacity equal to the quantity
+// ipPermissionSetFromURLs wraps ipPermissionFromURL() with deduplication logic. I.e.,
+// for each IP-based URL string given in ipURLStrs, an IpPermission (with a description
+// based on the provided ipPermDescriptionPrefix) will be generated and added to the
+// returned slice of IpPermissions UNLESS that slice already contains an equivalent
+// IpPermission (which would cause an API call using that slice to be rejected by AWS)
+func ipPermissionSetFromURLs(ipURLStrs []string, ipPermDescriptionPrefix string) ([]ec2Types.IpPermission, error) {
+	// Create zero-length slice of ipPermissionSet with a capacity equal to the quantity
 	// of proxy URLs provided
-	var ipPermissions = make([]ec2Types.IpPermission, 0, len(proxyUrls))
+	var ipPermissionSet = make([]ec2Types.IpPermission, 0, len(ipURLStrs))
 
 	// Iterate over provided proxy URLs, converting each to an IpPermission
-	for _, proxyUrlStr := range proxyUrls {
-		ipp, err := ipPermissionFromURL(proxyUrlStr, "Egress to user-provided proxy "+proxyUrlStr)
+	for _, ipURLStr := range ipURLStrs {
+		ipPerm, err := ipPermissionFromURL(ipURLStr, ipPermDescriptionPrefix+ipURLStr)
 		if err != nil {
-			return nil, handledErrors.NewGenericError(
-				fmt.Errorf("unable to create security group rule from proxy URL '%s': %w", proxyUrlStr, err),
-			)
+			return nil, fmt.Errorf("unable to create security group rule from URL '%s': %w", ipURLStr, err)
 		}
-		// Add ipp to ipPermissions only if not already there (AWS will reject duplicates)
-		ippAlreadyExists := false
-		for _, existingIpp := range ipPermissions {
-			ippAlreadyExists = ippAlreadyExists || reflect.DeepEqual(*ipp, existingIpp)
+		// Add ipPerm to ipPermissions only if not already there (AWS will reject duplicates)
+		// FIXME: we need a DeepEqual that disregards mismatching descriptions, otherwise bug on edge case where two URLS with different protos but same host:port are passed
+		ipPermAlreadyExists := false
+		for _, existingIPPerm := range ipPermissionSet {
+			ipPermAlreadyExists = ipPermAlreadyExists || reflect.DeepEqual(*ipPerm, existingIPPerm)
 		}
-		if !ippAlreadyExists {
-			ipPermissions = append(ipPermissions, *ipp)
+		if !ipPermAlreadyExists {
+			ipPermissionSet = append(ipPermissionSet, *ipPerm)
 		}
+	}
+
+	return ipPermissionSet, nil
+}
+
+// AllowSecurityGroupProxyEgress adds rules to an existing security group that allow egress to the specified proxies
+func (a *AwsVerifier) AllowSecurityGroupProxyEgress(ctx context.Context, securityGroupID string, proxyURLs []string) (*ec2.AuthorizeSecurityGroupEgressOutput, error) {
+	// Generate a deduplicated set of IpPermissions from the given proxy URLs
+	ipPermissions, err := ipPermissionSetFromURLs(proxyURLs, "Egress to user-provided proxy ")
+	if err != nil {
+		return nil, handledErrors.NewGenericError(fmt.Errorf("error occurred while authorizing egress to proxy: %w", err))
 	}
 
 	// Make AWS call to add rule to security group
 	authSecGrpIngInput := &ec2.AuthorizeSecurityGroupEgressInput{
-		GroupId:       awsTools.String(securityGroupId),
+		GroupId:       awsTools.String(securityGroupID),
 		IpPermissions: ipPermissions,
 	}
 	out, err := a.AwsClient.AuthorizeSecurityGroupEgress(ctx, authSecGrpIngInput)

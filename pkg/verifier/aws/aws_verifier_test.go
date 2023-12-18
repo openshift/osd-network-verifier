@@ -292,3 +292,100 @@ func TestIpPermissionFromURL(t *testing.T) {
 		})
 	}
 }
+
+func Test_ipPermissionSetFromURLs(t *testing.T) {
+	type args struct {
+		ipURLStrs               []string
+		ipPermDescriptionPrefix string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []ec2Types.IpPermission
+		wantErr bool
+	}{
+		{
+			name: "single-URL happy path",
+			args: args{
+				ipURLStrs:               []string{"http://1.2.3.4:567"},
+				ipPermDescriptionPrefix: "single test: ",
+			},
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("1.2.3.4/32"),
+							Description: awss.String("single test: http://1.2.3.4:567"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple unique URL happy path",
+			args: args{
+				ipURLStrs:               []string{"http://1.2.3.4:567", "https://8.9.10.11:1213"},
+				ipPermDescriptionPrefix: "multi-unique test: ",
+			},
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("1.2.3.4/32"),
+							Description: awss.String("multi-unique test: http://1.2.3.4:567"),
+						},
+					},
+				},
+				{
+					FromPort:   awss.Int32(1213),
+					ToPort:     awss.Int32(1213),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("8.9.10.11/32"),
+							Description: awss.String("multi-unique test: https://8.9.10.11:1213"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple equivalent URLs",
+			args: args{
+				ipURLStrs:               []string{"http://1.2.3.4:567", "https://1.2.3.4:567"},
+				ipPermDescriptionPrefix: "multi-equivalent test: ",
+			},
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("1.2.3.4/32"),
+							Description: awss.String("multi-equivalent test: http://1.2.3.4:567"),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ipPermissionSetFromURLs(tt.args.ipURLStrs, tt.args.ipPermDescriptionPrefix)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ipPermissionSetFromURLs() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ipPermissionSetFromURLs() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
