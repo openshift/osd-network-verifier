@@ -375,7 +375,28 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "multiple identical URLs",
+			args: args{
+				ipURLStrs:               []string{"http://1.2.3.4:567", "http://1.2.3.4:567"},
+				ipPermDescriptionPrefix: "multi-identical test: ",
+			},
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("1.2.3.4/32"),
+							Description: awss.String("multi-identical test: http://1.2.3.4:567"),
+						},
+					},
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ipPermissionSetFromURLs(tt.args.ipURLStrs, tt.args.ipPermDescriptionPrefix)

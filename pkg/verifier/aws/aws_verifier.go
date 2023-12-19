@@ -8,7 +8,6 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
-	"reflect"
 	"regexp"
 	"strconv"
 	"time"
@@ -597,10 +596,9 @@ func ipPermissionSetFromURLs(ipURLStrs []string, ipPermDescriptionPrefix string)
 			return nil, fmt.Errorf("unable to create security group rule from URL '%s': %w", ipURLStr, err)
 		}
 		// Add ipPerm to ipPermissions only if not already there (AWS will reject duplicates)
-		// FIXME: we need a DeepEqual that disregards mismatching descriptions, otherwise bug on edge case where two URLS with different protos but same host:port are passed
 		ipPermAlreadyExists := false
 		for _, existingIPPerm := range ipPermissionSet {
-			ipPermAlreadyExists = ipPermAlreadyExists || reflect.DeepEqual(*ipPerm, existingIPPerm)
+			ipPermAlreadyExists = ipPermAlreadyExists || helpers.IPPermissionsEquivalent(*ipPerm, existingIPPerm)
 		}
 		if !ipPermAlreadyExists {
 			ipPermissionSet = append(ipPermissionSet, *ipPerm)
