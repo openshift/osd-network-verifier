@@ -57,14 +57,32 @@ func IPPermissionsEquivalent(a ec2Types.IpPermission, b ec2Types.IpPermission) b
 		return false
 	}
 
-	for idx, ipRange := range a.IpRanges {
-		if *ipRange.CidrIp != *b.IpRanges[idx].CidrIp {
+	for _, ipRangeA := range a.IpRanges {
+		foundEquivalentIPRange := false
+		// Nested loop necessary to check for out-of-order IpRanges
+		for _, ipRangeB := range b.IpRanges {
+			if *ipRangeA.CidrIp == *ipRangeB.CidrIp {
+				// We only need to find one IpRange in b that matches ipRangeA, so break here
+				foundEquivalentIPRange = true
+				break
+			}
+		}
+		if !foundEquivalentIPRange {
 			return false
 		}
 	}
 
-	for idx, ipv6Range := range a.Ipv6Ranges {
-		if *ipv6Range.CidrIpv6 != *b.Ipv6Ranges[idx].CidrIpv6 {
+	for _, ipv6RangeA := range a.Ipv6Ranges {
+		foundEquivalentIPv6Range := false
+		// Nested loop necessary to check for out-of-order Ipv6Ranges
+		for _, ipv6RangeB := range b.Ipv6Ranges {
+			if *ipv6RangeA.CidrIpv6 == *ipv6RangeB.CidrIpv6 {
+				// We only need to find one Ipv6Range in b that matches ipv6RangeA, so break here
+				foundEquivalentIPv6Range = true
+				break
+			}
+		}
+		if !foundEquivalentIPv6Range {
 			return false
 		}
 	}

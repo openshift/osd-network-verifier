@@ -75,6 +75,78 @@ func TestIPPermissionsEquivalent(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "equivalent diff iprange ordering",
+			args: args{
+				a: ec2Types.IpPermission{
+					FromPort:   awsTools.Int32(80),
+					ToPort:     awsTools.Int32(80),
+					IpProtocol: awsTools.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awsTools.String("1.1.1.1/23"),
+							Description: awsTools.String("foo"),
+						},
+						{
+							CidrIp:      awsTools.String("2.2.2.2/34"),
+							Description: awsTools.String("foo"),
+						},
+					},
+				},
+				b: ec2Types.IpPermission{
+					FromPort:   awsTools.Int32(80),
+					ToPort:     awsTools.Int32(80),
+					IpProtocol: awsTools.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awsTools.String("2.2.2.2/34"),
+							Description: awsTools.String("foo"),
+						},
+						{
+							CidrIp:      awsTools.String("1.1.1.1/23"),
+							Description: awsTools.String("foo"),
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "equivalent diff ipv6range ordering",
+			args: args{
+				a: ec2Types.IpPermission{
+					FromPort:   awsTools.Int32(80),
+					ToPort:     awsTools.Int32(80),
+					IpProtocol: awsTools.String("tcp"),
+					Ipv6Ranges: []ec2Types.Ipv6Range{
+						{
+							CidrIpv6:    awsTools.String("ff06::c5/128"),
+							Description: awsTools.String("foo"),
+						},
+						{
+							CidrIpv6:    awsTools.String("ff03::c1/128"),
+							Description: awsTools.String("bar"),
+						},
+					},
+				},
+				b: ec2Types.IpPermission{
+					FromPort:   awsTools.Int32(80),
+					ToPort:     awsTools.Int32(80),
+					IpProtocol: awsTools.String("tcp"),
+					Ipv6Ranges: []ec2Types.Ipv6Range{
+						{
+							CidrIpv6:    awsTools.String("ff03::c1/128"),
+							Description: awsTools.String("bar"),
+						},
+						{
+							CidrIpv6:    awsTools.String("ff06::c5/128"),
+							Description: awsTools.String("foo"),
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
 			name: "not equivalent port",
 			args: args{
 				a: ec2Types.IpPermission{
