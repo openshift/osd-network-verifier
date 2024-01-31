@@ -30,15 +30,12 @@ const (
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Using configured timeout of %s for each egress request", vei.Timeout.String()))
 
-	// Set default instance type if non is found
-	if vei.InstanceType == "" {
-		vei.InstanceType = "t3.micro"
-	}
-
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := a.validateInstanceType(vei.Ctx, vei.InstanceType); err != nil {
-		return a.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
+		fmt.Printf("Warning. instance type %s is invalid: %s. Using default %s instance type instead\n", vei.InstanceType, err, "t3.micro")
+
+		vei.InstanceType = "t3.micro"
 	}
 
 	// Select config file based on platform type
