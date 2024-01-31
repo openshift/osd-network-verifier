@@ -17,8 +17,9 @@ import (
 
 const (
 	// Base path of the config file
-	CONFIG_PATH_FSTRING = "/app/build/config/%s.yaml"
-	DEBUG_KEY_NAME      = "onv-debug-key"
+	CONFIG_PATH_FSTRING   = "/app/build/config/%s.yaml"
+	DEBUG_KEY_NAME        = "onv-debug-key"
+	DEFAULT_INSTANCE_TYPE = "t3.micro"
 )
 
 // ValidateEgress performs validation process for egress
@@ -30,12 +31,17 @@ const (
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Using configured timeout of %s for each egress request", vei.Timeout.String()))
 
+	// Set default instance type if none is found
+	if vei.InstanceType == "" {
+		vei.InstanceType = DEFAULT_INSTANCE_TYPE
+	}
+
 	// Validates the provided instance type will work with the verifier
 	// NOTE a "nitro" EC2 instance type is required to be used
 	if err := a.validateInstanceType(vei.Ctx, vei.InstanceType); err != nil {
-		fmt.Printf("Warning. instance type %s is invalid: %s. Using default %s instance type instead\n", vei.InstanceType, err, "t3.micro")
+		a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Cannot use specified instance type: %s. Falling back to instance type %s", err, DEFAULT_INSTANCE_TYPE))
 
-		vei.InstanceType = "t3.micro"
+		vei.InstanceType = DEFAULT_INSTANCE_TYPE
 	}
 
 	// Select config file based on platform type

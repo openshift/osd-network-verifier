@@ -129,7 +129,7 @@ func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType str
 
 	if string(descOut.InstanceTypes[0].InstanceType) == instanceType {
 		if descOut.InstanceTypes[0].Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
-			return fmt.Errorf("instance type %s must use hypervisor type 'nitro' to support reliable result collection, using %s", instanceType, descOut.InstanceTypes[0].Hypervisor)
+			return fmt.Errorf("probe instances must use 'nitro' hypervisor to support reliable result collection, but %s uses '%s'", instanceType, descOut.InstanceTypes[0].Hypervisor)
 		}
 	}
 
