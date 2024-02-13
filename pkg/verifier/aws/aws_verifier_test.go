@@ -9,10 +9,10 @@ import (
 	awss "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/golang/mock/gomock"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestFindUnreachableEndpointsSuccess(t *testing.T) {
