@@ -144,12 +144,12 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// If security group not given, create a temporary one
-	var VpcId string
+	VpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
+	if err != nil {
+		return a.Output.AddError(err)
+	}
+
 	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupIDs) == 0 {
-		VpcId, err = a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
-		if err != nil {
-			return a.Output.AddError(err)
-		}
 
 		createSecurityGroupOutput, err := a.CreateSecurityGroup(vei.Ctx, vei.Tags, "osd-network-verifier", VpcId)
 		if err != nil {
