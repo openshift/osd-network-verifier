@@ -25,6 +25,22 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 ### Building
 `make build`: Builds `osd-network-verifier` executable in base directory
 
+## Terraform Scripts (AWS)
+
+The Terraform scripts in this repository allow you to set up a secure and scalable network infrastructure in AWS for testing. It will create a VPC with public, private, and firewall(optinal) subnets, an Internet Gateway, a NAT Gateway, and a network firewall(optinal).
+
+### Getting Started
+
+1. Clone this repository.
+2. Navigate to the Terraform scripts directory: `examples/aws/terraform`.
+3. Copy the `terraform.tfvars.example` file to `terraform.tfvars` and replace the placeholder values with your actual values.
+4. Run `terraform init` to initialize Terraform.
+5. Run `terraform apply` to create the infrastructure.
+
+See the Terraform `README.md` for detailed instructions.
+- [VPC with no Firewall](examples/aws/terraform/vpc/README.md)
+- [VPC with Firewall](examples/aws/terraform/vpc-firewall/README.md)
+
 ## Contributing and Maintenance
 If interested, please fork this repo and create pull requests to the `main` branch.
 
