@@ -104,6 +104,7 @@ func (id *OnvIntegrationTestData) Cleanup(ctx context.Context) error {
 		id.CleanupElasticIp,
 		id.CleanupInternetGateway,
 		id.CleanupSubnets,
+		id.CleanupSecurityGroup,
 		id.CleanupVpc,
 	}); err != nil {
 		return err

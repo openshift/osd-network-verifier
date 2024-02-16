@@ -3,6 +3,8 @@ package aws
 import (
 	"context"
 	"errors"
+	"fmt"
+	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
 	"log"
 	"time"
@@ -12,6 +14,47 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/networkfirewall"
 	nfwTypes "github.com/aws/aws-sdk-go-v2/service/networkfirewall/types"
 )
+
+func (id *OnvIntegrationTestData) CleanupSecurityGroup(ctx context.Context) error {
+	resp, err := id.ec2Api.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
+		Filters: securityGroupTagFilters(),
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(resp.SecurityGroups) == 0 {
+		log.Println("No SecurityGroups found - skipping cleanup")
+		return nil
+	}
+
+	log.Println("WARN: Found a leaked osd-network-verifier security group. This is unexpected, as the verifier should fully clean up after itself. Cleaning up anyways...")
+	for _, sg := range resp.SecurityGroups {
+		if _, err := id.ec2Api.DeleteSecurityGroup(ctx, &ec2.DeleteSecurityGroupInput{GroupId: sg.GroupId}); err != nil {
+			return err
+		}
+		log.Printf("deleted Security Group: %s", *sg.GroupId)
+	}
+
+	return nil
+}
+
+func securityGroupTagFilters() []ec2Types.Filter {
+	return []ec2Types.Filter{
+		{
+			Name:   aws.String(fmt.Sprintf("tag:%s", "osd-network-verifier")),
+			Values: []string{"owned"},
+		},
+		{
+			Name:   aws.String(fmt.Sprintf("tag:%s", "red-hat-managed")),
+			Values: []string{"true"},
+		},
+		{
+			Name:   aws.String(fmt.Sprintf("tag:%s", "Name")),
+			Values: []string{"osd-network-verifier"},
+		},
+	}
+}
 
 // CleanupVpc deletes a VPC
 // Requires CleanupNatGateway, CleanupInternetGateway, CleanupRouteTables, and Cleanup Subnets to be run first
