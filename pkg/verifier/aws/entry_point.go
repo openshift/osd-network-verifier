@@ -216,7 +216,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		var defaultSecurityGroupID = ""
 
 		describeSGOutput, err := a.AwsClient.DescribeSecurityGroups(vei.Ctx, &ec2.DescribeSecurityGroupsInput{
-			GroupNames: []string{},
 			Filters: []ec2Types.Filter{
 				{
 					Name:   awsTools.String("vpc-id"),
@@ -233,20 +232,23 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		}
 
 		//Filtering SGs to get only the default SG ID finishing the iteration as soon as we find the default SG.
-		for _, SG := range describeSGOutput.SecurityGroups {
-			if *SG.GroupName == "default" {
-				defaultSecurityGroupID = *SG.GroupId
-			}
-		}
+		if describeSGOutput != nil {
 
-		//Replacing the SGs attach to instance by the default one. This is to clean the SGs created in case the instance
-		//termination times out
-		_, err = a.AwsClient.ModifyInstanceAttribute(vei.Ctx, &ec2.ModifyInstanceAttributeInput{
-			InstanceId: &instanceID,
-			Groups:     []string{defaultSecurityGroupID},
-		})
-		if err != nil {
-			a.Output.AddError(err)
+			for _, SG := range describeSGOutput.SecurityGroups {
+				if *SG.GroupName == "default" {
+					defaultSecurityGroupID = *SG.GroupId
+				}
+			}
+
+			//Replacing the SGs attach to instance by the default one. This is to clean the SGs created in case the instance
+			//termination times out
+			_, err = a.AwsClient.ModifyInstanceAttribute(vei.Ctx, &ec2.ModifyInstanceAttributeInput{
+				InstanceId: &instanceID,
+				Groups:     []string{defaultSecurityGroupID},
+			})
+			if err != nil {
+				a.Output.AddError(err)
+			}
 		}
 
 		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
