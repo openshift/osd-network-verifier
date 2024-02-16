@@ -14,8 +14,10 @@ These changes don't automatically mean a change is a breaking or significant cha
 
 For now, this is mostly manual. It's important to validate that these scenarios are working before making a new release:
 
-* The `networkValidatorImage` in [./pkg/verifier/aws/aws_verifier.go](./pkg/verifier/aws/aws_verifier.go) is the same image that is pre-baked on the `defaultAMI`'s.
-* The integration test in [./integration](./integration) is run using the `aws` and `hostedcluster` configurations
+* The `defaultAmi` mapping values in [/pkg/verifier/aws/aws_verifier.go](./pkg/verifier/aws/aws_verifier.go) should be updated to match what is in the console output for the [most recent golden-ami build](https://ci.int.devshift.net/job/gl-build-master-osd-network-verifier-golden-ami-packer/).
+  * Note - if the above build is broken due to `ResourceLimitExceeded` issues, you will have to manually clean up the AMI image repository by following [this SOP](https://github.com/openshift/ops-sop/blob/master/v4/howto/network-verifier/clean-golden-ami.md), and then re-running the Jenkins build.
+* The `networkValidatorImage` in [./pkg/verifier/aws/aws_verifier.go](./pkg/verifier/aws/aws_verifier.go) is the same image that is pre-baked on the `defaultAMI`'s. This can be found by looking at the latest tagged image in the [osd-network-verifier quay repository](https://quay.io/repository/app-sre/osd-network-verifier?tab=tags&tag=latest).
+* Build the `integration` binary by running `go build` from the `/integration` folder. Then use this binary to test both the `aws` and `hostedcluster` configurations as shown below. For more information on setting up integration tests, see the [integration README](./integration/README.md).
   * `./integration --platform aws`
   * `./integration --platform hostedcluster`
 * egress test in AWS with a cluster-wide proxy
