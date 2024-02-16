@@ -24,33 +24,33 @@ import (
 
 var (
 	defaultAmi = map[string]string{
-		"af-south-1":     "ami-0e7e90f5a8557b8d6",
-		"ap-east-1":      "ami-05ee050a367ee5706",
-		"ap-northeast-1": "ami-06dbf6a7ef9bdf2c8",
-		"ap-northeast-2": "ami-0ac7bd07966247f41",
-		"ap-northeast-3": "ami-0968392f31285f459",
-		"ap-south-1":     "ami-0267d03e3be0b4b30",
-		"ap-south-2":     "ami-065289e536d1deb01",
-		"ap-southeast-1": "ami-0e0969b268859d182",
-		"ap-southeast-2": "ami-0d60430c78bce7d3c",
-		"ap-southeast-3": "ami-021732d200600f0b6",
-		"ap-southeast-4": "ami-02104deba0d784ce4",
-		"ca-central-1":   "ami-0b2112eb85d66f9cc",
-		"eu-central-1":   "ami-0f986a55e68070796",
-		"eu-central-2":   "ami-01dc09a6de621911a",
-		"eu-north-1":     "ami-0885df175cdf6787c",
-		"eu-south-1":     "ami-0490bacb9a4ae3a48",
-		"eu-south-2":     "ami-094214242f055b327",
-		"eu-west-1":      "ami-0342c86a5bf8d4623",
-		"eu-west-2":      "ami-0d5e499ba9bd84270",
-		"eu-west-3":      "ami-058c17d5e11588a34",
-		"me-central-1":   "ami-01cb10ec79305596a",
-		"me-south-1":     "ami-02d9162d2610a38e6",
-		"sa-east-1":      "ami-0a7afe4c752036137",
-		"us-east-1":      "ami-0b7a0afd02d5752da",
-		"us-east-2":      "ami-001936a8fdfd4fe17",
-		"us-west-1":      "ami-06ec2bc7e3a8e5c77",
-		"us-west-2":      "ami-0ad0474764ad2b0fb",
+		"af-south-1":     "ami-0fb813e1ae84400dc",
+		"ap-east-1":      "ami-03675d7e574833abe",
+		"ap-northeast-1": "ami-05cb7c7408d8f8af5",
+		"ap-northeast-2": "ami-0098483ae1ee42c0c",
+		"ap-northeast-3": "ami-0f0dbacc1707e8e72",
+		"ap-south-1":     "ami-09df79d5449429266",
+		"ap-south-2":     "ami-00b9508600f3c9b8c",
+		"ap-southeast-1": "ami-0f60e0a6e923c6e26",
+		"ap-southeast-2": "ami-099f7aa368cdddaf2",
+		"ap-southeast-3": "ami-0d5b956b53547034d",
+		"ap-southeast-4": "ami-05ce614e1f422c490",
+		"ca-central-1":   "ami-0f3fb8f365e3c9d04",
+		"eu-central-1":   "ami-002c65646f16240ec",
+		"eu-central-2":   "ami-0574dce5e80837334",
+		"eu-north-1":     "ami-0b46fc8467a79338b",
+		"eu-south-1":     "ami-0bf3ba79256d10416",
+		"eu-south-2":     "ami-0e138ecef804de823",
+		"eu-west-1":      "ami-06f8d5f267ca93271",
+		"eu-west-2":      "ami-0e0887773436969a3",
+		"eu-west-3":      "ami-055729ed70bddefb1",
+		"me-central-1":   "ami-0bf8f8a8ab2d21b1b",
+		"me-south-1":     "ami-0c7ad534496c975df",
+		"sa-east-1":      "ami-0ade9565de9880d8f",
+		"us-east-1":      "ami-0fe43a0c5a276b868",
+		"us-east-2":      "ami-0f78163a5208aae5f",
+		"us-west-1":      "ami-0ce38aa057fca4dc2",
+		"us-west-2":      "ami-0d445fea90102f683",
 	}
 )
 
@@ -59,13 +59,13 @@ const (
 
 	// TODO find a location for future docker images
 	// This corresponds with the tag: v0.1.73-b096215
-	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:cb0822c72cd970675d79a58e1c3fbe2d6e703f6417fc3fdf961664800030ac73"
+	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:c459ade8b55bb3df7789e3a4943cc6fc64e87879abab145a1b938bb6a1c52911"
 	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
 	userdataEndVerifier   = "USERDATA END"
 	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
 )
 
-// AwsVerifier holds an aws client and knows how to fuifill the VerifierSerice which contains all functions needed for verifier
+// AwsVerifier holds an aws client and knows how to fulfill the VerifierService which contains all functions needed for verifier
 type AwsVerifier struct {
 	AwsClient *aws.Client
 	Logger    ocmlog.Logger
