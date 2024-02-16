@@ -229,7 +229,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			},
 		})
 		if err != nil {
-			a.Output.AddError(err)
+			return a.Output.AddError(err)
 		}
 
 		//Filtering SGs to get only the default SG ID finishing the iteration as soon as we find the default SG.
