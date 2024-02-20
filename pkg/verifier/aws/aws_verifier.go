@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	gonet "github.com/THREATINT/go-net"
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -522,15 +523,32 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 // -based http(s) URL (e.g. "https://10.0.8.1:8080") with the given human-readable description (ipPermDescription)
 func ipPermissionFromURL(ipUrlStr string, ipPermDescription string) (*ec2Types.IpPermission, error) {
 	// First validate URL by parsing it
+
+	var ipFromDomain string
+
 	ipUrl, err := url.Parse(ipUrlStr)
 	if err != nil {
 		return nil, err
 	}
 
-	// Then attempt to extract IP address
-	ipAddr, err := netip.ParseAddr(ipUrl.Hostname())
+	//extract the hostName from the URL
+	hostValue := ipUrl.Hostname()
+
+	//Check if the hostname is a Domain Name
+	if gonet.IsFQDN(hostValue) {
+		//set the ip to 0.0.0.0 in order to add a SG rule that will go to all IPs
+		ipFromDomain = "0.0.0.0"
+	}
+
+	////Check if the hostname is an IP address
+	if gonet.IsIPAddr(hostValue) {
+		ipFromDomain = hostValue
+	}
+
+	// Then Make sure the Ip address given or set is in a proper format and preserve program logic.
+	ipAddr, err := netip.ParseAddr(ipFromDomain)
 	if err != nil {
-		return nil, errors.New("URL must be valid IP address")
+		return nil, errors.New("URL must be valid IP address or Domain Name")
 	}
 
 	// Then attempt to extract port number and cast to int32
