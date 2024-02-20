@@ -255,10 +255,64 @@ func TestIpPermissionFromURL(t *testing.T) {
 			},
 		},
 		{
-			name: "Error on non-IP",
+			name: "Good https fqdn",
 			args: args{
-				ipUrlStr:          "https://example.com:8080",
-				ipPermDescription: "teste",
+				ipUrlStr:          "https://example.fqdn.test.com",
+				ipPermDescription: "test-fqdn",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(443),
+				ToPort:     awss.Int32(443),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("0.0.0.0/32"),
+						Description: awss.String("test-fqdn"),
+					},
+				},
+			},
+		},
+		{
+			name: "Good http fqdn",
+			args: args{
+				ipUrlStr:          "http://example.fqdn.test.com",
+				ipPermDescription: "test-fqdn2",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(80),
+				ToPort:     awss.Int32(80),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("0.0.0.0/32"),
+						Description: awss.String("test-fqdn2"),
+					},
+				},
+			},
+		},
+		{
+			name: "Good fqdn with port",
+			args: args{
+				ipUrlStr:          "http://example.fqdn.test.com:7654",
+				ipPermDescription: "test-fqdn3",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(7654),
+				ToPort:     awss.Int32(7654),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("0.0.0.0/32"),
+						Description: awss.String("test-fqdn3"),
+					},
+				},
+			},
+		},
+		{
+			name: "Bad fqdn",
+			args: args{
+				ipUrlStr:          "example.bad.fqdn.test.com:8080",
+				ipPermDescription: "test-fqdn3",
 			},
 			wantErr: true,
 		},

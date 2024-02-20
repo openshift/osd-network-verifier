@@ -15,6 +15,7 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/go-playground/validator"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
@@ -518,35 +519,51 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 	return output, nil
 }
 
-// ipPermissionFromURL generates an EC2 IpPermission (for use in sec. group rules) from a given IP address
-// -based http(s) URL (e.g. "https://10.0.8.1:8080") with the given human-readable description (ipPermDescription)
-func ipPermissionFromURL(ipUrlStr string, ipPermDescription string) (*ec2Types.IpPermission, error) {
-	// First validate URL by parsing it
-	ipUrl, err := url.Parse(ipUrlStr)
+// ipPermissionFromURL generates an EC2 IpPermission (for use in sec. group rules) from a given http(s)
+// URL (e.g., "http://10.0.8.1:8080" or "https://proxy.example.com:1234") with the given human-readable
+// description (ipPermDescription)
+func ipPermissionFromURL(urlStr string, PermDescription string) (*ec2Types.IpPermission, error) {
+
+	//validate URL by parsing it
+	parsedUrl, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
 
-	// Then attempt to extract IP address
-	ipAddr, err := netip.ParseAddr(ipUrl.Hostname())
+	//extract the hostName from the URL
+	ipOrDomain := parsedUrl.Hostname()
+
+	//start a new validator to help verify the hostname
+	validate := validator.New()
+	//check if the hostname is a fully qualified domain name
+	err = validate.Var(ipOrDomain, "fqdn")
+	if err == nil {
+		//if the hostValue is a fqdn set the ip to 0.0.0.0 in order to create an Outbound SG rule to all IPs
+		//Ref: OSD-20562
+		ipOrDomain = "0.0.0.0"
+	}
+
+	//Check if the hostname is an IP address
+	// Then Make sure the Ip address given or set is in a proper format and preserve program logic.
+	ipAddr, err := netip.ParseAddr(ipOrDomain)
 	if err != nil {
-		return nil, errors.New("URL must be valid IP address")
+		return nil, errors.New("URL must be valid IP address or FQDN (fully qualified domain name)")
 	}
 
 	// Then attempt to extract port number and cast to int32
-	ipUrlPortStr := ipUrl.Port()
-	if ipUrlPortStr == "" {
+	parsedUrlPortStr := parsedUrl.Port()
+	if parsedUrlPortStr == "" {
 		// Infer port from URL scheme (http/https)
-		switch ipUrl.Scheme {
+		switch parsedUrl.Scheme {
 		case "http":
-			ipUrlPortStr = "80"
+			parsedUrlPortStr = "80"
 		case "https":
-			ipUrlPortStr = "443"
+			parsedUrlPortStr = "443"
 		default:
 			return nil, errors.New("unsupported URL scheme")
 		}
 	}
-	proxyUrlPortInt64, err := strconv.ParseInt(ipUrlPortStr, 10, 32)
+	proxyUrlPortInt64, err := strconv.ParseInt(parsedUrlPortStr, 10, 32)
 	if err != nil {
 		return nil, errors.New("invalid port")
 	}
@@ -563,7 +580,7 @@ func ipPermissionFromURL(ipUrlStr string, ipPermDescription string) (*ec2Types.I
 		ipPerm.IpRanges = []ec2Types.IpRange{
 			{
 				CidrIp:      awsTools.String(ipAddr.String() + "/32"),
-				Description: awsTools.String(ipPermDescription),
+				Description: awsTools.String(PermDescription),
 			},
 		}
 	}
@@ -571,7 +588,7 @@ func ipPermissionFromURL(ipUrlStr string, ipPermDescription string) (*ec2Types.I
 		ipPerm.Ipv6Ranges = []ec2Types.Ipv6Range{
 			{
 				CidrIpv6:    awsTools.String(ipAddr.String() + "/128"),
-				Description: awsTools.String(ipPermDescription),
+				Description: awsTools.String(PermDescription),
 			},
 		}
 	}
