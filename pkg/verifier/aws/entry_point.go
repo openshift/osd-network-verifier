@@ -251,6 +251,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			}
 		}
 
+		a.Logger.Info(vei.Ctx, "Deleting instance with ID: %s", instanceID)
 		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
 			a.Output.AddError(err)
 		}
@@ -309,6 +310,7 @@ func (a *AwsVerifier) VerifyDns(vdi verifier.VerifyDnsInput) *output.Output {
 
 // Cleans up the security groups created by network-verifier
 func CleanupSecurityGroup(vei verifier.ValidateEgressInput, a *AwsVerifier) *output.Output {
+	a.Logger.Info(vei.Ctx, "Deleting security group with ID: %s", vei.AWS.SecurityGroupId)
 	_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(vei.AWS.SecurityGroupId)})
 	if err != nil {
 		a.Output.AddError(handledErrors.NewGenericError(err))
