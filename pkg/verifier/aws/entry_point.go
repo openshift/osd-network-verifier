@@ -144,18 +144,16 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// If security group not given, create a temporary one
-	VpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
-	if err != nil {
-		return a.Output.AddError(err)
-	}
-
 	if vei.AWS.SecurityGroupId == "" && len(vei.AWS.SecurityGroupIDs) == 0 {
-
-		createSecurityGroupOutput, err := a.CreateSecurityGroup(vei.Ctx, vei.Tags, "osd-network-verifier", VpcId)
+		vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 		if err != nil {
 			return a.Output.AddError(err)
 		}
 
+		createSecurityGroupOutput, err := a.CreateSecurityGroup(vei.Ctx, vei.Tags, "osd-network-verifier", vpcId)
+		if err != nil {
+			return a.Output.AddError(err)
+		}
 		vei.AWS.SecurityGroupId = *createSecurityGroupOutput.GroupId
 
 		// Now that security group has been created, ensure we clean it up
@@ -208,49 +206,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Terminate the EC2 instance (unless user requests otherwise)
 	if !vei.SkipInstanceTermination {
-
-		//Replaced the SGs atached to the network-verifier-instance by the default SG in order to allow
-		//deletion of temporary SGs created
-
-		//Getting a list of the SGs for the current VPC of our instance
-		var defaultSecurityGroupID = ""
-
-		describeSGOutput, err := a.AwsClient.DescribeSecurityGroups(vei.Ctx, &ec2.DescribeSecurityGroupsInput{
-			Filters: []ec2Types.Filter{
-				{
-					Name:   awsTools.String("vpc-id"),
-					Values: []string{VpcId},
-				},
-				{
-					Name:   awsTools.String("group-name"),
-					Values: []string{"default"},
-				},
-			},
-		})
-		if err != nil {
-			a.Output.AddError(err)
-		}
-
-		//Filtering SGs to get only the default SG ID finishing the iteration as soon as we find the default SG.
-		if describeSGOutput != nil {
-
-			for _, SG := range describeSGOutput.SecurityGroups {
-				if *SG.GroupName == "default" {
-					defaultSecurityGroupID = *SG.GroupId
-				}
-			}
-
-			//Replacing the SGs attach to instance by the default one. This is to clean the SGs created in case the instance
-			//termination times out
-			_, err = a.AwsClient.ModifyInstanceAttribute(vei.Ctx, &ec2.ModifyInstanceAttributeInput{
-				InstanceId: &instanceID,
-				Groups:     []string{defaultSecurityGroupID},
-			})
-			if err != nil {
-				a.Output.AddError(err)
-			}
-		}
-
 		a.Logger.Info(vei.Ctx, "Deleting instance with ID: %s", instanceID)
 		if err := a.AwsClient.TerminateEC2Instance(vei.Ctx, instanceID); err != nil {
 			a.Output.AddError(err)
