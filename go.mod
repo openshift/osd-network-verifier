@@ -9,9 +9,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.24.0
 	github.com/aws/smithy-go v1.9.0
 	github.com/go-playground/validator v9.31.0+incompatible
+	github.com/golang/mock v1.6.0
 	github.com/openshift-online/ocm-sdk-go v0.1.224
 	github.com/spf13/cobra v1.8.0
-	go.uber.org/mock v0.4.0
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
 	google.golang.org/api v0.84.0
 )
