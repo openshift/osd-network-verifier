@@ -191,8 +191,8 @@ func TestGenerateUserData_ExceededMaxSize(t *testing.T) {
 
 func TestIpPermissionFromURL(t *testing.T) {
 	type args struct {
-		ipUrlStr          string
-		ipPermDescription string
+		urlStr      string
+		description string
 	}
 	tests := []struct {
 		name    string
@@ -203,8 +203,8 @@ func TestIpPermissionFromURL(t *testing.T) {
 		{
 			name: "IPv4 happy path",
 			args: args{
-				ipUrlStr:          "http://1.2.3.4:567",
-				ipPermDescription: "test4",
+				urlStr:      "http://1.2.3.4:567",
+				description: "test4",
 			},
 			want: &ec2Types.IpPermission{
 				FromPort:   awss.Int32(567),
@@ -221,8 +221,8 @@ func TestIpPermissionFromURL(t *testing.T) {
 		{
 			name: "IPv6 happy path",
 			args: args{
-				ipUrlStr:          "http://[ff06::c3]:567",
-				ipPermDescription: "test6",
+				urlStr:      "http://[ff06::c3]:567",
+				description: "test6",
 			},
 			want: &ec2Types.IpPermission{
 				FromPort:   awss.Int32(567),
@@ -239,8 +239,8 @@ func TestIpPermissionFromURL(t *testing.T) {
 		{
 			name: "Inferred port",
 			args: args{
-				ipUrlStr:          "https://10.0.8.8",
-				ipPermDescription: "testi",
+				urlStr:      "https://10.0.8.8",
+				description: "testi",
 			},
 			want: &ec2Types.IpPermission{
 				FromPort:   awss.Int32(443),
@@ -255,33 +255,95 @@ func TestIpPermissionFromURL(t *testing.T) {
 			},
 		},
 		{
-			name: "Error on non-IP",
+			name: "Good https fqdn",
 			args: args{
-				ipUrlStr:          "https://example.com:8080",
-				ipPermDescription: "teste",
+				urlStr:      "https://example.fqdn.test.com",
+				description: "test-fqdn",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(443),
+				ToPort:     awss.Int32(443),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("0.0.0.0/0"),
+						Description: awss.String("test-fqdn"),
+					},
+				},
+			},
+		},
+		{
+			name: "Good http fqdn",
+			args: args{
+				urlStr:      "http://example.fqdn.test.com",
+				description: "test-fqdn2",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(80),
+				ToPort:     awss.Int32(80),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("0.0.0.0/0"),
+						Description: awss.String("test-fqdn2"),
+					},
+				},
+			},
+		},
+		{
+			name: "Good fqdn with port",
+			args: args{
+				urlStr:      "http://example.fqdn.test.com:7654",
+				description: "test-fqdn3",
+			},
+			want: &ec2Types.IpPermission{
+				FromPort:   awss.Int32(7654),
+				ToPort:     awss.Int32(7654),
+				IpProtocol: awss.String("tcp"),
+				IpRanges: []ec2Types.IpRange{
+					{
+						CidrIp:      awss.String("0.0.0.0/0"),
+						Description: awss.String("test-fqdn3"),
+					},
+				},
+			},
+		},
+		{
+			name: "Bad fqdn",
+			args: args{
+				urlStr:      "http://example.b>d.fqdn.test.com:8080",
+				description: "teste",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Missing URL scheme",
+			args: args{
+				urlStr:      "example.bad.fqdn.test.com:8080",
+				description: "teste",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Error on inferring non-http(s) scheme",
 			args: args{
-				ipUrlStr:          "ssh://example.com",
-				ipPermDescription: "teste",
+				urlStr:      "ssh://example.com",
+				description: "teste",
 			},
 			wantErr: true,
 		},
 		{
 			name: "Error on bad URL",
 			args: args{
-				ipUrlStr:          "not a URL",
-				ipPermDescription: "teste",
+				urlStr:      "not a URL",
+				description: "teste",
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ipPermissionFromURL(tt.args.ipUrlStr, tt.args.ipPermDescription)
+			got, err := ipPermissionFromURL(tt.args.urlStr, tt.args.description)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ipPermissionFromURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -295,8 +357,8 @@ func TestIpPermissionFromURL(t *testing.T) {
 
 func Test_ipPermissionSetFromURLs(t *testing.T) {
 	type args struct {
-		ipURLStrs               []string
-		ipPermDescriptionPrefix string
+		urlStrs           []string
+		descriptionPrefix string
 	}
 	tests := []struct {
 		name    string
@@ -307,8 +369,8 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 		{
 			name: "single-URL happy path",
 			args: args{
-				ipURLStrs:               []string{"http://1.2.3.4:567"},
-				ipPermDescriptionPrefix: "single test: ",
+				urlStrs:           []string{"http://1.2.3.4:567"},
+				descriptionPrefix: "single test: ",
 			},
 			want: []ec2Types.IpPermission{
 				{
@@ -327,8 +389,8 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 		{
 			name: "multiple unique URL happy path",
 			args: args{
-				ipURLStrs:               []string{"http://1.2.3.4:567", "https://8.9.10.11:1213"},
-				ipPermDescriptionPrefix: "multi-unique test: ",
+				urlStrs:           []string{"http://1.2.3.4:567", "https://8.9.10.11:1213"},
+				descriptionPrefix: "multi-unique test: ",
 			},
 			want: []ec2Types.IpPermission{
 				{
@@ -358,8 +420,8 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 		{
 			name: "multiple equivalent URLs",
 			args: args{
-				ipURLStrs:               []string{"http://1.2.3.4:567", "https://1.2.3.4:567"},
-				ipPermDescriptionPrefix: "multi-equivalent test: ",
+				urlStrs:           []string{"http://1.2.3.4:567", "https://1.2.3.4:567"},
+				descriptionPrefix: "multi-equivalent test: ",
 			},
 			want: []ec2Types.IpPermission{
 				{
@@ -378,8 +440,8 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 		{
 			name: "multiple identical URLs",
 			args: args{
-				ipURLStrs:               []string{"http://1.2.3.4:567", "http://1.2.3.4:567"},
-				ipPermDescriptionPrefix: "multi-identical test: ",
+				urlStrs:           []string{"http://1.2.3.4:567", "http://1.2.3.4:567"},
+				descriptionPrefix: "multi-identical test: ",
 			},
 			want: []ec2Types.IpPermission{
 				{
@@ -395,11 +457,39 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "multiple domain URLs",
+			args: args{
+				urlStrs:           []string{"http://proxy.example.org:567", "https://proxy.example.org:567"},
+				descriptionPrefix: "multi-identical test: ",
+			},
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("0.0.0.0/0"),
+							Description: awss.String("multi-identical test: http://proxy.example.org:567"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "domain URLs overlapping with default SG set",
+			args: args{
+				urlStrs:           []string{"http://proxy.example.org:80", "https://proxy.example.org:443"},
+				descriptionPrefix: "multi-identical test: ",
+			},
+			want: []ec2Types.IpPermission{},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ipPermissionSetFromURLs(tt.args.ipURLStrs, tt.args.ipPermDescriptionPrefix)
+			got, err := ipPermissionSetFromURLs(tt.args.urlStrs, tt.args.descriptionPrefix)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ipPermissionSetFromURLs() error = %v, wantErr %v", err, tt.wantErr)
 				return
