@@ -240,6 +240,11 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 				Tags:         buildTags(input.tags),
 			},
 		},
+		//enable IMDSv2 for instances
+		MetadataOptions: &ec2Types.InstanceMetadataOptionsRequest{
+			HttpTokens:   ec2Types.HttpTokensStateRequired,
+			HttpEndpoint: ec2Types.InstanceMetadataEndpointStateEnabled,
+		},
 		UserData: awsTools.String(input.userdata),
 	}
 
