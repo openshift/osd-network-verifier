@@ -9,6 +9,16 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
 
+// Enumerated type representing the platform underlying the cluster-under-test
+const (
+	PlatformAWS           = "aws"           // deprecated: use PlatformAWSClassic
+	PlatformGCP           = "gcp"           // deprecated: use PlatformGCPClassic
+	PlatformHostedCluster = "hostedcluster" // deprecated: use PlatformAWSHCP
+	PlatformAWSClassic    = "aws-classic"
+	PlatformGCPClassic    = "gcp-classic"
+	PlatformAWSHCP        = "aws-hcp"
+)
+
 //go:embed config/userdata.yaml
 var UserdataTemplate string
 
@@ -90,9 +100,15 @@ func IPPermissionsEquivalent(a ec2Types.IpPermission, b ec2Types.IpPermission) b
 	return true
 }
 
-// Enumerated type representing the platform underlying the cluster-under-test
-const (
-	PlatformAWS           string = "aws"
-	PlatformGCP           string = "gcp"
-	PlatformHostedCluster string = "hostedcluster"
-)
+func GetPlatformType(platformType string) (string, error) {
+	switch platformType {
+	case PlatformAWS, PlatformAWSClassic:
+		return "aws", nil
+	case PlatformGCP, PlatformGCPClassic:
+		return "gcp", nil
+	case PlatformHostedCluster, PlatformAWSHCP:
+		return "hostedcluster", nil
+	default:
+		return "", errors.New("invalid platform type")
+	}
+}
