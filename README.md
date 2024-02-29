@@ -53,7 +53,7 @@ Golden AMI provides the following:
 
 ### Egress Lists
 
-This lists of essential domains for egress verification should be maintained in the [GitLab repo](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/config/). Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L46) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
+This lists of essential domains for egress verification should be maintained in the [GitLab repo](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/config/). Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L94) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
 
 ### IAM Permission Requirement List
 
