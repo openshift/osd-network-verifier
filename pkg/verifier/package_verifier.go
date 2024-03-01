@@ -34,11 +34,13 @@ type ValidateEgressInput struct {
 	SkipInstanceTermination                            bool
 	TerminateDebugInstance                             string
 	ImportKeyPair                                      string
+	ForceTempSecurityGroup                             bool
 }
 type AwsEgressConfig struct {
-	KmsKeyID         string
-	SecurityGroupId  string // Deprecated: prefer securityGroupIDs
-	SecurityGroupIDs []string
+	KmsKeyID          string
+	SecurityGroupId   string // Deprecated: prefer securityGroupIDs
+	SecurityGroupIDs  []string
+	TempSecurityGroup string
 }
 type GcpEgressConfig struct {
 	Region, Zone, ProjectID, VpcName string
