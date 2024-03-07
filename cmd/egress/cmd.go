@@ -48,6 +48,7 @@ type egressConfig struct {
 	skipAWSInstanceTermination bool
 	terminateDebugInstance     string
 	importKeyPair              string
+	ForceTempSecurityGroup     bool
 }
 
 func getDefaultRegion(platformType string) string {
@@ -145,6 +146,7 @@ are set correctly before execution.
 				vei.SkipInstanceTermination = config.skipAWSInstanceTermination
 				vei.TerminateDebugInstance = config.terminateDebugInstance
 				vei.ImportKeyPair = config.importKeyPair
+				vei.ForceTempSecurityGroup = config.ForceTempSecurityGroup
 
 				out := verifier.ValidateEgress(awsVerifier, vei)
 				out.Summary(config.debug)
@@ -238,6 +240,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().BoolVar(&config.skipAWSInstanceTermination, "skip-termination", false, "(optional) Skip instance termination to allow further debugging")
 	validateEgressCmd.Flags().StringVar(&config.terminateDebugInstance, "terminate-debug", "", "(optional) Takes the debug instance ID and terminates it")
 	validateEgressCmd.Flags().StringVar(&config.importKeyPair, "import-keypair", "", "(optional) Takes the path to your public key used to connect to Debug Instance. Automatically skips Termination")
+	validateEgressCmd.Flags().BoolVar(&config.ForceTempSecurityGroup, "force-temp-security-group", false, "(optional) Enforces creation of Temporary SG even if --security-group-ids flag is used")
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
 	}
