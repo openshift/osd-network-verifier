@@ -146,9 +146,11 @@ repeat the verification process for each subnet ID.
         --cacert string               (optional) path to cacert file to be used upon https requests being made by verifier
         --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [])
         --debug                       (optional) if true, enable additional debug-level logging
+        --force-temp-security-group   (optional) Enforces creation of Temporary SG creation even if --security-group-ids flag is used
         --http-proxy string           (optional) http-proxy to be used upon http requests being made by verifier, format: http://user:pass@x.x.x.x:8978
         --https-proxy string          (optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978
         --image-id string             (optional) cloud image for the compute instance
+        --import-keypair string       (optional) Takes the path to your public key used to connect to Debug Instance. Automatically skips Termination
         --instance-type string        (optional) compute instance type
         --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
         --no-tls                      (optional) if true, skip client-side SSL certificate validation
@@ -182,8 +184,17 @@ repeat the verification process for each subnet ID.
     --cacert path-to-ca.pem \
     --no-tls # optional, used to bypass ca.pem validation (https)
 ```
+##### Force Temporary Security Group Creation #####
 
+* Follow the similar flow above, till execute
+* Use the --force-temp-security-group
 
+```shell
+./osd-network-verifier egress \
+    --subnet-id <subnet_id>  \
+    --force-temp-security-group true \
+    --security-group-ids=<securityGroupID-1, ..., securityGroupID-N> # To add extra security Groups in addtion to the temporary one.
+```
 
 ##### 1.1.2 Go implementation Examples #####
 - [AWS Go SDK v1](../../examples/aws/verify_egressv1.go)  
