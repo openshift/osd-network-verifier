@@ -244,7 +244,8 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			Groups:     []string{defaultSecurityGroupID},
 		})
 		if err != nil {
-			a.Logger.Info(vei.Ctx, "Warning: Could not modify instance attribures. Proceeding with Instance Deletion without dettaching Security Groups")
+			a.Logger.Info(vei.Ctx, "Unable to detach instance from security group. Falling back to slower cloud resource cleanup method.")
+			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Error encountered while trying to detach instance: %s.", err))
 		}
 
 		a.Logger.Info(vei.Ctx, "Deleting instance with ID: %s", instanceID)
