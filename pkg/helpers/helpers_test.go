@@ -271,3 +271,67 @@ func TestIPPermissionsEquivalent(t *testing.T) {
 		})
 	}
 }
+
+func TestGetPlatformType(t *testing.T) {
+	tests := []struct {
+		name         string
+		platformType string
+		want         string
+		wantErr      bool
+	}{
+		{
+			name:         "Platform type aws",
+			platformType: PlatformAWS,
+			want:         "aws",
+			wantErr:      false,
+		},
+		{
+			name:         "Platform type gcp",
+			platformType: PlatformGCP,
+			want:         "gcp",
+			wantErr:      false,
+		},
+		{
+			name:         "Platform type hostedcluster",
+			platformType: PlatformHostedCluster,
+			want:         "hostedcluster",
+			wantErr:      false,
+		},
+		{
+			name:         "Platform type aws-classic",
+			platformType: PlatformAWSClassic,
+			want:         "aws",
+			wantErr:      false,
+		},
+		{
+			name:         "Platform type gcp-classic",
+			platformType: PlatformGCPClassic,
+			want:         "gcp",
+			wantErr:      false,
+		},
+		{
+			name:         "Platform type aws-hcp",
+			platformType: PlatformAWSHCP,
+			want:         "hostedcluster",
+			wantErr:      false,
+		},
+		{
+			name:         "Invalid platform type",
+			platformType: "foobar",
+			want:         "",
+			wantErr:      true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetPlatformType(tt.platformType)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetPlatformType() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("GetPlatformType() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

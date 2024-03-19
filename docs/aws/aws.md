@@ -134,11 +134,11 @@ repeat the verification process for each subnet ID.
 
        ```shell        
       # using AWS profile on an OSD/ROSA cluster
-      ./osd-network-verifier egress --platform aws --subnet-id $SUBNET_ID --profile $AWS_PROFILE
+      ./osd-network-verifier egress --platform aws-classic --subnet-id $SUBNET_ID --profile $AWS_PROFILE
       
       # using AWS secret on a HyperShift hosted cluster
         AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY  \
-      ./osd-network-verifier egress --platform hostedcluster --subnet-id $SUBNET_ID  
+      ./osd-network-verifier egress --platform aws-hcp --subnet-id $SUBNET_ID  
         ```
    
         Additional optional flags for overriding defaults:
@@ -154,7 +154,7 @@ repeat the verification process for each subnet ID.
         --instance-type string        (optional) compute instance type
         --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
         --no-tls                      (optional) if true, skip client-side SSL certificate validation
-        --platform string             (optional) infra platform type, which determines which endpoints to test. Either 'aws', 'gcp', or 'hostedcluster' (hypershift) (default "aws")
+        --platform string              (optional) infra platform type, which determines which endpoints to test. Either 'aws-classic', 'gcp-classic', or 'hosted-cp' (hypershift) (default "aws-hcp")
         --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored
         --region string               (optional) compute instance region. If absent, environment var AWS_REGION = us-east-2 and GCP_REGION = us-east1 will be used
         --security-group-ids strings  (optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created
@@ -162,7 +162,7 @@ repeat the verification process for each subnet ID.
         --subnet-id string            source subnet ID
         --terminate-debug string      (optional) Takes the debug instance ID and terminates it
         --timeout duration            (optional) timeout for individual egress verification requests (default 2s)
-        --vpc-name string             (optional unless --platform='gcp') VPC name where GCP cluster is installed
+        --vpc-name string             (optional unless --platform='gcp-classic') VPC name where GCP cluster is installed
         ```
    
        Get cli help:

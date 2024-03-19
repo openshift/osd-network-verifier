@@ -58,7 +58,7 @@ repeat the verification process for each subnet ID.
 
        ```shell        
       # GCP
-      ./osd-network-verifier egress --gcp --subnet-id $SUBNET_ID 
+      ./osd-network-verifier egress --platform gcp-classic --subnet-id $SUBNET_ID 
       
         Additional optional flags for overriding defaults (image-id, kms-key will be added in the future):
       ```shell
