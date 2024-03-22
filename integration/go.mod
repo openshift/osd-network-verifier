@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.14.6
 	github.com/aws/smithy-go v1.13.5
 	github.com/jmespath/go-jmespath v0.4.0
+	github.com/openshift-online/ocm-sdk-go v0.1.325
 	github.com/openshift/osd-network-verifier v0.1.1-0.20230307184731-c061a2224398
 )
 
@@ -25,8 +26,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.12.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.18.6 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/validator v9.31.0+incompatible // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/openshift-online/ocm-sdk-go v0.1.325 // indirect
-	golang.org/x/net v0.8.0 // indirect
+	github.com/leodido/go-urn v1.4.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 )
