@@ -22,6 +22,9 @@ const (
 //go:embed config/userdata.yaml
 var UserdataTemplate string
 
+//go:embed config/curl-userdata.yaml
+var CurlProbeUserdataTemplate string
+
 // RandSeq generates random string with n characters.
 func RandSeq(n int) string {
 	rand.Seed(time.Now().UnixNano())

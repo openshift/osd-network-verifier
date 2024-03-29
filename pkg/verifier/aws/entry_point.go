@@ -132,7 +132,31 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		userDataVariables["DELAY"] = "60"
 	}
 
-	userData, err := generateUserData(userDataVariables)
+	// Default to legacy userData template
+	userDataTemplate := helpers.UserdataTemplate
+
+	// If experimentalCurlProbe flag set, adjust userData template
+	experimentalCurlProbeUrls, experimentalCurlProbeEnabled := vei.FeatureFlags["experimentalCurlProbe"]
+	if experimentalCurlProbeEnabled {
+		userDataTemplate = helpers.CurlProbeUserdataTemplate
+		userDataVariables["URLS"] = experimentalCurlProbeUrls
+		userDataVariables["TIMEOUT"] = fmt.Sprintf("%.f", vei.Timeout.Seconds())
+		if userDataVariables["CACERT"] != "" {
+			yamlPreamble := `write_files:
+- path: /proxy.pem
+  permissions: '0755'
+  encoding: b64
+  content: `
+			userDataVariables["CACERT"] = yamlPreamble + userDataVariables["CACERT"]
+			userDataVariables["CURLOPT"] += "--cacert /proxy.pem "
+
+		}
+		if vei.Proxy.NoTls {
+			userDataVariables["CURLOPT"] += "-k "
+		}
+	}
+
+	userData, err := generateUserData(userDataTemplate, userDataVariables)
 	if err != nil {
 		return a.Output.AddError(err)
 	}

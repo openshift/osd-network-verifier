@@ -11,6 +11,7 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -183,7 +184,7 @@ func TestGenerateUserData_ExceededMaxSize(t *testing.T) {
 	}
 
 	// generateUserData should return an error if userData exceeds maximum size.
-	_, err := generateUserData(maxUserData)
+	_, err := generateUserData(helpers.UserdataTemplate, maxUserData)
 	if err == nil {
 		t.Error("generateUserData should return an error if userData exceeds maximum size")
 	}
