@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"math/rand"
+	"regexp"
 	"time"
 
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -114,4 +115,72 @@ func GetPlatformType(platformType string) (string, error) {
 	default:
 		return "", errors.New("invalid platform type")
 	}
+}
+
+// A CurlProbeResult represents all the data the curl probe had to offer regarding its
+// attempt(s) to reach a single URL. This struct is based on the fields curl v7.76.1
+// prints when given the `--write-out "%{json}"` flag. We only use a small fraction of
+// the fields listed below; all others are included for potential future use
+type CurlProbeResult struct {
+	ContentType          string  `json:"content_type"`
+	ErrorMsg             string  `json:"errormsg"`
+	ExitCode             int     `json:"exitcode"`
+	FilenameEffective    string  `json:"filename_effective"`
+	FTPEntryPath         string  `json:"ftp_entry_path"`
+	HTTPCode             int     `json:"http_code"`
+	HTTPConnect          int     `json:"http_connect"`
+	HTTPVersion          string  `json:"http_version"`
+	LocalIP              string  `json:"local_ip"`
+	LocalPort            int     `json:"local_port"`
+	Method               string  `json:"method"`
+	NumConnects          int     `json:"num_connects"`
+	NumHeaders           int     `json:"num_headers"`
+	NumRedirects         int     `json:"num_redirects"`
+	ProxySSLVerifyResult int     `json:"proxy_ssl_verify_result"`
+	RedirectURL          string  `json:"redirect_url"`
+	Referer              string  `json:"referer"`
+	RemoteIP             string  `json:"remote_ip"`
+	RemotePort           int     `json:"remote_port"`
+	ResponseCode         int     `json:"response_code"`
+	Scheme               string  `json:"scheme"`
+	SizeDownload         int     `json:"size_download"`
+	SizeHeader           int     `json:"size_header"`
+	SizeRequest          int     `json:"size_request"`
+	SizeUpload           int     `json:"size_upload"`
+	SpeedDownload        int     `json:"speed_download"`
+	SpeedUpload          int     `json:"speed_upload"`
+	SSLVerifyResult      int     `json:"ssl_verify_result"`
+	TimeAppconnect       float64 `json:"time_appconnect"`
+	TimeConnect          float64 `json:"time_connect"`
+	TimeNamelookup       float64 `json:"time_namelookup"`
+	TimePretransfer      float64 `json:"time_pretransfer"`
+	TimeRedirect         float64 `json:"time_redirect"`
+	TimeStarttransfer    float64 `json:"time_starttransfer"`
+	TimeTotal            float64 `json:"time_total"`
+	URL                  string  `json:"url"`
+	URLEffective         string  `json:"url_effective"`
+	URLNum               int     `json:"urlnum"`
+	CurlVersion          string  `json:"curl_version"`
+}
+
+// The following regular expressions are used in fixLeadingZerosInJSON. They'll be used
+// hundreds of times per verifier run, so we declare them globally to avoid unnecessary
+// recompilation
+var reJSONIntsWithLeadingZero = regexp.MustCompile(`":\s*0+[^,.]+[,}]`)
+var reDigits = regexp.MustCompile(`0*(\d+)`)
+
+// fixLeadingZerosInJSON attempts to detect unsigned integers containing leading zeros
+// (e.g, 061 or 000) in strings containing raw JSON and replace them with spec-compliant
+// de-zeroed equivalents. Leading zeros are invalid in JSON, but curl v7.76 and below
+// contain a bug (github.com/curl/curl/issues/6905) that emits them in status codes.
+// Note that strContainingJSON can contain substrings that are not JSON, but
+// such substrings will be subjected to the same regexes and may therefore be modified
+// unintentionally
+func fixLeadingZerosInJSON(strContainingJSON string) string {
+	return reJSONIntsWithLeadingZero.ReplaceAllStringFunc(
+		strContainingJSON,
+		func(substrContainingNum string) string {
+			return string(reDigits.ReplaceAll([]byte(substrContainingNum), []byte("$1"))[:])
+		},
+	)
 }
