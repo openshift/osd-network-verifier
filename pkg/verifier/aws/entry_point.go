@@ -138,6 +138,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	// If experimentalCurlProbe flag set, adjust userData template
 	experimentalCurlProbeUrls, experimentalCurlProbeEnabled := vei.FeatureFlags["experimentalCurlProbe"]
 	if experimentalCurlProbeEnabled {
+		fmt.Println("EXPERIMENTAL CURL PROBE ENABLED")
 		userDataTemplate = helpers.CurlProbeUserdataTemplate
 		userDataVariables["URLS"] = experimentalCurlProbeUrls
 		userDataVariables["TIMEOUT"] = fmt.Sprintf("%.f", vei.Timeout.Seconds())

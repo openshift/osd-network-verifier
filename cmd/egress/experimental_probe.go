@@ -50,7 +50,7 @@ func curlStringFromYAML(filePath string, variables map[string]string) (string, e
 			fmt.Printf("WARN: endpoint %s sets TLSDisabled=true, which is not yet "+
 				"supported by the experimental curl probe. Endpoint will be probed "+
 				"as if TLSDisabled=false, likely causing failed egress check unless "+
-				"--no-tls is passed",
+				"--no-tls is passed\n",
 				endpoint.Host)
 		}
 		// Infer protocol
