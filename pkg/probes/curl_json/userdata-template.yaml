@@ -5,7 +5,7 @@ runcmd:
   - dmesg -n 1
   - echo "${USERDATA_BEGIN}" >/dev/ttyS0
   - export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY}
-  - curl --retry 2 --retry-connrefused -t B -Z -s -I -m ${TIMEOUT} -w "%{stderr}@NV@%{json}\n" ${CURLOPT} ${URLS} --proto =http,https,telnet 2>/dev/ttyS0
+  - curl --retry 2 --retry-connrefused -t B -Z -s -I -m ${TIMEOUT} -w "%{stderr}${LINE_PREFIX}%{json}\n" ${CURLOPT} ${URLS} --proto =http,https,telnet 2>/dev/ttyS0
   - echo "${USERDATA_END}" >/dev/ttyS0
 power_state:
   delay: ${DELAY}

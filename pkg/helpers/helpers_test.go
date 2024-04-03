@@ -336,7 +336,7 @@ func TestGetPlatformType(t *testing.T) {
 	}
 }
 
-func Test_fixLeadingZerosInJSON(t *testing.T) {
+func Test_FixLeadingZerosInJSON(t *testing.T) {
 	tests := []struct {
 		name              string
 		strContainingJSON string
@@ -350,8 +350,8 @@ func Test_fixLeadingZerosInJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := fixLeadingZerosInJSON(tt.strContainingJSON); got != tt.want {
-				t.Errorf("fixLeadingZerosInJSON() = %v, want %v", got, tt.want)
+			if got := FixLeadingZerosInJSON(tt.strContainingJSON); got != tt.want {
+				t.Errorf("FixLeadingZerosInJSON() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -23,9 +23,6 @@ const (
 //go:embed config/userdata.yaml
 var UserdataTemplate string
 
-//go:embed config/curl-userdata.yaml
-var CurlProbeUserdataTemplate string
-
 // RandSeq generates random string with n characters.
 func RandSeq(n int) string {
 	rand.Seed(time.Now().UnixNano())
@@ -117,52 +114,6 @@ func GetPlatformType(platformType string) (string, error) {
 	}
 }
 
-// A CurlProbeResult represents all the data the curl probe had to offer regarding its
-// attempt(s) to reach a single URL. This struct is based on the fields curl v7.76.1
-// prints when given the `--write-out "%{json}"` flag. We only use a small fraction of
-// the fields listed below; all others are included for potential future use
-type CurlProbeResult struct {
-	ContentType          string  `json:"content_type"`
-	ErrorMsg             string  `json:"errormsg"`
-	ExitCode             int     `json:"exitcode"`
-	FilenameEffective    string  `json:"filename_effective"`
-	FTPEntryPath         string  `json:"ftp_entry_path"`
-	HTTPCode             int     `json:"http_code"`
-	HTTPConnect          int     `json:"http_connect"`
-	HTTPVersion          string  `json:"http_version"`
-	LocalIP              string  `json:"local_ip"`
-	LocalPort            int     `json:"local_port"`
-	Method               string  `json:"method"`
-	NumConnects          int     `json:"num_connects"`
-	NumHeaders           int     `json:"num_headers"`
-	NumRedirects         int     `json:"num_redirects"`
-	ProxySSLVerifyResult int     `json:"proxy_ssl_verify_result"`
-	RedirectURL          string  `json:"redirect_url"`
-	Referer              string  `json:"referer"`
-	RemoteIP             string  `json:"remote_ip"`
-	RemotePort           int     `json:"remote_port"`
-	ResponseCode         int     `json:"response_code"`
-	Scheme               string  `json:"scheme"`
-	SizeDownload         int     `json:"size_download"`
-	SizeHeader           int     `json:"size_header"`
-	SizeRequest          int     `json:"size_request"`
-	SizeUpload           int     `json:"size_upload"`
-	SpeedDownload        int     `json:"speed_download"`
-	SpeedUpload          int     `json:"speed_upload"`
-	SSLVerifyResult      int     `json:"ssl_verify_result"`
-	TimeAppconnect       float64 `json:"time_appconnect"`
-	TimeConnect          float64 `json:"time_connect"`
-	TimeNamelookup       float64 `json:"time_namelookup"`
-	TimePretransfer      float64 `json:"time_pretransfer"`
-	TimeRedirect         float64 `json:"time_redirect"`
-	TimeStarttransfer    float64 `json:"time_starttransfer"`
-	TimeTotal            float64 `json:"time_total"`
-	URL                  string  `json:"url"`
-	URLEffective         string  `json:"url_effective"`
-	URLNum               int     `json:"urlnum"`
-	CurlVersion          string  `json:"curl_version"`
-}
-
 // The following regular expressions are used in fixLeadingZerosInJSON. They'll be used
 // hundreds of times per verifier run, so we declare them globally to avoid unnecessary
 // recompilation
@@ -176,7 +127,7 @@ var reDigits = regexp.MustCompile(`0*(\d+)`)
 // Note that strContainingJSON can contain substrings that are not JSON, but
 // such substrings will be subjected to the same regexes and may therefore be modified
 // unintentionally
-func fixLeadingZerosInJSON(strContainingJSON string) string {
+func FixLeadingZerosInJSON(strContainingJSON string) string {
 	return reJSONIntsWithLeadingZero.ReplaceAllStringFunc(
 		strContainingJSON,
 		func(substrContainingNum string) string {
