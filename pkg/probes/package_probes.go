@@ -8,5 +8,5 @@ type Probe interface {
 	GetStartingToken() string
 	GetEndingToken() string
 	GetUserDataTemplate() string
-	ParseProbeOutput(string) *output.Output
+	ParseProbeOutput(string, *output.Output)
 }
