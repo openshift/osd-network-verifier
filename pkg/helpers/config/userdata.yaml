@@ -2,7 +2,7 @@
 repo_update: true
 write_files:
   - path: /run-container.sh
-    permissions: 755
+    permissions: "0755"
     content: |
       #!/bin/bash
       echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
