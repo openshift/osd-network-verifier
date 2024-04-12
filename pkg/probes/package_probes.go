@@ -7,6 +7,6 @@ import (
 type Probe interface {
 	GetStartingToken() string
 	GetEndingToken() string
-	GetUserDataTemplate() string
+	GetExpandedUserData(map[string]string) (string, error)
 	ParseProbeOutput(string, *output.Output)
 }

@@ -3,8 +3,10 @@ package helpers
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"math/rand"
 	"regexp"
+	"strings"
 	"time"
 
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -134,4 +136,52 @@ func FixLeadingZerosInJSON(strContainingJSON string) string {
 			return string(reDigits.ReplaceAll([]byte(substrContainingNum), []byte("$1"))[:])
 		},
 	)
+}
+
+// ExtractRequiredVariablesDirective looks for a "directive line" in a YAML string resembling:
+// # network-verifier-required-variables=VAR_X,VAR_Y,VAR_Z
+// If such a string is found, the comma-separated values after the '=' are transformed into a
+// slice of strings, e.g., ["VAR_X", "VAR_Y", "VAR_Z"]. That slice is returned alongside the
+// original string, minus any directive lines. Only variables listed in the first (leftmost)
+// directive line will be extracted/returned, but all directive lines will be removed
+func ExtractRequiredVariablesDirective(yamlStr string) (string, []string) {
+	reDirective := regexp.MustCompile(
+		`(?m)^[ \t]*#[ \t]*network-verifier-required-variables[ \t]*=[ \t]*([\w,]+)[ \t]*$`,
+	)
+
+	submatches := reDirective.FindStringSubmatch(yamlStr)
+	// submatches will be either nil or a 2-str slice (full directive line, comma-separated values)
+	if len(submatches) < 2 {
+		return yamlStr, []string{}
+	}
+
+	// Erase the directive line and split comma-separated vars string into slice
+	directivelessYAMLStr := reDirective.ReplaceAllLiteralString(yamlStr, "")
+	requiredVariables := strings.Split(strings.TrimSpace(submatches[1]), ",")
+	return directivelessYAMLStr, requiredVariables
+}
+
+// ValidateProvidedVariables returns an error if either (a.) providedVarMap contains a key also present in
+// presetVarMap, or (b.) requiredVarSlice contains a value not present in the union of providedVarMap's keys
+// and presetVarMap's keys. IOW, this returns nil as long as providedVarMap.keys ∩ presetVarMap.keys = ∅ and
+// requiredVarSlice ⊆ (providedVarMap.keys ∪ presetVarMap.keys)
+func ValidateProvidedVariables(providedVarMap map[string]string, presetVarMap map[string]string, requiredVarSlice []string) error {
+	// Error if user tries to set preset variables
+	for providedVarName := range providedVarMap {
+		if _, isPreset := presetVarMap[providedVarName]; isPreset {
+			return fmt.Errorf("must not overwrite preset user-data variable %s", providedVarName)
+		}
+	}
+
+	// Error if required variables not set
+	for _, requiredVarName := range requiredVarSlice {
+		// Ignore requiredVar if pre-set
+		if _, isPreset := presetVarMap[requiredVarName]; isPreset {
+			continue
+		}
+		if providedValue, isProvided := providedVarMap[requiredVarName]; !isProvided || providedValue == "" {
+			return fmt.Errorf("must specify non-empty value for required user-data variable %s", requiredVarName)
+		}
+	}
+	return nil
 }
