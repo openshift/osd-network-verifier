@@ -12,6 +12,8 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/probes"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
@@ -134,33 +136,43 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Default to legacy userData template
 	userDataTemplate := helpers.UserdataTemplate
+	userData, err := generateUserData(userDataTemplate, userDataVariables)
+	if err != nil {
+		return a.Output.AddError(err)
+	}
 
 	// If experimentalCurlProbe flag set, adjust userData template
 	experimentalCurlProbeUrls, experimentalCurlProbeEnabled := vei.FeatureFlags["experimentalCurlProbe"]
+	var experimentalProbe probes.Probe
 	if experimentalCurlProbeEnabled {
 		fmt.Println("EXPERIMENTAL CURL PROBE ENABLED")
-		userDataTemplate = helpers.CurlProbeUserdataTemplate
-		userDataVariables["URLS"] = experimentalCurlProbeUrls
-		userDataVariables["TIMEOUT"] = fmt.Sprintf("%.f", vei.Timeout.Seconds())
+		experimentalProbe = curl_json.CurlJSONProbe{}
+		cjpUserDataVariables := map[string]string{
+			"URLS":    experimentalCurlProbeUrls,
+			"TIMEOUT": fmt.Sprintf("%.f", vei.Timeout.Seconds()),
+			"DELAY":   "5",
+		}
 		if userDataVariables["CACERT"] != "" {
 			yamlPreamble := `write_files:
 - path: /proxy.pem
   permissions: '0755'
   encoding: b64
   content: `
-			userDataVariables["CACERT"] = yamlPreamble + userDataVariables["CACERT"]
-			userDataVariables["CURLOPT"] += "--cacert /proxy.pem "
+			cjpUserDataVariables["CACERT"] = yamlPreamble + userDataVariables["CACERT"]
+			cjpUserDataVariables["CURLOPT"] += "--cacert /proxy.pem "
 
 		}
 		if vei.Proxy.NoTls {
-			userDataVariables["CURLOPT"] += "-k "
+			cjpUserDataVariables["CURLOPT"] += "-k "
 		}
+		// TODO enforce length limit
+		unencodedUserData, err := experimentalProbe.GetExpandedUserData(cjpUserDataVariables)
+		if err != nil {
+			return a.Output.AddError(err)
+		}
+		userData = base64.StdEncoding.EncodeToString([]byte(unencodedUserData))
 	}
 
-	userData, err := generateUserData(userDataTemplate, userDataVariables)
-	if err != nil {
-		return a.Output.AddError(err)
-	}
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
 
 	err = setCloudImage(&vei.CloudImageID, a.AwsClient.Region)
@@ -226,7 +238,12 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// Run the result fetcher, which will store egress failures in a.Output.failures
-	if err := a.findUnreachableEndpoints(vei.Ctx, instanceID); err != nil {
+	if !experimentalCurlProbeEnabled {
+		err = a.findUnreachableEndpoints(vei.Ctx, instanceID)
+	} else {
+		err = a.findUnreachableEndpointsExperimental(vei.Ctx, instanceID, experimentalProbe)
+	}
+	if err != nil {
 		a.Output.AddError(err)
 		// Don't return yet; still need to terminate instance
 	}
