@@ -102,7 +102,7 @@ func onvEgressCheck(cfg aws.Config, platform, subnetId string) error {
 	// Call egress validator
 	log.Println("Starting ONV egress validation")
 	out := verifier.ValidateEgress(awsVerifier, vei)
-	out.Summary(false)
+	out.Summary(true)
 	egressFailures := out.GetEgressURLFailures()
 	for _, ef := range egressFailures {
 		log.Printf("egress failure: %s", ef.EgressURL())
