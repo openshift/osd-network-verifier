@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -39,41 +40,47 @@ func main() {
 		log.Fatalf("error fetching enabled regions for AWS account: %v", err)
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(len(enabledRegions))
+
 	for _, enabledRegion := range enabledRegions {
-		regionName := *enabledRegion.RegionName
-		servicequotaClient := servicequotas.NewFromConfig(cfg, func(o *servicequotas.Options) { o.Region = regionName })
-		quota, err := getPublicAMIServiceQuota(servicequotaClient)
-		if err != nil {
-			log.Fatalf("error fetching image quota for region %v: %v", regionName, err)
-		}
-
-		ec2Client := ec2.NewFromConfig(cfg, func(o *ec2.Options) { o.Region = regionName })
-		images, err := getPublicImages(ec2Client)
-		if err != nil {
-			log.Fatalf("error fetching images for region %v: %v", regionName, err)
-		}
-
-		if imageCount := len(images); imageCount < quota {
-			if *verbose {
-				fmt.Printf("Region %v is under quota. (Images: %v, Quota: %v)\n", regionName, imageCount, quota)
-			}
-		} else {
-			imageToDelete, err := getOldestImage(images)
+		go func(regionName string) {
+			defer wg.Done()
+			servicequotaClient := servicequotas.NewFromConfig(cfg, func(o *servicequotas.Options) { o.Region = regionName })
+			quota, err := getPublicAMIServiceQuota(servicequotaClient)
 			if err != nil {
-				log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
+				log.Fatalf("error fetching image quota for region %v: %v", regionName, err)
 			}
-			if *dryRun {
-				fmt.Printf("Region %v is at quota (%v) - would delete %v\n", regionName, quota, *imageToDelete.ImageId)
-			} else {
-				err := deregisterImage(ec2Client, imageToDelete)
-				if err != nil {
-					log.Fatalf("error deregistering image %v in region %v: %v", *imageToDelete.ImageId, regionName, err)
+
+			ec2Client := ec2.NewFromConfig(cfg, func(o *ec2.Options) { o.Region = regionName })
+			images, err := getPublicImages(ec2Client)
+			if err != nil {
+				log.Fatalf("error fetching images for region %v: %v", regionName, err)
+			}
+
+			if imageCount := len(images); imageCount < quota {
+				if *verbose {
+					fmt.Printf("Region %v is under quota. (Images: %v, Quota: %v)\n", regionName, imageCount, quota)
 				}
-				fmt.Printf("successfully deregistered image %v in region %v", *imageToDelete.ImageId, regionName)
+			} else {
+				imageToDelete, err := getOldestImage(images)
+				if err != nil {
+					log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
+				}
+				if *dryRun {
+					fmt.Printf("Region %v is at quota (%v) - would delete %v\n", regionName, quota, *imageToDelete.ImageId)
+				} else {
+					err := deregisterImage(ec2Client, imageToDelete)
+					if err != nil {
+						log.Fatalf("error deregistering image %v in region %v: %v", *imageToDelete.ImageId, regionName, err)
+					}
+					fmt.Printf("successfully deregistered image %v in region %v", *imageToDelete.ImageId, regionName)
+				}
 			}
-		}
+		}(*enabledRegion.RegionName)
 	}
 
+	wg.Wait()
 	fmt.Println("Done!")
 }
 
