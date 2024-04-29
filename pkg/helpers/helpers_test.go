@@ -481,3 +481,114 @@ func TestValidateProvidedVariables(t *testing.T) {
 		})
 	}
 }
+
+func TestCutBetween(t *testing.T) {
+	type args struct {
+		s             string
+		startingToken string
+		endingToken   string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "happy path",
+			args: args{
+				s:             "foo123bar",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "123",
+		},
+		{
+			name: "tokens swapped",
+			args: args{
+				s:             "bar123foo",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "",
+		},
+		{
+			name: "tokens with regexp characters",
+			args: args{
+				s:             `[].*123\S\D`,
+				startingToken: `[].*`,
+				endingToken:   `\S\D`,
+			},
+			want: "123",
+		},
+		{
+			name: "missing startingToken",
+			args: args{
+				s:             "123bar",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "",
+		},
+		{
+			name: "missing endingToken",
+			args: args{
+				s:             "foo123",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "",
+		},
+		{
+			name: "missing both tokens",
+			args: args{
+				s:             "123",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "",
+		},
+		{
+			name: "newlines between tokens",
+			args: args{
+				s:             "foo\n\n1\t2\n3bar",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "\n\n1\t2\n3",
+		},
+		{
+			name: "startingToken between tokens",
+			args: args{
+				s:             "foo12foo34bar",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "12foo34",
+		},
+		{
+			name: "endingToken between tokens",
+			args: args{
+				s:             "foo12bar34bar",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "12bar34",
+		},
+		{
+			name: "tokens between tokens",
+			args: args{
+				s:             "foo12barfoobarfoobar34bar",
+				startingToken: "foo",
+				endingToken:   "bar",
+			},
+			want: "12barfoobarfoobar34",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CutBetween(tt.args.s, tt.args.startingToken, tt.args.endingToken); got != tt.want {
+				t.Errorf("CutBetween() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

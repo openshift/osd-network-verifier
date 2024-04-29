@@ -185,3 +185,20 @@ func ValidateProvidedVariables(providedVarMap map[string]string, presetVarMap ma
 	}
 	return nil
 }
+
+// CutBetween returns the part of s between startingToken and endingToken. If startingToken and/or
+// endingToken cannot be found in s, or if there are no characters between the two tokens, this
+// returns an empty string (""). If there are multiple occurrances of each token, the largest possible
+// part of s will be returned (i.e., everything between the leftmost startingToken and the rightmost
+// endingToken, a.k.a. greedy matching)
+func CutBetween(s string, startingToken string, endingToken string) string {
+	escapedStartingToken := regexp.QuoteMeta(startingToken)
+	escapedEndingToken := regexp.QuoteMeta(endingToken)
+	reCutBetween := regexp.MustCompile(escapedStartingToken + `([\s\S]*)` + escapedEndingToken)
+	matches := reCutBetween.FindStringSubmatch(s)
+	// matches will be nil or a single-element slice if tokens are missing from str
+	if len(matches) < 2 {
+		return ""
+	}
+	return matches[1]
+}
