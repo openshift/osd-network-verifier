@@ -80,15 +80,15 @@ func (res CurlJSONProbeResult) isSuccessfulConnection() bool {
 	return false
 }
 
-// bulkDeserializeProbeOutput wraps deserializePrefixedCurlJSON, creating a
+// bulkDeserializeCurlJSONProbeResult wraps deserializeCurlJSONProbeResult, creating a
 // CurlJSONProbeResult from a each line (containing prefixed JSON) of the provided
 // string. A slice of successfully-deserialized CurlJSONProbeResult-pointers is returned
 // along with a mapping between any malformed lines and their line numbers
-func bulkDeserializePrefixedCurlJSON(serializedLines string) ([]*CurlJSONProbeResult, map[int]error) {
+func bulkDeserializeCurlJSONProbeResult(serializedLines string) ([]*CurlJSONProbeResult, map[int]error) {
 	var results []*CurlJSONProbeResult
 	deserializationErrs := make(map[int]error)
 	for lineNum, serializedLine := range strings.Split(serializedLines, "\n") {
-		probeResultPtr, err := deserializePrefixedCurlJSON(serializedLine)
+		probeResultPtr, err := deserializeCurlJSONProbeResult(serializedLine)
 		if err != nil {
 			deserializationErrs[lineNum] = err
 		}
@@ -99,11 +99,11 @@ func bulkDeserializePrefixedCurlJSON(serializedLines string) ([]*CurlJSONProbeRe
 	return results, deserializationErrs
 }
 
-// deserializePrefixedCurlJSON creates a CurlJSONProbeResult from a single line of
+// deserializeCurlJSONProbeResult creates a CurlJSONProbeResult from a single line of
 // probe console output, which should start with outputLinePrefix followed by a
 // serialized JSON string. If the prefix is missing or JSON deserialization
 // (unmarshalling) fails, (nil, error) is returned
-func deserializePrefixedCurlJSON(prefixedCurlJSON string) (*CurlJSONProbeResult, error) {
+func deserializeCurlJSONProbeResult(prefixedCurlJSON string) (*CurlJSONProbeResult, error) {
 	jsonStr, prefixFound := strings.CutPrefix(strings.TrimSpace(prefixedCurlJSON), outputLinePrefix)
 	if !prefixFound {
 		return nil, fmt.Errorf("missing prefix '%s': %s", outputLinePrefix, prefixedCurlJSON)

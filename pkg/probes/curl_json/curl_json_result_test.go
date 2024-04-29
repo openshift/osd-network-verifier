@@ -139,7 +139,7 @@ func TestCurlJSONProbeResult_isSuccessfulConnection(t *testing.T) {
 	}
 }
 
-func Test_deserializePrefixedCurlJSON(t *testing.T) {
+func Test_deserializeCurlJSONProbeResult(t *testing.T) {
 	tests := []struct {
 		name             string
 		prefixedCurlJSON string
@@ -258,7 +258,7 @@ func Test_deserializePrefixedCurlJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := deserializePrefixedCurlJSON(tt.prefixedCurlJSON)
+			got, err := deserializeCurlJSONProbeResult(tt.prefixedCurlJSON)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("deserializeProbeOutputLine() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -270,7 +270,7 @@ func Test_deserializePrefixedCurlJSON(t *testing.T) {
 	}
 }
 
-func Test_bulkDeserializePrefixedCurlJSON(t *testing.T) {
+func Test_bulkDeserializeCurlJSONProbeResult(t *testing.T) {
 	tests := []struct {
 		name            string
 		serializedLines string
@@ -341,7 +341,7 @@ func Test_bulkDeserializePrefixedCurlJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, errs := bulkDeserializePrefixedCurlJSON(tt.serializedLines)
+			got, errs := bulkDeserializeCurlJSONProbeResult(tt.serializedLines)
 			errKeys := mapKeys(errs)
 			if tt.wantErrsOnLines != nil && !reflect.DeepEqual(tt.wantErrsOnLines, errKeys) {
 				t.Errorf("bulkDeserializePrefixedCurlJSON() want errors on lines %v of input %q, instead got %v", tt.wantErrsOnLines, tt.serializedLines, errs)
