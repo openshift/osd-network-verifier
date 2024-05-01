@@ -62,7 +62,9 @@ func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string
 // the startingToken and the endingToken and a pointer to an Output object. outputDestination
 // will be filled with the results from the egress check
 func (prb CurlJSONProbe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
-	probeResults, errMap := bulkDeserializeCurlJSONProbeResult(helpers.FixLeadingZerosInJSON(probeOutput))
+	// probeOutput first needs to be "repaired" due to curl and AWS bugs
+	repairedProbeOutput := helpers.RemoveTimestamps(helpers.FixLeadingZerosInJSON(probeOutput))
+	probeResults, errMap := bulkDeserializeCurlJSONProbeResult(repairedProbeOutput)
 	for _, probeResult := range probeResults {
 		outputDestination.AddDebugLogs(fmt.Sprintf("%+v\n", probeResult))
 		if !probeResult.isSuccessfulConnection() {

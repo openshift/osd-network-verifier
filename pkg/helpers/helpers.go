@@ -121,6 +121,7 @@ func GetPlatformType(platformType string) (string, error) {
 // recompilation
 var reJSONIntsWithLeadingZero = regexp.MustCompile(`":\s*0+[^,.]+[,}]`)
 var reDigits = regexp.MustCompile(`0*(\d+)`)
+var reBracketedISO8601Timestamps = regexp.MustCompile(`\[[\d-]+T[\d:.]+\]`)
 
 // fixLeadingZerosInJSON attempts to detect unsigned integers containing leading zeros
 // (e.g, 061 or 000) in strings containing raw JSON and replace them with spec-compliant
@@ -136,6 +137,14 @@ func FixLeadingZerosInJSON(strContainingJSON string) string {
 			return string(reDigits.ReplaceAll([]byte(substrContainingNum), []byte("$1"))[:])
 		},
 	)
+}
+
+// RemoveTimestamps attempts to detect and remove the bracketed ISO-8601 timestamps that
+// AWS inexplicably inserts into the output of ec2.GetConsoleOutput() whenever a line
+// exceeds a certain length. This function simply returns the input string after passing
+// it through regexp.ReplaceAllLiteralString()
+func RemoveTimestamps(strContainingTimestamps string) string {
+	return reBracketedISO8601Timestamps.ReplaceAllLiteralString(strContainingTimestamps, "")
 }
 
 // ExtractRequiredVariablesDirective looks for a "directive line" in a YAML string resembling:
