@@ -135,8 +135,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// Default to legacy userData template
-	userDataTemplate := helpers.UserdataTemplate
-	userData, err := generateUserData(userDataTemplate, userDataVariables)
+	userData, err := generateUserData(userDataVariables)
 	if err != nil {
 		return a.Output.AddError(err)
 	}
