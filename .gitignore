@@ -2,6 +2,7 @@
 osd-network-verifier
 network-validator
 integration/integration
+cleangoldenami/cleangoldenami
 
 # ide
 .vscode/

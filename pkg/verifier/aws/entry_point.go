@@ -47,8 +47,12 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// Select config file based on platform type
-	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, vei.PlatformType)
-	if vei.PlatformType == "" {
+	platformTypeStr, err := helpers.GetPlatformType(vei.PlatformType)
+	if err != nil {
+		return a.Output.AddError(err)
+	}
+	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, platformTypeStr)
+	if platformTypeStr == "" {
 		// Default to AWS
 		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PlatformAWS)
 	}
