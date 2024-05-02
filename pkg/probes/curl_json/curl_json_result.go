@@ -52,9 +52,9 @@ type CurlJSONProbeResult struct {
 	CurlVersion          string  `json:"curl_version"`
 }
 
-// isSuccessfulConnection returns true if the CurlJSONProbeResult reports a successful
+// IsSuccessfulConnection returns true if the CurlJSONProbeResult reports a successful
 // connection to its URLEffective, based on curl's exit code
-func (res CurlJSONProbeResult) isSuccessfulConnection() bool {
+func (res CurlJSONProbeResult) IsSuccessfulConnection() bool {
 	// Null/empty scheme string always indicates failed connection
 	if len(res.Scheme) < 1 {
 		return false

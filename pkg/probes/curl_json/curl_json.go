@@ -67,7 +67,7 @@ func (prb CurlJSONProbe) ParseProbeOutput(probeOutput string, outputDestination 
 	probeResults, errMap := bulkDeserializeCurlJSONProbeResult(repairedProbeOutput)
 	for _, probeResult := range probeResults {
 		outputDestination.AddDebugLogs(fmt.Sprintf("%+v\n", probeResult))
-		if !probeResult.isSuccessfulConnection() {
+		if !probeResult.IsSuccessfulConnection() {
 			outputDestination.SetEgressFailures(
 				[]string{fmt.Sprintf("%s (%s)", probeResult.URL, probeResult.ErrorMsg)},
 			)

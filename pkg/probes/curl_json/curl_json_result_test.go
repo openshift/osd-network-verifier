@@ -132,7 +132,7 @@ func TestCurlJSONProbeResult_isSuccessfulConnection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.res.isSuccessfulConnection(); got != tt.want {
+			if got := tt.res.IsSuccessfulConnection(); got != tt.want {
 				t.Errorf("CurlJSONProbeResult.isSuccessfulConnection() = %v, want %v", got, tt.want)
 			}
 		})
