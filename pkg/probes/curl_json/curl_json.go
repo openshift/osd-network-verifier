@@ -39,7 +39,7 @@ func (prb CurlJSONProbe) GetEndingToken() string { return endingToken }
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
 func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
-	// Extract required variables specified in template and check for presence
+	// Extract required variables specified in template (if any)
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 
 	// Ensure userDataVariables complies with requiredVariables and presetUserDataVariables. See
