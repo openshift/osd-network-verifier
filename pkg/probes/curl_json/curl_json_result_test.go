@@ -2,6 +2,7 @@ package curl_json
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -343,6 +344,9 @@ func Test_bulkDeserializeCurlJSONProbeResult(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, errs := bulkDeserializeCurlJSONProbeResult(tt.serializedLines)
 			errKeys := mapKeys(errs)
+			// Need to sort both slices to account for mapKeys() having indeterminate ordering
+			slices.Sort(errKeys)
+			slices.Sort(tt.wantErrsOnLines)
 			if tt.wantErrsOnLines != nil && !reflect.DeepEqual(tt.wantErrsOnLines, errKeys) {
 				t.Errorf("bulkDeserializePrefixedCurlJSON() want errors on lines %v of input %q, instead got %v", tt.wantErrsOnLines, tt.serializedLines, errs)
 				return
