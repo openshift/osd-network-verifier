@@ -27,7 +27,6 @@ var UserdataTemplate string
 
 // RandSeq generates random string with n characters.
 func RandSeq(n int) string {
-	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	for i := range b {
