@@ -120,7 +120,7 @@ func GetPlatformType(platformType string) (string, error) {
 // recompilation
 var reJSONIntsWithLeadingZero = regexp.MustCompile(`":\s*0+[^,.]+[,}]`)
 var reDigits = regexp.MustCompile(`0*(\d+)`)
-var reBracketedISO8601Timestamps = regexp.MustCompile(`\[[\d-]+T[\d:.]+\]`)
+var reBracketedISO8601Timestamps = regexp.MustCompile(`\[[\d-]+T[\d:.]+]`)
 
 // fixLeadingZerosInJSON attempts to detect unsigned integers containing leading zeros
 // (e.g, 061 or 000) in strings containing raw JSON and replace them with spec-compliant
