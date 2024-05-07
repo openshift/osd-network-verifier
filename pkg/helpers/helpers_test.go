@@ -592,3 +592,39 @@ func TestCutBetween(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveTimestamps(t *testing.T) {
+	tests := []struct {
+		name                    string
+		strContainingTimestamps string
+		want                    string
+	}{
+		{
+			name:                    "happy path",
+			strContainingTimestamps: "foo[2024-04-01T17:53:15.971047]bar",
+			want:                    "foobar",
+		},
+		{
+			name:                    "multiple timestamps",
+			strContainingTimestamps: "foo[2024-04-01T17:53:15.971047]bar[2023-10-11T08:12:10.909847]too",
+			want:                    "foobartoo",
+		},
+		{
+			name:                    "no timestamps",
+			strContainingTimestamps: "foo[bTr]",
+			want:                    "foo[bTr]",
+		},
+		{
+			name:                    "raw CurlJSONProbe output",
+			strContainingTimestamps: `@NV@{"content_type":null,"errormsg":"SSL certificate problem: unable to get local issuer certificate","exitcode":60,"filename_effective":null,"ftp_entry_path":null,"http_code":000,"http_connect":000,"http_version":"0","local_ip":"172.31.2.213","local_port":51232,"method":"HEAD","num_connects":1,"num_headers":0,"num_redirects":0,"proxy_ssl_verify_result":0,"redirect_url":null,"referer":null,"remote_ip":"52.55.72.119","remote_port":443,"response_code":000,"scheme":"HTTPS","size_download":0,"size_header":0,"size_request":0,"size_upload":0,"speed_download":0,"speed_upload":0,"ssl_verify_result":20,"time_appconnect":0.000000,"time_connect":0.053023,"time_namelookup":0.009450,"time_pretransfer":0.000000,"time_redirect":0.000000,"time_starttransfer":0.000000,"time_total":0.376118,"url":"https://infogw.api.openshift.com:443","url_effective":"https://infogw.api.openshift.com:443/","urlnum":13,"curl_version":"libcurl/7.76.1 OpenSSL/3.0.7 zlib/1.2.11 brotli/1.0.9 libidn2/2.3.0 libpsl/0.21.1 [2024-04-01T19:50:55.991747](+libidn2/2.3.0) libssh/0.10.4/openssl/zlib nghttp2/1.43.0"}`,
+			want:                    `@NV@{"content_type":null,"errormsg":"SSL certificate problem: unable to get local issuer certificate","exitcode":60,"filename_effective":null,"ftp_entry_path":null,"http_code":000,"http_connect":000,"http_version":"0","local_ip":"172.31.2.213","local_port":51232,"method":"HEAD","num_connects":1,"num_headers":0,"num_redirects":0,"proxy_ssl_verify_result":0,"redirect_url":null,"referer":null,"remote_ip":"52.55.72.119","remote_port":443,"response_code":000,"scheme":"HTTPS","size_download":0,"size_header":0,"size_request":0,"size_upload":0,"speed_download":0,"speed_upload":0,"ssl_verify_result":20,"time_appconnect":0.000000,"time_connect":0.053023,"time_namelookup":0.009450,"time_pretransfer":0.000000,"time_redirect":0.000000,"time_starttransfer":0.000000,"time_total":0.376118,"url":"https://infogw.api.openshift.com:443","url_effective":"https://infogw.api.openshift.com:443/","urlnum":13,"curl_version":"libcurl/7.76.1 OpenSSL/3.0.7 zlib/1.2.11 brotli/1.0.9 libidn2/2.3.0 libpsl/0.21.1 (+libidn2/2.3.0) libssh/0.10.4/openssl/zlib nghttp2/1.43.0"}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RemoveTimestamps(tt.strContainingTimestamps); got != tt.want {
+				t.Errorf("RemoveTimestamps() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

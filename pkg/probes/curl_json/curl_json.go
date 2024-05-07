@@ -28,7 +28,7 @@ var presetUserDataVariables = map[string]string{
 // GetStartingToken returns the string token used to signal the beginning of the probe's output
 func (prb CurlJSONProbe) GetStartingToken() string { return startingToken }
 
-// GetStartingToken returns the string token used to signal the end of the probe's output
+// GetEndingToken returns the string token used to signal the end of the probe's output
 func (prb CurlJSONProbe) GetEndingToken() string { return endingToken }
 
 // GetExpandedUserData returns a YAML-formatted userdata string filled-in ("expanded") with
