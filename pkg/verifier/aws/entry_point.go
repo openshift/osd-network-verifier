@@ -217,7 +217,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 		//Getting a list of the SGs for the current VPC of our instance
 		var defaultSecurityGroupID = ""
-
 		describeSGOutput, err := a.AwsClient.DescribeSecurityGroups(vei.Ctx, &ec2.DescribeSecurityGroupsInput{
 			Filters: []ec2Types.Filter{
 				{
@@ -232,24 +231,29 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		})
 		if err != nil {
 			a.Output.AddError(err)
+			a.Logger.Info(vei.Ctx, "Unable to describe security groups. Falling back to slower cloud resource cleanup method.")
+
 		}
 
-		//Fetch default Security Group ID.
-		for _, SG := range describeSGOutput.SecurityGroups {
-			if *SG.GroupName == "default" {
-				defaultSecurityGroupID = *SG.GroupId
+		if describeSGOutput != nil {
+
+			//Fetch default Security Group ID.
+			for _, SG := range describeSGOutput.SecurityGroups {
+				if *SG.GroupName == "default" {
+					defaultSecurityGroupID = *SG.GroupId
+				}
 			}
-		}
 
-		//Replacing the SGs attach to instance by the default one. This is to clean the SGs created in case the instance
-		//termination times out
-		_, err = a.AwsClient.ModifyInstanceAttribute(vei.Ctx, &ec2.ModifyInstanceAttributeInput{
-			InstanceId: &instanceID,
-			Groups:     []string{defaultSecurityGroupID},
-		})
-		if err != nil {
-			a.Logger.Info(vei.Ctx, "Unable to detach instance from security group. Falling back to slower cloud resource cleanup method.")
-			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Error encountered while trying to detach instance: %s.", err))
+			//Replacing the SGs attach to instance by the default one. This is to clean the SGs created in case the instance
+			//termination times out
+			_, err = a.AwsClient.ModifyInstanceAttribute(vei.Ctx, &ec2.ModifyInstanceAttributeInput{
+				InstanceId: &instanceID,
+				Groups:     []string{defaultSecurityGroupID},
+			})
+			if err != nil {
+				a.Logger.Info(vei.Ctx, "Unable to detach instance from security group. Falling back to slower cloud resource cleanup method.")
+				a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Error encountered while trying to detach instance: %s.", err))
+			}
 		}
 
 		a.Logger.Info(vei.Ctx, "Deleting instance with ID: %s", instanceID)
