@@ -49,6 +49,7 @@ type egressConfig struct {
 	terminateDebugInstance     string
 	importKeyPair              string
 	ForceTempSecurityGroup     bool
+	experimentalCurlProbePath  string
 }
 
 func getDefaultRegion(platformType string) string {
@@ -155,6 +156,21 @@ are set correctly before execution.
 				vei.ImportKeyPair = config.importKeyPair
 				vei.ForceTempSecurityGroup = config.ForceTempSecurityGroup
 
+				// Experimental curl probe; see experimental_probe.go
+				if config.experimentalCurlProbePath != "" {
+					if config.cloudImageID == "" {
+						fmt.Println("must specify a value for --image-id when using --experimental-curl-probe")
+						os.Exit(1)
+					}
+
+					curlStr, err := curlStringFromYAML(config.experimentalCurlProbePath, map[string]string{"AWS_REGION": config.region})
+					if err != nil {
+						fmt.Printf("failed to parse endpoint YAML file: %v\n", err)
+						os.Exit(1)
+					}
+					vei.FeatureFlags = map[string]string{"experimentalCurlProbe": curlStr}
+				}
+
 				out := verifier.ValidateEgress(awsVerifier, vei)
 				out.Summary(config.debug)
 
@@ -244,6 +260,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.terminateDebugInstance, "terminate-debug", "", "(optional) Takes the debug instance ID and terminates it")
 	validateEgressCmd.Flags().StringVar(&config.importKeyPair, "import-keypair", "", "(optional) Takes the path to your public key used to connect to Debug Instance. Automatically skips Termination")
 	validateEgressCmd.Flags().BoolVar(&config.ForceTempSecurityGroup, "force-temp-security-group", false, "(optional) Enforces creation of Temporary SG even if --security-group-ids flag is used")
+	validateEgressCmd.Flags().StringVar(&config.experimentalCurlProbePath, "experimental-curl-probe", "", "(experimental) path to a YAML list of endpoints for testing the curl-based probe. Must also specify --image-id")
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
 	}

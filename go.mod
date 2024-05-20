@@ -1,6 +1,6 @@
 module github.com/openshift/osd-network-verifier
 
-go 1.19
+go 1.20
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.11.2
@@ -14,6 +14,7 @@ require (
 	go.uber.org/mock v0.4.0
 	golang.org/x/oauth2 v0.7.0
 	google.golang.org/api v0.114.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

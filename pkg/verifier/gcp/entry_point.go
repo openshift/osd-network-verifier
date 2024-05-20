@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-	"time"
 
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
@@ -54,9 +53,6 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	if vei.CloudImageID == "" {
 		vei.CloudImageID = cloudImageIDDefault
 	}
-
-	//for random name
-	rand.Seed(time.Now().UnixNano())
 
 	//image list https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel
 
