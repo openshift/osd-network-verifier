@@ -1,0 +1,47 @@
+endpoints:
+  - host: registry.redhat.io
+    ports:
+      - 443
+  - host: quay.io
+    ports:
+      - 443
+  - host: cdn01.quay.io
+    ports:
+      - 443
+  - host: cdn02.quay.io
+    ports:
+      - 443
+  - host: cdn03.quay.io
+    ports:
+      - 443
+  - host: console.redhat.com
+    ports:
+      - 443
+  - host: infogw.api.openshift.com
+    ports:
+      - 443
+  - host: mirror.openshift.com
+    ports:
+      - 443
+  - host: registry.access.redhat.com
+    ports:
+      - 443
+  - host: quayio-production-s3.s3.amazonaws.com
+    ports:
+      - 443
+  - host: sts.amazonaws.com
+    ports:
+      - 443
+  - host: sts.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: sso.redhat.com
+    ports:
+      - 443
+  - host: api.openshift.com
+    ports:
+      - 443
+  - host: access.redhat.com
+    ports:
+      - 443
+
