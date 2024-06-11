@@ -3,33 +3,38 @@ package cmd
 import (
 	"flag"
 	"fmt"
-	"os"
-
 	"github.com/openshift/osd-network-verifier/cmd/dns"
 	"github.com/openshift/osd-network-verifier/cmd/egress"
+	"github.com/openshift/osd-network-verifier/version"
 	"github.com/spf13/cobra"
+	"os"
 )
 
-// GitCommit is the short git commit hash from the environment
-var GitCommit string
-
-// Version is the tag version from the environment
-var Version string
+type verifierOptions struct {
+	debug bool
+}
 
 // NewCmdRoot represents the base command when called without any subcommands
 func NewCmdRoot() *cobra.Command {
+	opts := verifierOptions{}
 	rootCmd := &cobra.Command{
 		Use:     "osd-network-verifier",
 		Example: "./osd-network-verifier [command] [flags]",
-		Version: fmt.Sprintf("%s, GitCommit: %s", Version, GitCommit),
 		Short:   "OSD network verifier CLI",
+		Version: fmt.Sprintf("%v@%v", version.Version, version.ShortCommitHash),
 		Long: `CLI tool for pre-flight verification of VPC configuration against OSD requirements. 
 For more information see https://github.com/openshift/osd-network-verifier/blob/main/README.md`,
 		DisableAutoGenTag: true,
-		Run:               help,
+		PersistentPreRun: func(*cobra.Command, []string) {
+			if opts.debug {
+				fmt.Printf("Version:\t%v\nCommit Hash:\t%v\n", version.Version, version.CommitHash)
+			}
+		},
+		Run: help,
 	}
 
 	rootCmd.PersistentFlags().AddGoFlagSet(flag.CommandLine)
+	rootCmd.PersistentFlags().BoolVar(&opts.debug, "debug", false, "")
 
 	// add sub commands
 	rootCmd.AddCommand(egress.NewCmdValidateEgress())

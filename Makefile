@@ -4,12 +4,17 @@ include project.mk
 include boilerplate/generated-includes.mk
 
 GOFLAGS=-mod=mod
+VERSION:=`git describe --tags --abbrev=0`
+COMMIT:=`git rev-parse HEAD`
+SHORTCOMMIT:=`git rev-parse --short HEAD`
+PREFIX=github.com/openshift/osd-network-verifier/version
+LDFLAGS=-ldflags="-X '$(PREFIX).Version=$(VERSION)' -X '$(PREFIX).CommitHash=$(COMMIT)' -X '$(PREFIX).ShortCommitHash=$(SHORTCOMMIT)'"
 
 .PHONY: build
 build:
 	go fmt ./...
 	go mod tidy
-	go build $(GOFLAGS) .
+	go build $(LDFLAGS) $(GOFLAGS) .
 
 .PHONY: fmt
 fmt:
