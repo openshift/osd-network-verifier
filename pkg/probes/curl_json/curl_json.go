@@ -31,6 +31,34 @@ func (prb CurlJSONProbe) GetStartingToken() string { return startingToken }
 // GetEndingToken returns the string token used to signal the end of the probe's output
 func (prb CurlJSONProbe) GetEndingToken() string { return endingToken }
 
+// GetMachineImageID returns the string ID of the VM image to be used for the probe instance
+func (prb CurlJSONProbe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
+	// Validate/normalize platformType
+	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
+	if err != nil {
+		return "", err
+	}
+
+	// Normalize region key (GCP images are global/not region-scoped)
+	normalizedRegion := region
+	if normalizedPlatformType == helpers.PlatformGCP {
+		normalizedRegion = "*"
+	}
+
+	// Access lookup table
+	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][normalizedRegion]
+	if !keyExists {
+		return "", fmt.Errorf(
+			"no default machine image for arch %s in region %s of plaform %s",
+			cpuArch,
+			normalizedRegion,
+			normalizedPlatformType,
+		)
+	}
+
+	return imageID, nil
+}
+
 // GetExpandedUserData returns a YAML-formatted userdata string filled-in ("expanded") with
 // the values provided in userDataVariables according to os.Expand(). E.g., if the userdata
 // template contains "name: $FOO" and userDataVariables = {"FOO": "bar"}, the returned string

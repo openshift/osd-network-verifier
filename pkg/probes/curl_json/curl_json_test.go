@@ -27,7 +27,6 @@ func TestCurlJSONProbe_ImplementsProbeInterface(t *testing.T) {
 func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 	tests := []struct {
 		name              string
-		prb               CurlJSONProbe
 		userDataVariables map[string]string
 		// wantRegex should contain a valid regular expression to be matched
 		// against the userdata output. Recommend starting each regex with
@@ -41,7 +40,6 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 	}{
 		{
 			name: "happy path",
-			prb:  CurlJSONProbe{},
 			userDataVariables: map[string]string{
 				"TIMEOUT": "1",
 				"DELAY":   "2",
@@ -51,7 +49,6 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 		},
 		{
 			name: "CA cert provided",
-			prb:  CurlJSONProbe{},
 			userDataVariables: map[string]string{
 				"TIMEOUT": "1",
 				"DELAY":   "2",
@@ -66,14 +63,12 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 		},
 		{
 			name:                      "missing variables required by directive",
-			prb:                       CurlJSONProbe{},
 			userDataVariables:         map[string]string{},
 			wantErr:                   true,
 			skipIfNoRequiredVariables: true,
 		},
 		{
 			name: "input variable conflicts with preset",
-			prb:  CurlJSONProbe{},
 			userDataVariables: map[string]string{
 				"TIMEOUT":        "1",
 				"DELAY":          "2",
@@ -139,4 +134,136 @@ func TestCurlJSONProbe_UserDataTemplateContainsDeclaredVariables(t *testing.T) {
 		}
 	}
 
+}
+
+// TestCurlJSONProbe_GetMachineImageID tests this probe's cloud VM image lookup table
+func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
+	type args struct {
+		platformType string
+		cpuArch      string
+		region       string
+	}
+	tests := []struct {
+		name string
+		args args
+		// wantRegex should contain a valid regular expression to be matched
+		// against the image ID output.
+		wantRegex string
+		wantErr   bool
+	}{
+		{
+			name: "AWS happy path",
+			args: args{
+				platformType: helpers.PlatformAWS,
+				cpuArch:      helpers.ArchX86,
+				region:       "us-east-1",
+			},
+			wantRegex: `ami-\w+`,
+			wantErr:   false,
+		},
+		{
+			name: "GCP happy path",
+			args: args{
+				platformType: helpers.PlatformGCP,
+				cpuArch:      helpers.ArchX86,
+				region:       "europe-west1-c",
+			},
+			wantRegex: `rhel-\d`,
+			wantErr:   false,
+		},
+		{
+			name: "AWS alt platform name",
+			args: args{
+				platformType: helpers.PlatformAWSClassic,
+				cpuArch:      helpers.ArchX86,
+				region:       "us-east-1",
+			},
+			wantRegex: `ami-\w+`,
+			wantErr:   false,
+		},
+		{
+			name: "GCP alt platform name",
+			args: args{
+				platformType: helpers.PlatformGCPClassic,
+				cpuArch:      helpers.ArchX86,
+				region:       "europe-west1-c",
+			},
+			wantRegex: `rhel-\d`,
+			wantErr:   false,
+		},
+		{
+			name: "AWS ARM",
+			args: args{
+				platformType: helpers.PlatformAWSClassic,
+				cpuArch:      helpers.ArchARM,
+				region:       "us-east-1",
+			},
+			wantRegex: `ami-\w+`,
+			wantErr:   false,
+		},
+		{
+			name: "GCP ARM",
+			args: args{
+				platformType: helpers.PlatformGCP,
+				cpuArch:      helpers.ArchARM,
+				region:       "europe-west1-c",
+			},
+			wantRegex: `rhel-\d-arm64`,
+			wantErr:   false,
+		},
+		{
+			name: "bad plaform",
+			args: args{
+				platformType: "foobar",
+				cpuArch:      helpers.ArchX86,
+				region:       "europe-west1-c",
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad arch",
+			args: args{
+				platformType: helpers.PlatformGCP,
+				cpuArch:      "foobar",
+				region:       "europe-west1-c",
+			},
+			wantErr: true,
+		},
+		{
+			name: "bad AWS region",
+			args: args{
+				platformType: helpers.PlatformAWS,
+				cpuArch:      helpers.ArchX86,
+				region:       "foobar",
+			},
+			wantErr: true,
+		},
+		{
+			name: "ignore bad GCP region",
+			args: args{
+				platformType: helpers.PlatformGCP,
+				cpuArch:      helpers.ArchX86,
+				region:       "foobar",
+			},
+			wantRegex: `rhel-\d`,
+			wantErr:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prb := CurlJSONProbe{}
+			got, err := prb.GetMachineImageID(tt.args.platformType, tt.args.cpuArch, tt.args.region)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CurlJSONProbe.GetMachineImageID() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			// Check if function's output contains a regex match
+			if len(tt.wantRegex) > 0 {
+				reWant := regexp.MustCompile(tt.wantRegex)
+				if len(reWant.FindString(got)) < 1 {
+					t.Errorf("CurlJSONProbe.GetMachineImageID() output does not match regex `%s`, content=%v", tt.wantRegex, got)
+				}
+			}
+		})
+	}
 }
