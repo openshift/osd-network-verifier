@@ -11,7 +11,7 @@ import (
 )
 
 // TestCurlJSONProbe_ImplementsProbeInterface simply forces the compiler
-// to confirm that the TestCurlJSONProbe type properly implements the Probe
+// to confirm that the CurlJSONProbe type properly implements the Probe
 // interface. If not (e.g, because a required method is missing), this
 // test will fail to compile
 func TestCurlJSONProbe_ImplementsProbeInterface(t *testing.T) {

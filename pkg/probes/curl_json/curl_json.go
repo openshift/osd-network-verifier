@@ -49,7 +49,7 @@ func (prb CurlJSONProbe) GetMachineImageID(platformType string, cpuArch string, 
 	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][normalizedRegion]
 	if !keyExists {
 		return "", fmt.Errorf(
-			"no default machine image for arch %s in region %s of plaform %s",
+			"no default CurlJSONProbe machine image for arch %s in region %s of plaform %s",
 			cpuArch,
 			normalizedRegion,
 			normalizedPlatformType,
