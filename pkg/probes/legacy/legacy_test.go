@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
+	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
 	"gopkg.in/yaml.v2"
 )
@@ -222,6 +223,96 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 			if err != nil {
 				t.Errorf("LegacyProbe.GetExpandedUserData() produced invalid YAML (err: %v), content=%v", err, got)
 				return
+			}
+		})
+	}
+}
+
+// Test_isGenericErrorPresent checks that this probe's text-parsing helper function can
+// accurately detect generic failure messages
+func Test_isGenericErrorPresent(t *testing.T) {
+	tests := []struct {
+		name                string
+		consoleOutput       string
+		expectGenericErrors bool
+	}{
+		{
+			name: "Retry error",
+			consoleOutput: `USERDATA BEGIN
+Failed, retrying in 2s to do stuff
+Success!
+USERDATA END`,
+			expectGenericErrors: false,
+		},
+		{
+			name: "Generic error",
+			consoleOutput: `USERDATA BEGIN
+Failed, retrying in 2s to do stuff
+Could not do stuff
+USERDATA END`,
+			expectGenericErrors: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var outputDestination output.Output
+
+			actual := isGenericErrorPresent(test.consoleOutput, &outputDestination)
+			if test.expectGenericErrors != actual {
+				t.Errorf("expected %v, got %v", test.expectGenericErrors, actual)
+			}
+
+			if test.expectGenericErrors {
+				if outputDestination.IsSuccessful() {
+					t.Errorf("expected errors, but output still marked as successful")
+				}
+			}
+		})
+	}
+}
+
+// Test_isEgressFailurePresent checks that this probe's text-parsing helper function can
+// accurately detect egress failure messages
+func Test_isEgressFailurePresent(t *testing.T) {
+	tests := []struct {
+		name                   string
+		consoleOutput          string
+		expectedEgressFailures bool
+		expectedCount          int
+	}{
+		{
+			name: "no egress failures",
+			consoleOutput: `USERDATA BEGIN
+Success!
+USERDATA END`,
+			expectedEgressFailures: false,
+		},
+		{
+			name: "egress failures present",
+			consoleOutput: `USERDATA BEGIN
+Unable to reach www.example.com:443 within specified timeout after 3 retries: Get "https://www.example.com": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+Unable to reach www.example.com:80 within specified timeout after 3 retries: Get "http://www.example.com": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+USERDATA END`,
+			expectedEgressFailures: true,
+			expectedCount:          2,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var outputDestination output.Output
+
+			actual := isEgressFailurePresent(test.consoleOutput, &outputDestination)
+			if test.expectedEgressFailures != actual {
+				t.Errorf("expected %v, got %v", test.expectedEgressFailures, actual)
+			}
+			failures := outputDestination.GetEgressURLFailures()
+			for _, f := range failures {
+				t.Log(f.EgressURL())
+			}
+			if test.expectedCount != len(failures) {
+				t.Errorf("expected %v egress failures, got %v", test.expectedCount, len(failures))
 			}
 		})
 	}
