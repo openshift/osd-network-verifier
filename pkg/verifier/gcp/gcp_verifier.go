@@ -259,7 +259,8 @@ func generateUserData(variables map[string]string) (string, error) {
 	variableMapper := func(varName string) string {
 		return variables[varName]
 	}
-	data := os.Expand(helpers.UserdataTemplate, variableMapper)
+	// TODO: REPLACE JUNK VALUE "helpers.UserdataTemplate" BELOW
+	data := os.Expand("helpers.UserdataTemplate", variableMapper)
 
 	return data, nil
 }
