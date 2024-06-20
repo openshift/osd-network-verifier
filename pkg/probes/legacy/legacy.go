@@ -17,8 +17,10 @@ type LegacyProbe struct{}
 //go:embed userdata-template.yaml
 var userDataTemplate string
 
-const startingToken = "USERDATA BEGIN"
-const endingToken = "USERDATA END"
+const (
+	startingToken = "USERDATA BEGIN"
+	endingToken   = "USERDATA END"
+)
 
 var presetUserDataVariables = map[string]string{
 	// The legacy probe had tokens marking the starts/ends of both the probe's docker image
@@ -28,6 +30,8 @@ var presetUserDataVariables = map[string]string{
 	"USERDATA_END":             endingToken,
 	"VALIDATOR_START_VERIFIER": "VALIDATOR START",
 	"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
+	// IMAGE="$IMAGE" is a legacy hack allowing us to sneak normal shell variables past os.Expand
+	"IMAGE": "$IMAGE",
 }
 
 // GetStartingToken returns the string token used to signal the beginning of the probe's output
