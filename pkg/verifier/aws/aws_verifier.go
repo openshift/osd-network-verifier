@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"net/netip"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
@@ -21,38 +21,8 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-)
-
-var (
-	defaultAmi = map[string]string{
-		"af-south-1":     "ami-082888538e0d5ab6f",
-		"ap-east-1":      "ami-0e8a82f83fd6c4671",
-		"ap-northeast-1": "ami-0e46d69767db39b8d",
-		"ap-northeast-2": "ami-091b8cb907bfb2b56",
-		"ap-northeast-3": "ami-02cabb26586b45336",
-		"ap-south-1":     "ami-00f693020f4aed8ce",
-		"ap-south-2":     "ami-056ca61a0e723593c",
-		"ap-southeast-1": "ami-0a63318003f651f49",
-		"ap-southeast-2": "ami-05bd8629c45460482",
-		"ap-southeast-3": "ami-0e6a3cc1f68092eba",
-		"ap-southeast-4": "ami-07f057574ec80ec81",
-		"ca-central-1":   "ami-06e8f78cab9e62a58",
-		"eu-central-1":   "ami-08a506dd4bc126ae5",
-		"eu-central-2":   "ami-0ad12e73811a04164",
-		"eu-north-1":     "ami-0c5c0dc42df65c3c1",
-		"eu-south-1":     "ami-0cc908758c212fe11",
-		"eu-south-2":     "ami-0cce68aa0356ae420",
-		"eu-west-1":      "ami-0913e4ee0fa91649a",
-		"eu-west-2":      "ami-0a951043c6078f378",
-		"eu-west-3":      "ami-058406cc445b09762",
-		"me-central-1":   "ami-095b8831ceb37f108",
-		"me-south-1":     "ami-00624346da9330d80",
-		"sa-east-1":      "ami-0d1958d70a8d683e2",
-		"us-east-1":      "ami-022e75a8d568b7d0b",
-		"us-east-2":      "ami-0b68b178fecfcbe51",
-		"us-west-1":      "ami-087c2ca9f260a820b",
-		"us-west-2":      "ami-0c03998bcb7c924f9",
-	}
+	"github.com/openshift/osd-network-verifier/pkg/probes"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
 )
 
 // defaultIpPermissions contains the base set of ipPermissions (egress rules)
@@ -109,10 +79,18 @@ type AwsVerifier struct {
 	Output    output.Output
 }
 
-// GetAMIForRegion returns the default AMI given a region.
-// This is unused within this codebase, but exported so that consumers can access the values of defaultAmi
+// GetAMIForRegion returns the default X86 AWS AMI for the CurlJSONProbe given a region. This is unused within this codebase,
+// but it's exported so that consumers can access this data
+//
+// Deprecated: GetAMIForRegion doesn't provide a way to check machine image IDs for platforms other than AWS, architectures
+// other than X86, or probes other than CurlJSONProbe. It also doesn't return detailed errors. Instead, use:
+// [probe_package].[ProbeName].GetMachineImageID(platformType string, cpuArchitecture string, region string)
 func GetAMIForRegion(region string) string {
-	return defaultAmi[region]
+	ami, err := curl_json.CurlJSONProbe{}.GetMachineImageID(helpers.PlatformAWS, helpers.ArchX86, region)
+	if err != nil {
+		return ""
+	}
+	return ami
 }
 
 // NewAwsVerifierFromConfig assembles an AwsVerifier given an aws-sdk-go-v2 config and an ocm logger
@@ -285,24 +263,14 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	return instanceID, nil
 }
 
-func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID string) error {
-	var (
-		b64ConsoleLogs string
-		consoleLogs    string
-	)
-
-	// reUserDataComplete indicates that the network validation completed
-	reUserDataComplete := regexp.MustCompile(userdataEndVerifier)
-	// reSuccess indicates that network validation was successful
-	reSuccess := regexp.MustCompile(`Success!`)
-	// rePrepulledImage indicates that the network verifier is using a prepulled image
-	rePrepulledImage := regexp.MustCompile(prepulledImageMessage)
+func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID string, probe probes.Probe) error {
+	var consoleOutput string
 
 	a.writeDebugLogs(ctx, "Scraping console output and waiting for user data script to complete...")
 
 	// Periodically scrape console output and analyze the logs for any errors or a successful completion
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
-		consoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
+		b64EncodedConsoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
 			InstanceId: awsTools.String(instanceID),
 			Latest:     awsTools.Bool(true),
 		})
@@ -310,64 +278,55 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			return false, handledErrors.NewGenericError(err)
 		}
 
-		if consoleOutput.Output != nil {
-			// In the early stages, an ec2 instance may be running but the console is not populated with any data
-			if len(*consoleOutput.Output) == 0 {
-				a.writeDebugLogs(ctx, "EC2 console consoleOutput not yet populated with data, continuing to wait...")
-				return false, nil
-			}
-
-			// Store base64-encoded output for debug logs
-			b64ConsoleLogs = *consoleOutput.Output
-
-			// The console consoleOutput starts out base64 encoded
-			scriptOutput, err := base64.StdEncoding.DecodeString(*consoleOutput.Output)
-			if err != nil {
-				a.writeDebugLogs(ctx, fmt.Sprintf("Error decoding console consoleOutput, will retry on next check interval: %s", err))
-				return false, nil
-			}
-
-			consoleLogs = string(scriptOutput)
-
-			// Check for the specific string we consoleOutput in the generated userdata file at the end to verify the userdata script has run
-			// It is possible we get EC2 console consoleOutput, but the userdata script has not yet completed.
-			userDataComplete := reUserDataComplete.FindString(consoleLogs)
-			if len(userDataComplete) < 1 {
-				a.writeDebugLogs(ctx, "EC2 console consoleOutput contains data, but end of userdata script not seen, continuing to wait...")
-				return false, nil
-			}
-
-			// Check if the result is success
-			success := reSuccess.FindAllStringSubmatch(consoleLogs, -1)
-			if len(success) > 0 {
-				return true, nil
-			}
-
-			// Add a message to debug logs if we're using the prepulled image
-			prepulledImage := rePrepulledImage.FindAllString(consoleLogs, -1)
-			if len(prepulledImage) > 0 {
-				a.writeDebugLogs(ctx, prepulledImageMessage)
-			}
-
-			if a.isGenericErrorPresent(ctx, consoleLogs) {
-				a.writeDebugLogs(ctx, "generic error found - please help us classify this by sharing it with us so that we can provide a more specific error message")
-			}
-
-			// If debug logging is enabled, consoleOutput the full console log that appears to include the full userdata run
-			a.writeDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
-
-			if a.isEgressFailurePresent(string(scriptOutput)) {
-				a.writeDebugLogs(ctx, "egress failures found")
-			}
-
-			return true, nil // finalize as there's `userdata end`
+		// Return and resume waiting if console output is still nil
+		if b64EncodedConsoleOutput.Output == nil {
+			return false, nil
 		}
 
-		if len(b64ConsoleLogs) > 0 {
-			a.writeDebugLogs(ctx, fmt.Sprintf("base64-encoded console logs:\n---\n%s\n---", b64ConsoleLogs))
+		// In the early stages, an ec2 instance may be running but the console is not populated with any data
+		if len(*b64EncodedConsoleOutput.Output) == 0 {
+			a.writeDebugLogs(ctx, "EC2 console consoleOutput not yet populated with data, continuing to wait...")
+			return false, nil
 		}
 
-		return false, nil
+		// Decode base64-encoded console output
+		consoleOutputBytes, err := base64.StdEncoding.DecodeString(*b64EncodedConsoleOutput.Output)
+		if err != nil {
+			a.writeDebugLogs(ctx, fmt.Sprintf("Error decoding console consoleOutput, will retry on next check interval: %s", err))
+			return false, nil
+		}
+		consoleOutput = string(consoleOutputBytes)
+
+		// Check for startingToken and endingToken
+		startingTokenSeen := strings.Contains(consoleOutput, probe.GetStartingToken())
+		endingTokenSeen := strings.Contains(consoleOutput, probe.GetEndingToken())
+		if !startingTokenSeen {
+			if endingTokenSeen {
+				a.writeDebugLogs(ctx, fmt.Sprintf("raw console logs:\n---\n%s\n---", consoleOutput))
+				return false, handledErrors.NewGenericError(fmt.Errorf("probe output corrupted: endingToken encountered before startingToken"))
+			}
+			a.writeDebugLogs(ctx, "consoleOutput contains data, but probe has not yet printed startingToken, continuing to wait...")
+			return false, nil
+		}
+		if !endingTokenSeen {
+			a.writeDebugLogs(ctx, "consoleOutput contains startingToken, but probe has not yet printed endingToken, continuing to wait...")
+			return false, nil
+		}
+
+		// If we make it this far, we know that both startingTokenSeen and endingTokenSeen are true
+
+		// Separate the probe's output from the rest of the console output (using startingToken and endingToken)
+		rawProbeOutput := strings.TrimSpace(helpers.CutBetween(consoleOutput, probe.GetStartingToken(), probe.GetEndingToken()))
+		if len(rawProbeOutput) < 1 {
+			a.writeDebugLogs(ctx, fmt.Sprintf("raw console logs:\n---\n%s\n---", consoleOutput))
+			return false, handledErrors.NewGenericError(fmt.Errorf("probe output corrupted: no data between startingToken and endingToken"))
+		}
+
+		// Send probe's output off to the Probe interface for parsing
+		a.writeDebugLogs(ctx, fmt.Sprintf("probe output:\n---\n%s\n---", rawProbeOutput))
+		probe.ParseProbeOutput(rawProbeOutput, &a.Output)
+
+		return true, nil
 	})
 
 	return err
@@ -432,36 +391,6 @@ func buildTags(tags map[string]string) []ec2Types.Tag {
 	}
 
 	return tagList
-}
-
-func generateUserData(variables map[string]string) (string, error) {
-	const maxDataSize = 16 * 1024 // 16KB
-
-	variableMapper := func(varName string) string {
-		return variables[varName]
-	}
-	data := os.Expand(helpers.UserdataTemplate, variableMapper)
-
-	// Convert data to a byte slice and check its length
-	// User data is limited to 16 KB, in raw form, before it is base64-encoded
-	dataBytes := []byte(data)
-	if len(dataBytes) > maxDataSize {
-		return "", fmt.Errorf("userData size exceeds the maximum limit of 16KB, if you used '--cacert', please check the cacert file size")
-	}
-
-	return base64.StdEncoding.EncodeToString([]byte(data)), nil
-}
-
-// setCloudImage returns a default AMI ID based on the region if one is not provided
-func setCloudImage(cloudImageID *string, region string) error {
-	if *cloudImageID == "" {
-		*cloudImageID = defaultAmi[region]
-		if *cloudImageID == "" {
-			return fmt.Errorf("no default ami found for region %s ", region)
-		}
-	}
-
-	return nil
 }
 
 func (a *AwsVerifier) writeDebugLogs(ctx context.Context, log string) {

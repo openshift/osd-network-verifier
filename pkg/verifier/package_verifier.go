@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/probes"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 )
 
@@ -35,7 +36,7 @@ type ValidateEgressInput struct {
 	TerminateDebugInstance                             string
 	ImportKeyPair                                      string
 	ForceTempSecurityGroup                             bool
-	FeatureFlags                                       map[string]string // Experimental
+	Probe                                              probes.Probe
 }
 type AwsEgressConfig struct {
 	KmsKeyID          string

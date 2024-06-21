@@ -9,11 +9,10 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	"github.com/openshift/osd-network-verifier/pkg/probes"
-	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
@@ -46,7 +45,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		vei.InstanceType = DEFAULT_INSTANCE_TYPE
 	}
 
-	// Select config file based on platform type
+	// Select LegacyProbe config file based on platform type
 	platformTypeStr, err := helpers.GetPlatformType(vei.PlatformType)
 	if err != nil {
 		return a.Output.AddError(err)
@@ -114,73 +113,56 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return &a.Output
 	}
 
+	// Fetch the egress URL list as string of curl parameters; note that this
+	// is TOTALLY IGNORED by LegacyProbe, as that probe only knows how to use
+	// the egress URL lists baked into its AMIs/container images
+	egressListCurlStr, err := egress_lists.GetEgressListAsCurlString(vei.PlatformType, a.AwsClient.Region)
+	if err != nil {
+		return a.Output.AddError(err)
+	}
+
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
-		"AWS_REGION":               a.AwsClient.Region,
-		"USERDATA_BEGIN":           "USERDATA BEGIN",
-		"USERDATA_END":             userdataEndVerifier,
-		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
-		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
-		"VALIDATOR_IMAGE":          networkValidatorImage,
-		"VALIDATOR_REPO":           networkValidatorRepo,
-		"TIMEOUT":                  vei.Timeout.String(),
-		"HTTP_PROXY":               vei.Proxy.HttpProxy,
-		"HTTPS_PROXY":              vei.Proxy.HttpsProxy,
-		"CACERT":                   base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
-		"NOTLS":                    strconv.FormatBool(vei.Proxy.NoTls),
-		"IMAGE":                    "$IMAGE",
-		"CONFIG_PATH":              configPath,
-		"DELAY":                    "5",
+		"AWS_REGION":      a.AwsClient.Region,
+		"VALIDATOR_IMAGE": networkValidatorImage,
+		"VALIDATOR_REPO":  networkValidatorRepo,
+		"TIMEOUT":         vei.Timeout.String(),
+		"HTTP_PROXY":      vei.Proxy.HttpProxy,
+		"HTTPS_PROXY":     vei.Proxy.HttpsProxy,
+		"CACERT":          base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NOTLS":           strconv.FormatBool(vei.Proxy.NoTls),
+		"CONFIG_PATH":     configPath,
+		"DELAY":           "5",
+		"URLS":            egressListCurlStr,
 	}
 
 	if vei.SkipInstanceTermination {
 		userDataVariables["DELAY"] = "60"
 	}
 
-	// Default to legacy userData template
-	userData, err := generateUserData(userDataVariables)
+	unencodedUserData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return a.Output.AddError(err)
 	}
-
-	// If experimentalCurlProbe flag set, adjust userData template
-	experimentalCurlProbeUrls, experimentalCurlProbeEnabled := vei.FeatureFlags["experimentalCurlProbe"]
-	var experimentalProbe probes.Probe
-	if experimentalCurlProbeEnabled {
-		fmt.Println("EXPERIMENTAL CURL PROBE ENABLED")
-		experimentalProbe = curl_json.CurlJSONProbe{}
-		cjpUserDataVariables := map[string]string{
-			"URLS":    experimentalCurlProbeUrls,
-			"TIMEOUT": fmt.Sprintf("%.f", vei.Timeout.Seconds()),
-			"DELAY":   "5",
-		}
-		if userDataVariables["CACERT"] != "" {
-			yamlPreamble := `write_files:
-- path: /proxy.pem
-  permissions: '0755'
-  encoding: b64
-  content: `
-			cjpUserDataVariables["CACERT"] = yamlPreamble + userDataVariables["CACERT"]
-			cjpUserDataVariables["CURLOPT"] += "--cacert /proxy.pem "
-
-		}
-		if vei.Proxy.NoTls {
-			cjpUserDataVariables["CURLOPT"] += "-k "
-		}
-		// TODO enforce length limit
-		unencodedUserData, err := experimentalProbe.GetExpandedUserData(cjpUserDataVariables)
-		if err != nil {
-			return a.Output.AddError(err)
-		}
-		userData = base64.StdEncoding.EncodeToString([]byte(unencodedUserData))
+	unencodedUserDataBytes := []byte(unencodedUserData)
+	// Enforce AWS-imposed userdata limit
+	if len(unencodedUserDataBytes) > 16384 { // 16KB
+		return a.Output.AddError(
+			fmt.Errorf("userdata size exceeds AWS-imposed 16KB limit; if using a CA certificate, please check its file size"),
+		)
 	}
+	userData := base64.StdEncoding.EncodeToString([]byte(unencodedUserData))
 
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
 
-	err = setCloudImage(&vei.CloudImageID, a.AwsClient.Region)
-	if err != nil {
-		return a.Output.AddError(err) // fatal
+	// Select AMI based on region if one isn't provided
+	if vei.CloudImageID == "" {
+		// TODO handle architectures other than X86
+		vei.CloudImageID, err = vei.Probe.GetMachineImageID(helpers.PlatformAWS, helpers.ArchX86, a.AwsClient.Region)
+		if err != nil {
+			return a.Output.AddError(err)
+		}
 	}
 
 	vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
@@ -240,12 +222,8 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(err)
 	}
 
-	// Run the result fetcher, which will store egress failures in a.Output.failures
-	if !experimentalCurlProbeEnabled {
-		err = a.findUnreachableEndpoints(vei.Ctx, instanceID)
-	} else {
-		err = a.findUnreachableEndpointsExperimental(vei.Ctx, instanceID, experimentalProbe)
-	}
+	// findUnreachableEndpoints will call Probe.ParseProbeOutput(), which will store egress failures in a.Output.failures
+	err = a.findUnreachableEndpoints(vei.Ctx, instanceID, vei.Probe)
 	if err != nil {
 		a.Output.AddError(err)
 		// Don't return yet; still need to terminate instance
