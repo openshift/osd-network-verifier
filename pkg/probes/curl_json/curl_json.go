@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"strconv"
 
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -77,6 +78,40 @@ func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string
 		return "", err
 	}
 
+	// TIMEOUT might be a duration string (e.g., "3s"), but curl only accepts a naked
+	// positive decimal number of seconds
+	userDataVariables["TIMEOUT"], err = normalizeSaneNonzeroDuration(userDataVariables["TIMEOUT"], "%.2f")
+	if err != nil {
+		return "", fmt.Errorf("invalid userdata variable TIMEOUT: %w", err)
+	}
+	// Same goes for DELAY, except cloud-init only accepts a positive integer number of seconds
+	userDataVariables["DELAY"], err = normalizeSaneNonzeroDuration(userDataVariables["DELAY"], "%.f")
+	if err != nil {
+		return "", fmt.Errorf("invalid userdata variable DELAY: %w", err)
+	}
+
+	// For compatibility reasons, we expect CACERT to be either empty or a base64-encoded
+	// PEM-formatted CA certicate. When one is provided, we "render" it with a cloud-init
+	// preamble that writes the file to disk, and we tell curl about the cert file via flag
+	if userDataVariables["CACERT"] != "" {
+		cloudInitPreamble := `write_files:
+- path: /proxy.pem
+  permissions: '0755'
+  encoding: b64
+  content: `
+		userDataVariables["CACERT_RENDERED"] = cloudInitPreamble + userDataVariables["CACERT"]
+		userDataVariables["CURLOPT"] += " --cacert /proxy.pem "
+	}
+
+	// Also for compatibility reasons, we map the NOTLS variable to curl's "insecure" flag
+	noTLS, err := strconv.ParseBool(userDataVariables["NOTLS"])
+	if err != nil {
+		return "", fmt.Errorf("invalid userdata variable NOTLS: %w", err)
+	}
+	if noTLS {
+		userDataVariables["CURLOPT"] += " -k "
+	}
+
 	// Expand template
 	return os.Expand(directivelessUserDataTemplate, func(userDataVar string) string {
 		if presetVal, isPreset := presetUserDataVariables[userDataVar]; isPreset {
@@ -108,4 +143,23 @@ func (prb CurlJSONProbe) ParseProbeOutput(probeOutput string, outputDestination 
 			),
 		)
 	}
+}
+
+// normalizeSaneNonzeroDuration first converts a given string expected to hold a duration
+// (e.g., "3s" or "2") to a float64 using helpers.DurationToBareSeconds(). It then ensures the
+// float duration is "sane," i.e., greater than 0 seconds but less than 3 hours*. If sane, the
+// duration in seconds is Sprintf'd using the provided fmtStr and returned. If not sane, an error
+// is returned.
+// * We max at 3 hours under the assumption that the verifier isn't doing anything for >3hrs
+func normalizeSaneNonzeroDuration(possibleDurationStr string, fmtStr string) (string, error) {
+	durationSeconds := helpers.DurationToBareSeconds(possibleDurationStr)
+	if durationSeconds <= 0 {
+		return "", fmt.Errorf("invalid %s value (parsed as %.2f sec)", possibleDurationStr, durationSeconds)
+	}
+
+	if durationSeconds > 10800 {
+		return "", fmt.Errorf("value %s (parsed as %.2f sec) is too large", possibleDurationStr, durationSeconds)
+	}
+
+	return fmt.Sprintf(fmtStr, durationSeconds), nil
 }
