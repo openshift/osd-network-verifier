@@ -136,7 +136,7 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 			userDataVariables: map[string]string{
 				"AWS_REGION":      "us-east-1",
 				"CONFIG_PATH":     "/app/build/config/aws.yaml",
-				"NOTLS":           "False",
+				"NOTLS":           "false",
 				"TIMEOUT":         "3s",
 				"DELAY":           "5",
 				"VALIDATOR_IMAGE": "quay.io/app-sre/osd-network-verifier:v0.1.90-f2e86a9",
@@ -149,7 +149,7 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 			userDataVariables: map[string]string{
 				"AWS_REGION":      "ap-southeast-1",
 				"CONFIG_PATH":     "/app/build/config/aws.yaml",
-				"NOTLS":           "False",
+				"NOTLS":           "false",
 				"TIMEOUT":         "3s",
 				"DELAY":           "5",
 				"VALIDATOR_IMAGE": "quay.io/app-sre/osd-network-verifier:v0.1.90-f2e86a9",
@@ -163,7 +163,7 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 			userDataVariables: map[string]string{
 				"AWS_REGION":      "eu-west-1",
 				"CONFIG_PATH":     "/app/build/config/aws.yaml",
-				"NOTLS":           "True",
+				"NOTLS":           "true",
 				"TIMEOUT":         "3s",
 				"DELAY":           "5",
 				"VALIDATOR_IMAGE": "quay.io/app-sre/osd-network-verifier:v0.1.90-f2e86a9",
@@ -184,7 +184,7 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 			userDataVariables: map[string]string{
 				"AWS_REGION":      "us-east-1",
 				"CONFIG_PATH":     "/app/build/config/aws.yaml",
-				"NOTLS":           "False",
+				"NOTLS":           "false",
 				"TIMEOUT":         "3s",
 				"DELAY":           "5",
 				"VALIDATOR_IMAGE": "quay.io/app-sre/osd-network-verifier:v0.1.90-f2e86a9",
