@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -211,4 +212,31 @@ func CutBetween(s string, startingToken string, endingToken string) string {
 		return ""
 	}
 	return matches[1]
+}
+
+// DurationToBareSeconds tries to parse a given string as a duration (e.g., "1m30s") and return the
+// total floating-point number of seconds in the duration. Failing that, it tries to return the left-
+// most number in the given string. Failing that (or given an empty string, NaN, or infinity), it
+// returns 0
+func DurationToBareSeconds(possibleDurationStr string) float64 {
+	// Return 0 for empty strings
+	if strings.TrimSpace(possibleDurationStr) == "" {
+		return 0
+	}
+
+	// Try to parse it as a time.Duration
+	if parsedDuration, err := time.ParseDuration(possibleDurationStr); err == nil {
+		// Success! So just return a floating point number of seconds
+		return parsedDuration.Seconds()
+	}
+
+	// Try to just pull out any number
+	reFloat := regexp.MustCompile(`-?\d+(\.\d*)?`)
+	if reFloat.MatchString(possibleDurationStr) {
+		f, _ := strconv.ParseFloat(reFloat.FindString(possibleDurationStr), 64)
+		return f
+	}
+
+	// possibleDurationStr looks nothing like a duration: fall back to 0
+	return 0
 }

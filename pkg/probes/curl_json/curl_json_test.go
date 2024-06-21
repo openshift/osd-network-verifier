@@ -1,6 +1,7 @@
 package curl_json
 
 import (
+	_ "embed"
 	"regexp"
 	"strings"
 	"testing"
@@ -53,13 +54,19 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 				"TIMEOUT": "1",
 				"DELAY":   "2",
 				"URLS":    "http://example.com:80 https://example.org:443",
-				"CACERT": `write_files:
-- path: /proxy.pem
-  permissions: '0755'
-  encoding: b64
-  content: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNiakNDQWZPZ0F3SUJBZ0lRWXZZeWJPWEU0MmhjRzJMZG5DNmRsVEFLQmdncWhrak9QUVFEQXpCNE1Rc3cKQ1FZRFZRUUdFd0pGVXpFUk1BOEdBMVVFQ2d3SVJrNU5WQzFTUTAweERqQU1CZ05WQkFzTUJVTmxjbVZ6TVJndwpGZ1lEVlFSaERBOVdRVlJGVXkxUk1qZ3lOakF3TkVveExEQXFCZ05WQkFNTUkwRkRJRkpCU1ZvZ1JrNU5WQzFTClEwMGdVMFZTVmtsRVQxSkZVeUJUUlVkVlVrOVRNQjRYRFRFNE1USXlNREE1TXpjek0xb1hEVFF6TVRJeU1EQTUKTXpjek0xb3dlREVMTUFrR0ExVUVCaE1DUlZNeEVUQVBCZ05WQkFvTUNFWk9UVlF0VWtOTk1RNHdEQVlEVlFRTApEQVZEWlhKbGN6RVlNQllHQTFVRVlRd1BWa0ZVUlZNdFVUSTRNall3TURSS01Td3dLZ1lEVlFRRERDTkJReUJTClFVbGFJRVpPVFZRdFVrTk5JRk5GVWxaSlJFOVNSVk1nVTBWSFZWSlBVekIyTUJBR0J5cUdTTTQ5QWdFR0JTdUIKQkFBaUEySUFCUGE2VjFQSXlxdmZOa3BTSWVTWDBvTm5udkJsVWRCZWg4ZEhzVm55VjBlYkFBS1RSQmRwMjBMSApzYkk2R0E2MFhZeXpabDJoTlBrMkxFbmI4MGI4czBScFJCTm0vZGZGL2E4MlRjNERUUWR4ejY5cUJkS2lRMW9LClVtOEJBMDZPaTZOQ01FQXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QU9CZ05WSFE4QkFmOEVCQU1DQVFZd0hRWUQKVlIwT0JCWUVGQUc1TCsrL0VZWmc4ay9RUVc2cmN4L24wbTVKTUFvR0NDcUdTTTQ5QkFNREEya0FNR1lDTVFDdQpTdU1yUU1OMEVmS1ZyUllqM2s0TUd1WmRwU1JlYTBSNy9EamlUOHVjUlJjUlRCUW5KbFU1ZFVvRHpCT1FuNUlDCk1RRDZTbXhnaUhQejdyaVlZcW5PSzhMWmlxWndNUjJ2c0pSTTYwL0c0OUh6WXFjOC81TXVCMXhKQVdkcEVnSnkKditjPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==`,
+				"CACERT":  "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNiakNDQWZPZ0F3SUJBZ0lRWXZZeWJPWEU0MmhjRzJMZG5DNmRsVEFLQmdncWhrak9QUVFEQXpCNE1Rc3cKQ1FZRFZRUUdFd0pGVXpFUk1BOEdBMVVFQ2d3SVJrNU5WQzFTUTAweERqQU1CZ05WQkFzTUJVTmxjbVZ6TVJndwpGZ1lEVlFSaERBOVdRVlJGVXkxUk1qZ3lOakF3TkVveExEQXFCZ05WQkFNTUkwRkRJRkpCU1ZvZ1JrNU5WQzFTClEwMGdVMFZTVmtsRVQxSkZVeUJUUlVkVlVrOVRNQjRYRFRFNE1USXlNREE1TXpjek0xb1hEVFF6TVRJeU1EQTUKTXpjek0xb3dlREVMTUFrR0ExVUVCaE1DUlZNeEVUQVBCZ05WQkFvTUNFWk9UVlF0VWtOTk1RNHdEQVlEVlFRTApEQVZEWlhKbGN6RVlNQllHQTFVRVlRd1BWa0ZVUlZNdFVUSTRNall3TURSS01Td3dLZ1lEVlFRRERDTkJReUJTClFVbGFJRVpPVFZRdFVrTk5JRk5GVWxaSlJFOVNSVk1nVTBWSFZWSlBVekIyTUJBR0J5cUdTTTQ5QWdFR0JTdUIKQkFBaUEySUFCUGE2VjFQSXlxdmZOa3BTSWVTWDBvTm5udkJsVWRCZWg4ZEhzVm55VjBlYkFBS1RSQmRwMjBMSApzYkk2R0E2MFhZeXpabDJoTlBrMkxFbmI4MGI4czBScFJCTm0vZGZGL2E4MlRjNERUUWR4ejY5cUJkS2lRMW9LClVtOEJBMDZPaTZOQ01FQXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QU9CZ05WSFE4QkFmOEVCQU1DQVFZd0hRWUQKVlIwT0JCWUVGQUc1TCsrL0VZWmc4ay9RUVc2cmN4L24wbTVKTUFvR0NDcUdTTTQ5QkFNREEya0FNR1lDTVFDdQpTdU1yUU1OMEVmS1ZyUllqM2s0TUd1WmRwU1JlYTBSNy9EamlUOHVjUlJjUlRCUW5KbFU1ZFVvRHpCT1FuNUlDCk1RRDZTbXhnaUhQejdyaVlZcW5PSzhMWmlxWndNUjJ2c0pSTTYwL0c0OUh6WXFjOC81TXVCMXhKQVdkcEVnSnkKditjPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==",
 			},
-			wantRegex: `#cloud-config[\s\S]*proxy.pem[\s\S]*LS0tLS1CRUd\w*Cg==\n[\s\S]*https://example.org:443`,
+			wantRegex: `#cloud-config[\s\S]*proxy.pem[\s\S]*encoding: b64[\s\S]*LS0tLS1CRUd\w*Cg==\n[\s\S]*https://example.org:443`,
+		},
+		{
+			name: "set NOTLS",
+			userDataVariables: map[string]string{
+				"TIMEOUT": "1",
+				"DELAY":   "2",
+				"URLS":    "http://example.com:80 https://example.org:443",
+				"NOTLS":   "True",
+			},
+			wantRegex: `#cloud-config[\s\S]* -k [\s\S]*http:\/\/example.com:80 https:\/\/example.org:443`,
 		},
 		{
 			name:                      "missing variables required by directive",
@@ -74,6 +81,24 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 				"DELAY":          "2",
 				"URLS":           "http://example.com:80 https://example.org:443",
 				"USERDATA_BEGIN": "foobar",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid DELAY",
+			userDataVariables: map[string]string{
+				"TIMEOUT": "1",
+				"DELAY":   "-2",
+				"URLS":    "http://example.com:80 https://example.org:443",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid TIMEOUT",
+			userDataVariables: map[string]string{
+				"TIMEOUT": "-1",
+				"DELAY":   "2",
+				"URLS":    "http://example.com:80 https://example.org:443",
 			},
 			wantErr: true,
 		},
@@ -263,6 +288,69 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 				if len(reWant.FindString(got)) < 1 {
 					t.Errorf("CurlJSONProbe.GetMachineImageID() output does not match regex `%s`, content=%v", tt.wantRegex, got)
 				}
+			}
+		})
+	}
+}
+
+// Test_normalizeSaneNonzeroDuration tests this probe's duration string normalization
+// and sanity checking function. This test assumes fmtStr = "%.2f"
+func Test_normalizeSaneNonzeroDuration(t *testing.T) {
+	tests := []struct {
+		name                string
+		possibleDurationStr string
+		want                string
+		wantErr             bool
+	}{
+		{
+			name:                "integer with unit",
+			possibleDurationStr: "3s",
+			want:                "3.00",
+			wantErr:             false,
+		},
+		{
+			name:                "float with unit",
+			possibleDurationStr: "1.2s",
+			want:                "1.20",
+			wantErr:             false,
+		},
+		{
+			name:                "bare integer",
+			possibleDurationStr: "7",
+			want:                "7.00",
+			wantErr:             false,
+		},
+		{
+			name:                "bare float",
+			possibleDurationStr: "6.5",
+			want:                "6.50",
+			wantErr:             false,
+		},
+		{
+			name:                "too large",
+			possibleDurationStr: "4h",
+			wantErr:             true,
+		},
+		{
+			name:                "negative integer",
+			possibleDurationStr: "-3",
+			wantErr:             true,
+		},
+		{
+			name:                "negative with unit",
+			possibleDurationStr: "-1m",
+			wantErr:             true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeSaneNonzeroDuration(tt.possibleDurationStr, "%.2f")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("normalizeSaneNonzeroDuration() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("normalizeSaneNonzeroDuration() = %v, want %v", got, tt.want)
 			}
 		})
 	}

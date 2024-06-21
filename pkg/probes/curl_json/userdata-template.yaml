@@ -1,6 +1,6 @@
 #cloud-config
 # network-verifier-required-variables=TIMEOUT,DELAY,URLS
-${CACERT}
+${CACERT_RENDERED}
 runcmd:
   - systemctl mask --now serial-getty@ttyS0.service
   - dmesg -D
