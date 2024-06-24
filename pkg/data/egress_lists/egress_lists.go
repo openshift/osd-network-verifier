@@ -16,13 +16,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// go:embed aws-classic.yaml
+//go:embed aws-classic.yaml
 var templateAWSClassic string
 
-// go:embed aws-hcp.yaml
+//go:embed aws-hcp.yaml
 var templateAWSHCP string
 
-// go:embed gcp-classic.yaml
+//go:embed gcp-classic.yaml
 var templateGCPClassic string
 
 // GetEgressListAsCurlString returns a string of curl parameters representing all of the URLs
