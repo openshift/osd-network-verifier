@@ -104,12 +104,14 @@ func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string
 	}
 
 	// Also for compatibility reasons, we map the NOTLS variable to curl's "insecure" flag
-	noTLS, err := strconv.ParseBool(userDataVariables["NOTLS"])
-	if err != nil {
-		return "", fmt.Errorf("invalid userdata variable NOTLS: %w", err)
-	}
-	if noTLS {
-		userDataVariables["CURLOPT"] += " -k "
+	if userDataVariables["NOTLS"] != "" {
+		noTLS, err := strconv.ParseBool(userDataVariables["NOTLS"])
+		if err != nil {
+			return "", fmt.Errorf("invalid userdata variable NOTLS: %w", err)
+		}
+		if noTLS {
+			userDataVariables["CURLOPT"] += " -k "
+		}
 	}
 
 	// Expand template
