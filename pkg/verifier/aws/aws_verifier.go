@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/netip"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -330,54 +329,6 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	})
 
 	return err
-}
-
-// isGenericErrorPresent checks consoleOutput for generic (unclassified) failures
-func (a *AwsVerifier) isGenericErrorPresent(ctx context.Context, consoleOutput string) bool {
-	// reGenericFailure is an attempt at a catch-all to help debug failures that we have not accounted for yet
-	reGenericFailure := regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
-	// reRetryAttempt will override reGenericFailure when matching against attempts to retry pulling a container image
-	reRetryAttempt := regexp.MustCompile(`Failed, retrying in`)
-
-	found := false
-
-	genericFailures := reGenericFailure.FindAllString(consoleOutput, -1)
-	if len(genericFailures) > 0 {
-		for _, failure := range genericFailures {
-			switch {
-			// Ignore "Failed, retrying in" messages when retrying container image pulls as they are not terminal failures
-			case reRetryAttempt.FindAllString(failure, -1) != nil:
-				a.writeDebugLogs(ctx, fmt.Sprintf("ignoring failure that is retrying: %s", failure))
-			// If we don't otherwise ignore a generic error, consider it one that needs attention
-			default:
-				a.Output.AddError(handledErrors.NewGenericError(errors.New(failure)))
-				found = true
-			}
-		}
-	}
-
-	return found
-}
-
-// isEgressFailurePresent checks consoleOutput for network egress failures and stores them
-// as NetworkVerifierErrors in a.Output.failures
-func (a *AwsVerifier) isEgressFailurePresent(consoleOutput string) bool {
-	// reEgressFailures will match a specific egress failure case
-	reEgressFailures := regexp.MustCompile(`Unable to reach (\S+)`)
-	found := false
-
-	// egressFailures is a 2D slice of regex matches - egressFailures[0] represents a specific regex match
-	// egressFailures[0][0] is the "Unable to reach" part of the match
-	// egressFailures[0][1] is the "(\S+)" part of the match, i.e. the following string
-	egressFailures := reEgressFailures.FindAllStringSubmatch(consoleOutput, -1)
-	for _, e := range egressFailures {
-		if len(e) == 2 {
-			a.Output.SetEgressFailures([]string{e[1]})
-			found = true
-		}
-	}
-
-	return found
 }
 
 func buildTags(tags map[string]string) []ec2Types.Tag {
