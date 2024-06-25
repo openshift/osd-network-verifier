@@ -9,7 +9,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // TestLegacyProbe_ImplementsProbeInterface simply forces the compiler
