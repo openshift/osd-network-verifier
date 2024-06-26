@@ -5,16 +5,15 @@ reviewers:
   - dakotalongRH
   - lnguyen1401
   - luis-falcon
-  - mjlshen
 approvers:
   - abyrne55
   - rafael-azevedo
   - fahlmant
-  - mjlshen
 emeritus_approvers:
   - bng0y
   - boranx
   - bdematte
+  - mjlshen
 maintainers:
   - abyrne55
   - fahlmant
