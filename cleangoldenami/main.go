@@ -11,14 +11,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	"log"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
 
 const (
-	serviceCode = "ec2"
-	quotaCode   = "L-0E3CBAB9"
-	timeLayout  = "2006-01-02T15:04:05.000Z"
+	serviceCode          = "ec2"
+	quotaCode            = "L-0E3CBAB9"
+	timeLayout           = "2006-01-02T15:04:05.000Z"
+	desiredImageCapacity = 3
 )
 
 func main() {
@@ -53,28 +55,64 @@ func main() {
 			}
 
 			ec2Client := ec2.NewFromConfig(cfg, func(o *ec2.Options) { o.Region = regionName })
-			images, err := getPublicImages(ec2Client)
+			images, err := getPublicImages(ec2Client, "", "")
 			if err != nil {
 				log.Fatalf("error fetching images for region %v: %v", regionName, err)
 			}
 
-			if imageCount := len(images); imageCount < quota {
+			if imageCount := len(images); (quota - imageCount) >= desiredImageCapacity {
 				if *verbose {
 					fmt.Printf("Region %v is under quota. (Images: %v, Quota: %v)\n", regionName, imageCount, quota)
 				}
 			} else {
-				imageToDelete, err := getOldestImage(images)
+				numOfImagesToDelete := desiredImageCapacity - (quota - imageCount)
+
+				arm64Images, err := getPublicImages(ec2Client, "arm64", "rhel-arm64")
 				if err != nil {
-					log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
+					log.Fatalf("error fetching rhel arm64 images for region %v: %v", regionName, err)
+				}
+
+				legacyx86Images, err := getPublicImages(ec2Client, "x86_64", "legacy-x86_64")
+				if err != nil {
+					log.Fatalf("error fetching legacy x86_64 images for region %v: %v", regionName, err)
+				}
+
+				x86Images, err := getPublicImages(ec2Client, "x86_64", "rhel-x86_64")
+				if err != nil {
+					log.Fatalf("error fetching rhel x86_64 images for region %v: %v", regionName, err)
+				}
+				var imagesToDelete []ec2Types.Image
+
+				sortedImages := sortImageType(arm64Images, legacyx86Images, x86Images)
+
+			ImageDeregisterLoop:
+				for !imageDeletionCheck(imagesToDelete, numOfImagesToDelete, arm64Images, legacyx86Images, x86Images) {
+					for _, images = range sortedImages {
+						ImageToDeleteIndex, ImageToDelete, err := getOldestImage(images)
+						if err != nil {
+							log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
+						}
+						if ImageToDeleteIndex >= 0 {
+							imagesToDelete = append(imagesToDelete, ImageToDelete)
+							legacyx86Images = append(images[:ImageToDeleteIndex], images[ImageToDeleteIndex+1:]...)
+							if len(imagesToDelete) == numOfImagesToDelete {
+								break ImageDeregisterLoop
+							}
+						}
+					}
 				}
 				if *dryRun {
-					fmt.Printf("Region %v is at quota (%v) - would delete %v\n", regionName, quota, *imageToDelete.ImageId)
-				} else {
-					err := deregisterImage(ec2Client, imageToDelete)
-					if err != nil {
-						log.Fatalf("error deregistering image %v in region %v: %v", *imageToDelete.ImageId, regionName, err)
+					for _, image := range imagesToDelete {
+						fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[1].Value)
 					}
-					fmt.Printf("successfully deregistered image %v in region %v", *imageToDelete.ImageId, regionName)
+				} else {
+					for _, image := range imagesToDelete {
+						err = deregisterImage(ec2Client, image)
+						if err != nil {
+							fmt.Printf("error deregistering image %v (%v) in region %v: %v", *image.ImageId, *image.Tags[1].Value, regionName, err)
+						}
+						fmt.Printf("successfully deregistered image %v (%v) in region %v", *image.ImageId, *image.Tags[1].Value, regionName)
+					}
 				}
 			}
 		}(*enabledRegion.RegionName)
@@ -104,31 +142,67 @@ func getPublicAMIServiceQuota(servicequotasClient GetServiceQuotaClient) (int, e
 	return serviceQuotaValue, nil
 }
 
-func getPublicImages(ec2Client DescribeImagesClient) ([]ec2Types.Image, error) {
-	describeImagesResponse, err := ec2Client.DescribeImages(context.TODO(), &ec2.DescribeImagesInput{
+func sortImageType(arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) [][]ec2Types.Image {
+	sortedImages := [][]ec2Types.Image{arm64Images, legacyx86Images, x86Images}
+
+	sort.Slice(sortedImages, func(i, j int) bool {
+		return len(sortedImages[i]) > len(sortedImages[j])
+	})
+
+	return sortedImages
+}
+
+func getPublicImages(ec2Client DescribeImagesClient, arch string, tag string) ([]ec2Types.Image, error) {
+	input := &ec2.DescribeImagesInput{
 		ExecutableUsers: []string{"all"},
 		Owners:          []string{"self"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error fetching images: %w", err)
 	}
+
+	if arch != "" {
+		input.Filters = append(input.Filters, ec2Types.Filter{
+			Name:   aws.String("architecture"),
+			Values: []string{arch},
+		})
+	}
+	if tag != "" {
+		input.Filters = append(input.Filters, ec2Types.Filter{
+			Name:   aws.String("tag:version"),
+			Values: []string{tag},
+		})
+	}
+	describeImagesResponse, err := ec2Client.DescribeImages(context.TODO(), input)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching %v images: %w", tag, err)
+	}
+
 	return describeImagesResponse.Images, nil
 }
 
-func getOldestImage(images []ec2Types.Image) (ec2Types.Image, error) {
+func getOldestImage(images []ec2Types.Image) (int, ec2Types.Image, error) {
 	var oldestImage ec2Types.Image
 	var oldestImageTimestamp int64
-	for _, image := range images {
+	var oldestImageIndex = -1
+	if len(images) <= 1 {
+
+		return -1, oldestImage, nil
+	}
+	for i, image := range images {
 		creationTime, err := time.Parse(timeLayout, *image.CreationDate)
 		if err != nil {
-			return ec2Types.Image{}, fmt.Errorf("error parsing timestamp %v for image %v: %w", *image.CreationDate, image.ImageId, err)
+			return -1, ec2Types.Image{}, fmt.Errorf("error parsing timestamp %v for image %v: %w", *image.CreationDate, image.ImageId, err)
 		}
 		if creationTimeUnix := creationTime.Unix(); oldestImage.ImageId == nil || creationTimeUnix < oldestImageTimestamp {
 			oldestImage = image
 			oldestImageTimestamp = creationTimeUnix
+			oldestImageIndex = i
 		}
 	}
-	return oldestImage, nil
+	if oldestImageIndex >= 0 {
+		return oldestImageIndex, oldestImage, nil
+
+	}
+
+	return -1, oldestImage, nil
 }
 
 func deregisterImage(ec2Client DeregisterImageClient, image ec2Types.Image) error {
@@ -137,4 +211,8 @@ func deregisterImage(ec2Client DeregisterImageClient, image ec2Types.Image) erro
 		return fmt.Errorf("error deregistering image: %w", err)
 	}
 	return nil
+}
+
+func imageDeletionCheck(imagesToDelete []ec2Types.Image, numOfImagesToDelete int, arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) bool {
+	return (len(imagesToDelete) == numOfImagesToDelete) || (len(arm64Images) <= 1 && len(legacyx86Images) <= 1 && len(x86Images) <= 1)
 }
