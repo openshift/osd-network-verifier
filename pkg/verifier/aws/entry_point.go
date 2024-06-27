@@ -113,10 +113,11 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return &a.Output
 	}
 
-	// Fetch the egress URL list as string of curl parameters; note that this
-	// is TOTALLY IGNORED by LegacyProbe, as that probe only knows how to use
-	// the egress URL lists baked into its AMIs/container images
-	egressListCurlStr, err := egress_lists.GetEgressListAsCurlString(vei.PlatformType, a.AwsClient.Region)
+	// Fetch the egress URL list as two strings (one for normal URLs, the other
+	// for TLS disabled URLs); note that this is TOTALLY IGNORED by LegacyProbe,
+	// as that probe only knows how to use the egress URL lists baked into its
+	// AMIs/container images
+	egressListStr, tlsDisabledEgressListStr, err := egress_lists.GetEgressListAsString(vei.PlatformType, a.AwsClient.Region)
 	if err != nil {
 		return a.Output.AddError(err)
 	}
@@ -124,17 +125,18 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
-		"AWS_REGION":      a.AwsClient.Region,
-		"VALIDATOR_IMAGE": networkValidatorImage,
-		"VALIDATOR_REPO":  networkValidatorRepo,
-		"TIMEOUT":         vei.Timeout.String(),
-		"HTTP_PROXY":      vei.Proxy.HttpProxy,
-		"HTTPS_PROXY":     vei.Proxy.HttpsProxy,
-		"CACERT":          base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
-		"NOTLS":           strconv.FormatBool(vei.Proxy.NoTls),
-		"CONFIG_PATH":     configPath,
-		"DELAY":           "5",
-		"URLS":            egressListCurlStr,
+		"AWS_REGION":       a.AwsClient.Region,
+		"VALIDATOR_IMAGE":  networkValidatorImage,
+		"VALIDATOR_REPO":   networkValidatorRepo,
+		"TIMEOUT":          vei.Timeout.String(),
+		"HTTP_PROXY":       vei.Proxy.HttpProxy,
+		"HTTPS_PROXY":      vei.Proxy.HttpsProxy,
+		"CACERT":           base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NOTLS":            strconv.FormatBool(vei.Proxy.NoTls),
+		"CONFIG_PATH":      configPath,
+		"DELAY":            "5",
+		"URLS":             egressListStr,
+		"TLSDISABLED_URLS": tlsDisabledEgressListStr,
 	}
 
 	if vei.SkipInstanceTermination {

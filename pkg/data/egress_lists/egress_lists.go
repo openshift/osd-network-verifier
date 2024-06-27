@@ -25,12 +25,13 @@ var templateAWSHCP string
 //go:embed gcp-classic.yaml
 var templateGCPClassic string
 
-// GetEgressListAsCurlString returns a string of curl parameters representing all of the URLs
-// contained within a given platformType's egress list
-func GetEgressListAsCurlString(platformType string, region string) (string, error) {
+// GetEgressListAsString returns two strings, the sum of which contains all of the URLs
+// within a given platformType's egress list. The first string returned contains all of
+// URLs with tlsDisabled=false, while the second string contains all URLs with tlsDisabled=true
+func GetEgressListAsString(platformType string, region string) (string, string, error) {
 	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	var egressListYamlStr string
@@ -42,15 +43,15 @@ func GetEgressListAsCurlString(platformType string, region string) (string, erro
 	case helpers.PlatformAWS:
 		egressListYamlStr = templateAWSClassic
 	default:
-		return "", fmt.Errorf("no egress list registered for platform '%s' (normalized to '%s')", platformType, normalizedPlatformType)
+		return "", "", fmt.Errorf("no egress list registered for platform '%s' (normalized to '%s')", platformType, normalizedPlatformType)
 	}
 
-	curlStr, err := curlStringFromYAML(egressListYamlStr, map[string]string{"AWS_REGION": region})
+	curlStr, tlsDisabledCurlStr, err := curlStringFromYAML(egressListYamlStr, map[string]string{"AWS_REGION": region})
 	if err != nil {
-		return "", fmt.Errorf("unable to parse YAML in egress list for platform '%s' (normalized to '%s')", platformType, normalizedPlatformType)
+		return "", "", fmt.Errorf("unable to parse YAML in egress list for platform '%s' (normalized to '%s')", platformType, normalizedPlatformType)
 	}
 
-	return curlStr, nil
+	return curlStr, tlsDisabledCurlStr, nil
 }
 
 // endpoint type (as it appears in the current YAML schema)
@@ -69,7 +70,7 @@ type reachabilityConfig struct {
 
 // crude YAML to curl-formatted string converter
 // Adapted from osd-network-verifier-golden-ami/build/bin/network-validator.go
-func curlStringFromYAML(yamlStr string, variables map[string]string) (string, error) {
+func curlStringFromYAML(yamlStr string, variables map[string]string) (string, string, error) {
 	// Expand variables and parse into endpoints
 	endpoints := reachabilityConfig{}
 	variableMapper := func(varName string) string {
@@ -78,18 +79,12 @@ func curlStringFromYAML(yamlStr string, variables map[string]string) (string, er
 	buf := []byte(os.Expand(yamlStr, variableMapper))
 	err := yaml.Unmarshal(buf, &endpoints)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	// Build curl-compatible string of URLs
 	var urlListStr string
+	var tlsDisabledURLListStr string
 	for _, endpoint := range endpoints.Endpoints {
-		var insecureStart string
-		var insecureEnd string
-		if endpoint.TLSDisabled {
-			// See https://curl.se/docs/manpage.html#-k
-			insecureStart = "-k "
-			insecureEnd = " --no-insecure"
-		}
 		// Infer protocol
 		for _, port := range endpoint.Ports {
 			var protocol string
@@ -101,8 +96,16 @@ func curlStringFromYAML(yamlStr string, variables map[string]string) (string, er
 			default:
 				protocol = "telnet"
 			}
-			urlListStr += fmt.Sprintf("%s%s://%s:%d%s ", insecureStart, protocol, endpoint.Host, port, insecureEnd)
+			urlStr := fmt.Sprintf("%s://%s:%d ", protocol, endpoint.Host, port)
+
+			// Separate out URL if TLSDisabled
+			if endpoint.TLSDisabled {
+				tlsDisabledURLListStr += urlStr
+				continue
+			}
+			// If not TLSDisabled, process normally
+			urlListStr += urlStr
 		}
 	}
-	return urlListStr, nil
+	return urlListStr, tlsDisabledURLListStr, nil
 }
