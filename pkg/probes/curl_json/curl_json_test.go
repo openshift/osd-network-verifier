@@ -69,6 +69,27 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 			wantRegex: `#cloud-config[\s\S]* -k [\s\S]*http:\/\/example.com:80 https:\/\/example.org:443`,
 		},
 		{
+			name: "tlsDisabled URLs provided",
+			userDataVariables: map[string]string{
+				"TIMEOUT":          "1",
+				"DELAY":            "2",
+				"URLS":             "http://example.com:80 https://example.org:443",
+				"TLSDISABLED_URLS": "https://example.net:443",
+			},
+			wantRegex: `#cloud-config[\s\S]*https:\/\/example.org:443[\s\S]*--next -k[\s\S]*https:\/\/example.net:443`,
+		},
+		{
+			name: "NOTLS and tlsDisabled URLs provided",
+			userDataVariables: map[string]string{
+				"TIMEOUT":          "1",
+				"DELAY":            "2",
+				"NOTLS":            "True",
+				"URLS":             "http://example.com:80 https://example.org:443",
+				"TLSDISABLED_URLS": "https://example.net:443",
+			},
+			wantRegex: `#cloud-config[\s\S]* -k [\s\S]*http:\/\/example.com:80 https:\/\/example.org:443 https:\/\/example.net:443`,
+		},
+		{
 			name:                      "missing variables required by directive",
 			userDataVariables:         map[string]string{},
 			wantErr:                   true,
