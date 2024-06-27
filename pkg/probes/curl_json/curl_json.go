@@ -111,7 +111,25 @@ func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string
 		}
 		if noTLS {
 			userDataVariables["CURLOPT"] += " -k "
+			// In addition to adding the curl flag, we can merge the list of "tlsDisabled" URLs
+			// with the list of "normal" URLs now (since all URLs will be "tlsDisabled")
+			userDataVariables["URLS"] += " " + userDataVariables["TLSDISABLED_URLS"]
+			userDataVariables["TLSDISABLED_URLS"] = ""
 		}
+	}
+
+	// Assuming NOTLS=false, "tlsDisabled" URLs must have curl's "--insecure" flag applied *only* to them.
+	// We use curl's "parser reset" flag ("--next" or "-:") to do this, but this has the unfortunate side
+	// effect of forcing us to re-pass most curl flags (except global flags and those irrelevant to HTTPS)
+	if userDataVariables["TLSDISABLED_URLS"] != "" {
+		userDataVariables["TLSDISABLED_URLS_RENDERED"] = fmt.Sprintf(
+			// TODO consider a better way of keeping this in sync with what's in userdata-template.yaml?
+			`--next -k --retry 3 --retry-connrefused -s -I -m %s -w "%%{stderr}%s%%{json}\n" %s %s --proto =https`,
+			userDataVariables["TIMEOUT"],
+			outputLinePrefix,
+			userDataVariables["CURLOPT"],
+			userDataVariables["TLSDISABLED_URLS"],
+		)
 	}
 
 	// Expand template
