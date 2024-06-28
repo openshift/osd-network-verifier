@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/servicequotas"
 	"log"
 	"os"
-	"sort"
 	"sync"
 	"time"
 )
@@ -55,7 +54,7 @@ func main() {
 			}
 
 			ec2Client := ec2.NewFromConfig(cfg, func(o *ec2.Options) { o.Region = regionName })
-			images, err := getPublicImages(ec2Client, "", "")
+			images, err := getPublicImages(ec2Client)
 			if err != nil {
 				log.Fatalf("error fetching images for region %v: %v", regionName, err)
 			}
@@ -67,37 +66,40 @@ func main() {
 			} else {
 				numOfImagesToDelete := desiredImageCapacity - (quota - imageCount)
 
-				arm64Images, err := getPublicImages(ec2Client, "arm64", "rhel-arm64")
+				arm64Images := filterImages(images, "arm64", "rhel-arm64")
 				if err != nil {
 					log.Fatalf("error fetching rhel arm64 images for region %v: %v", regionName, err)
 				}
 
-				legacyx86Images, err := getPublicImages(ec2Client, "x86_64", "legacy-x86_64")
+				legacyx86Images := filterImages(images, "x86_64", "legacy-x86_64")
 				if err != nil {
 					log.Fatalf("error fetching legacy x86_64 images for region %v: %v", regionName, err)
 				}
 
-				x86Images, err := getPublicImages(ec2Client, "x86_64", "rhel-x86_64")
+				x86Images := filterImages(images, "x86_64", "rhel-x86_64")
 				if err != nil {
 					log.Fatalf("error fetching rhel x86_64 images for region %v: %v", regionName, err)
 				}
 				var imagesToDelete []ec2Types.Image
 
-				sortedImages := sortImageType(arm64Images, legacyx86Images, x86Images)
-
-			ImageDeregisterLoop:
 				for !imageDeletionCheck(imagesToDelete, numOfImagesToDelete, arm64Images, legacyx86Images, x86Images) {
-					for _, images = range sortedImages {
-						ImageToDeleteIndex, ImageToDelete, err := getOldestImage(images)
-						if err != nil {
-							log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
-						}
-						if ImageToDeleteIndex >= 0 {
-							imagesToDelete = append(imagesToDelete, ImageToDelete)
-							legacyx86Images = append(images[:ImageToDeleteIndex], images[ImageToDeleteIndex+1:]...)
-							if len(imagesToDelete) == numOfImagesToDelete {
-								break ImageDeregisterLoop
-							}
+					mostPopulatedImagesByType, mostPopulatedImageType := getMostPopulatedImageType(arm64Images, legacyx86Images, x86Images)
+
+					ImageToDeleteIndex, ImageToDelete, err := getOldestImage(mostPopulatedImagesByType)
+					if err != nil {
+						log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
+					}
+
+					if ImageToDeleteIndex >= 0 {
+						imagesToDelete = append(imagesToDelete, ImageToDelete)
+
+						switch mostPopulatedImageType {
+						case "arm64Images":
+							arm64Images = append(arm64Images[:ImageToDeleteIndex], arm64Images[ImageToDeleteIndex+1:]...)
+						case "legacyx86Images":
+							legacyx86Images = append(legacyx86Images[:ImageToDeleteIndex], legacyx86Images[ImageToDeleteIndex+1:]...)
+						case "x86Images":
+							x86Images = append(x86Images[:ImageToDeleteIndex], x86Images[ImageToDeleteIndex+1:]...)
 						}
 					}
 				}
@@ -142,48 +144,72 @@ func getPublicAMIServiceQuota(servicequotasClient GetServiceQuotaClient) (int, e
 	return serviceQuotaValue, nil
 }
 
-func sortImageType(arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) [][]ec2Types.Image {
-	sortedImages := [][]ec2Types.Image{arm64Images, legacyx86Images, x86Images}
+func getMostPopulatedImageType(arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) ([]ec2Types.Image, string) {
+	slices := []struct {
+		name   string
+		images []ec2Types.Image
+	}{
+		{name: "arm64Images", images: arm64Images},
+		{name: "legacyx86Images", images: legacyx86Images},
+		{name: "x86Images", images: x86Images},
+	}
 
-	sort.Slice(sortedImages, func(i, j int) bool {
-		return len(sortedImages[i]) > len(sortedImages[j])
-	})
+	var mostPopulatedImagesByType []ec2Types.Image
+	var mostPopulatedImageType string
+	longestSliceLength := 0
 
-	return sortedImages
+	for _, slice := range slices {
+		if len(slice.images) > longestSliceLength {
+			mostPopulatedImageType = slice.name
+			mostPopulatedImagesByType = slice.images
+			longestSliceLength = len(slice.images)
+		}
+	}
+
+	return mostPopulatedImagesByType, mostPopulatedImageType
 }
 
-func getPublicImages(ec2Client DescribeImagesClient, arch string, tag string) ([]ec2Types.Image, error) {
-	input := &ec2.DescribeImagesInput{
+func getPublicImages(ec2Client DescribeImagesClient) ([]ec2Types.Image, error) {
+	describeImagesResponse, err := ec2Client.DescribeImages(context.TODO(), &ec2.DescribeImagesInput{
 		ExecutableUsers: []string{"all"},
 		Owners:          []string{"self"},
-	}
-
-	if arch != "" {
-		input.Filters = append(input.Filters, ec2Types.Filter{
-			Name:   aws.String("architecture"),
-			Values: []string{arch},
-		})
-	}
-	if tag != "" {
-		input.Filters = append(input.Filters, ec2Types.Filter{
-			Name:   aws.String("tag:version"),
-			Values: []string{tag},
-		})
-	}
-	describeImagesResponse, err := ec2Client.DescribeImages(context.TODO(), input)
+	})
 	if err != nil {
-		return nil, fmt.Errorf("error fetching %v images: %w", tag, err)
+		return nil, fmt.Errorf("error fetching images: %w", err)
 	}
-
 	return describeImagesResponse.Images, nil
+}
+
+func hasMatchingTag(image ec2Types.Image, tag string) bool {
+	for _, t := range image.Tags {
+		if *t.Key == "version" && *t.Value == tag {
+			return true
+		}
+	}
+	return false
+}
+
+func hasMatchingArchitecture(image ec2Types.Image, architecture string) bool {
+	return string(image.Architecture) == architecture
+}
+
+func filterImages(images []ec2Types.Image, architecture string, tag string) []ec2Types.Image {
+	var filteredImages []ec2Types.Image
+	for _, image := range images {
+
+		if hasMatchingTag(image, tag) && hasMatchingArchitecture(image, architecture) {
+			filteredImages = append(filteredImages, image)
+		}
+	}
+	return filteredImages
 }
 
 func getOldestImage(images []ec2Types.Image) (int, ec2Types.Image, error) {
 	var oldestImage ec2Types.Image
 	var oldestImageTimestamp int64
 	var oldestImageIndex = -1
-	if len(images) <= 1 {
 
+	if len(images) <= 1 {
 		return -1, oldestImage, nil
 	}
 	for i, image := range images {
