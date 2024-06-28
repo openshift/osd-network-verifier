@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"strconv"
 
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -31,6 +32,34 @@ func (prb CurlJSONProbe) GetStartingToken() string { return startingToken }
 // GetEndingToken returns the string token used to signal the end of the probe's output
 func (prb CurlJSONProbe) GetEndingToken() string { return endingToken }
 
+// GetMachineImageID returns the string ID of the VM image to be used for the probe instance
+func (prb CurlJSONProbe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
+	// Validate/normalize platformType
+	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
+	if err != nil {
+		return "", err
+	}
+
+	// Normalize region key (GCP images are global/not region-scoped)
+	normalizedRegion := region
+	if normalizedPlatformType == helpers.PlatformGCP {
+		normalizedRegion = "*"
+	}
+
+	// Access lookup table
+	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][normalizedRegion]
+	if !keyExists {
+		return "", fmt.Errorf(
+			"no default CurlJSONProbe machine image for arch %s in region %s of platform %s",
+			cpuArch,
+			normalizedRegion,
+			normalizedPlatformType,
+		)
+	}
+
+	return imageID, nil
+}
+
 // GetExpandedUserData returns a YAML-formatted userdata string filled-in ("expanded") with
 // the values provided in userDataVariables according to os.Expand(). E.g., if the userdata
 // template contains "name: $FOO" and userDataVariables = {"FOO": "bar"}, the returned string
@@ -47,6 +76,60 @@ func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string
 	err := helpers.ValidateProvidedVariables(userDataVariables, presetUserDataVariables, requiredVariables)
 	if err != nil {
 		return "", err
+	}
+
+	// TIMEOUT might be a duration string (e.g., "3s"), but curl only accepts a naked
+	// positive decimal number of seconds
+	userDataVariables["TIMEOUT"], err = normalizeSaneNonzeroDuration(userDataVariables["TIMEOUT"], "%.2f")
+	if err != nil {
+		return "", fmt.Errorf("invalid userdata variable TIMEOUT: %w", err)
+	}
+	// Same goes for DELAY, except cloud-init only accepts a positive integer number of seconds
+	userDataVariables["DELAY"], err = normalizeSaneNonzeroDuration(userDataVariables["DELAY"], "%.f")
+	if err != nil {
+		return "", fmt.Errorf("invalid userdata variable DELAY: %w", err)
+	}
+
+	// For compatibility reasons, we expect CACERT to be either empty or a base64-encoded
+	// PEM-formatted CA certicate. When one is provided, we "render" it with a cloud-init
+	// preamble that writes the file to disk, and we tell curl about the cert file via flag
+	if userDataVariables["CACERT"] != "" {
+		cloudInitPreamble := `write_files:
+- path: /proxy.pem
+  permissions: '0755'
+  encoding: b64
+  content: `
+		userDataVariables["CACERT_RENDERED"] = cloudInitPreamble + userDataVariables["CACERT"]
+		userDataVariables["CURLOPT"] += " --cacert /proxy.pem "
+	}
+
+	// Also for compatibility reasons, we map the NOTLS variable to curl's "insecure" flag
+	if userDataVariables["NOTLS"] != "" {
+		noTLS, err := strconv.ParseBool(userDataVariables["NOTLS"])
+		if err != nil {
+			return "", fmt.Errorf("invalid userdata variable NOTLS: %w", err)
+		}
+		if noTLS {
+			userDataVariables["CURLOPT"] += " -k "
+			// In addition to adding the curl flag, we can merge the list of "tlsDisabled" URLs
+			// with the list of "normal" URLs now (since all URLs will be "tlsDisabled")
+			userDataVariables["URLS"] += " " + userDataVariables["TLSDISABLED_URLS"]
+			userDataVariables["TLSDISABLED_URLS"] = ""
+		}
+	}
+
+	// Assuming NOTLS=false, "tlsDisabled" URLs must have curl's "--insecure" flag applied *only* to them.
+	// We use curl's "parser reset" flag ("--next" or "-:") to do this, but this has the unfortunate side
+	// effect of forcing us to re-pass most curl flags (except global flags and those irrelevant to HTTPS)
+	if userDataVariables["TLSDISABLED_URLS"] != "" {
+		userDataVariables["TLSDISABLED_URLS_RENDERED"] = fmt.Sprintf(
+			// TODO consider a better way of keeping this in sync with what's in userdata-template.yaml?
+			`--next -k --retry 3 --retry-connrefused -s -I -m %s -w "%%{stderr}%s%%{json}\n" %s %s --proto =https`,
+			userDataVariables["TIMEOUT"],
+			outputLinePrefix,
+			userDataVariables["CURLOPT"],
+			userDataVariables["TLSDISABLED_URLS"],
+		)
 	}
 
 	// Expand template
@@ -80,4 +163,23 @@ func (prb CurlJSONProbe) ParseProbeOutput(probeOutput string, outputDestination 
 			),
 		)
 	}
+}
+
+// normalizeSaneNonzeroDuration first converts a given string expected to hold a duration
+// (e.g., "3s" or "2") to a float64 using helpers.DurationToBareSeconds(). It then ensures the
+// float duration is "sane," i.e., greater than 0 seconds but less than 3 hours*. If sane, the
+// duration in seconds is Sprintf'd using the provided fmtStr and returned. If not sane, an error
+// is returned.
+// * We max at 3 hours under the assumption that the verifier isn't doing anything for >3hrs
+func normalizeSaneNonzeroDuration(possibleDurationStr string, fmtStr string) (string, error) {
+	durationSeconds := helpers.DurationToBareSeconds(possibleDurationStr)
+	if durationSeconds <= 0 {
+		return "", fmt.Errorf("invalid %s value (parsed as %.2f sec)", possibleDurationStr, durationSeconds)
+	}
+
+	if durationSeconds > 10800 {
+		return "", fmt.Errorf("value %s (parsed as %.2f sec) is too large", possibleDurationStr, durationSeconds)
+	}
+
+	return fmt.Sprintf(fmtStr, durationSeconds), nil
 }

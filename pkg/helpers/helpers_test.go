@@ -628,3 +628,74 @@ func TestRemoveTimestamps(t *testing.T) {
 		})
 	}
 }
+
+func TestDurationToBareSeconds(t *testing.T) {
+	tests := []struct {
+		name                string
+		possibleDurationStr string
+		want                float64
+	}{
+		{
+			name:                "simple duration",
+			possibleDurationStr: "3s",
+			want:                3,
+		},
+		{
+			name:                "compound duration",
+			possibleDurationStr: "1m3s",
+			want:                63,
+		},
+		{
+			name:                "bare integer",
+			possibleDurationStr: "7",
+			want:                7,
+		},
+		{
+			name:                "bare float",
+			possibleDurationStr: "1.11",
+			want:                1.11,
+		},
+		{
+			name:                "noisy number",
+			possibleDurationStr: "foo1.23bar",
+			want:                1.23,
+		},
+		{
+			name:                "no numbers",
+			possibleDurationStr: "foobar",
+			want:                0,
+		},
+		{
+			name:                "empty string",
+			possibleDurationStr: "",
+			want:                0,
+		},
+		{
+			name:                "negative unit",
+			possibleDurationStr: "-1m",
+			want:                -60.0,
+		},
+		{
+			name:                "negative float",
+			possibleDurationStr: "-3.33",
+			want:                -3.33,
+		},
+		{
+			name:                "nan",
+			possibleDurationStr: "NaN",
+			want:                0,
+		},
+		{
+			name:                "infinity",
+			possibleDurationStr: "Inf",
+			want:                0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DurationToBareSeconds(tt.possibleDurationStr); got != tt.want {
+				t.Errorf("DurationToBareSeconds() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

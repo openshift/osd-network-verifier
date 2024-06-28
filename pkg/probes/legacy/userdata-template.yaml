@@ -1,4 +1,5 @@
 #cloud-config
+# network-verifier-required-variables=AWS_REGION,CONFIG_PATH,DELAY,IMAGE,NOTLS,TIMEOUT,VALIDATOR_IMAGE,VALIDATOR_REPO,VALIDATOR_START_VERIFIER,VALIDATOR_END_VERIFIER
 repo_update: true
 write_files:
   - path: /run-container.sh

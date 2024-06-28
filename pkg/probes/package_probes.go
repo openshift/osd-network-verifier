@@ -5,6 +5,7 @@ import (
 )
 
 type Probe interface {
+	GetMachineImageID(platformType string, cpuArchitecture string, region string) (string, error)
 	GetStartingToken() string
 	GetEndingToken() string
 	GetExpandedUserData(map[string]string) (string, error)
