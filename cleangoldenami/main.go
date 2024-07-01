@@ -117,9 +117,9 @@ func main() {
 							if *t.Key == "version" {
 								err = deregisterImage(ec2Client, image)
 								if err != nil {
-									fmt.Printf("error deregistering image %v (%v) in region %v: %v", *image.ImageId, *image.Tags[i].Value, regionName, err)
+									fmt.Printf("error deregistering image %v (%v) in region %v: %v\n", *image.ImageId, *image.Tags[i].Value, regionName, err)
 								}
-								fmt.Printf("successfully deregistered image %v (%v) in region %v", *image.ImageId, *image.Tags[i].Value, regionName)
+								fmt.Printf("successfully deregistered image %v (%v) in region %v\n", *image.ImageId, *image.Tags[i].Value, regionName)
 							}
 						}
 					}
