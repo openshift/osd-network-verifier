@@ -105,15 +105,23 @@ func main() {
 				}
 				if *dryRun {
 					for _, image := range imagesToDelete {
-						fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[1].Value)
+						for i, t := range image.Tags {
+							if *t.Key == "version" {
+								fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[i].Value)
+							}
+						}
 					}
 				} else {
 					for _, image := range imagesToDelete {
-						err = deregisterImage(ec2Client, image)
-						if err != nil {
-							fmt.Printf("error deregistering image %v (%v) in region %v: %v", *image.ImageId, *image.Tags[0].Value, regionName, err)
+						for i, t := range image.Tags {
+							if *t.Key == "version" {
+								err = deregisterImage(ec2Client, image)
+								if err != nil {
+									fmt.Printf("error deregistering image %v (%v) in region %v: %v", *image.ImageId, *image.Tags[i].Value, regionName, err)
+								}
+								fmt.Printf("successfully deregistered image %v (%v) in region %v", *image.ImageId, *image.Tags[i].Value, regionName)
+							}
 						}
-						fmt.Printf("successfully deregistered image %v (%v) in region %v", *image.ImageId, *image.Tags[0].Value, regionName)
 					}
 				}
 			}
