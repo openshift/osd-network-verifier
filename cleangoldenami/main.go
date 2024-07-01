@@ -111,9 +111,9 @@ func main() {
 					for _, image := range imagesToDelete {
 						err = deregisterImage(ec2Client, image)
 						if err != nil {
-							fmt.Printf("error deregistering image %v (%v) in region %v: %v", *image.ImageId, *image.Tags[1].Value, regionName, err)
+							fmt.Printf("error deregistering image %v (%v) in region %v: %v", *image.ImageId, *image.Tags[0].Value, regionName, err)
 						}
-						fmt.Printf("successfully deregistered image %v (%v) in region %v", *image.ImageId, *image.Tags[1].Value, regionName)
+						fmt.Printf("successfully deregistered image %v (%v) in region %v", *image.ImageId, *image.Tags[0].Value, regionName)
 					}
 				}
 			}
@@ -124,6 +124,7 @@ func main() {
 	fmt.Println("Done!")
 }
 
+// getEnabledRegions returns all enabled regions
 func getEnabledRegions(describeRegionsClient DescribeRegionsClient) ([]ec2Types.Region, error) {
 	describeRegionsResponse, err := describeRegionsClient.DescribeRegions(context.TODO(), nil)
 	if err != nil {
@@ -132,6 +133,7 @@ func getEnabledRegions(describeRegionsClient DescribeRegionsClient) ([]ec2Types.
 	return describeRegionsResponse.Regions, nil
 }
 
+// getPublicAMIServiceQuota returns the quota limit for AWS public images
 func getPublicAMIServiceQuota(servicequotasClient GetServiceQuotaClient) (int, error) {
 	getServiceQuotaResponse, err := servicequotasClient.GetServiceQuota(context.TODO(), &servicequotas.GetServiceQuotaInput{
 		ServiceCode: aws.String(serviceCode),
@@ -144,6 +146,7 @@ func getPublicAMIServiceQuota(servicequotasClient GetServiceQuotaClient) (int, e
 	return serviceQuotaValue, nil
 }
 
+// getMostPopulatedImageType returns the AWS AMIs with the highest availability of images
 func getMostPopulatedImageType(arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) ([]ec2Types.Image, string) {
 	slices := []struct {
 		name   string
@@ -169,6 +172,7 @@ func getMostPopulatedImageType(arm64Images []ec2Types.Image, legacyx86Images []e
 	return mostPopulatedImagesByType, mostPopulatedImageType
 }
 
+// getPublicImages retrieves all public images belonging to the AWS account
 func getPublicImages(ec2Client DescribeImagesClient) ([]ec2Types.Image, error) {
 	describeImagesResponse, err := ec2Client.DescribeImages(context.TODO(), &ec2.DescribeImagesInput{
 		ExecutableUsers: []string{"all"},
@@ -193,6 +197,7 @@ func hasMatchingArchitecture(image ec2Types.Image, architecture string) bool {
 	return string(image.Architecture) == architecture
 }
 
+// filterImages filters AWS AMIs based on their version tag and architecture.
 func filterImages(images []ec2Types.Image, architecture string, tag string) []ec2Types.Image {
 	var filteredImages []ec2Types.Image
 	for _, image := range images {
@@ -204,6 +209,7 @@ func filterImages(images []ec2Types.Image, architecture string, tag string) []ec
 	return filteredImages
 }
 
+// getOldestImage retrieves the oldest AWS AMI based on creation date
 func getOldestImage(images []ec2Types.Image) (int, ec2Types.Image, error) {
 	var oldestImage ec2Types.Image
 	var oldestImageTimestamp int64
@@ -231,6 +237,7 @@ func getOldestImage(images []ec2Types.Image) (int, ec2Types.Image, error) {
 	return -1, oldestImage, nil
 }
 
+// deregisterImage deregisters an AWS AMI
 func deregisterImage(ec2Client DeregisterImageClient, image ec2Types.Image) error {
 	_, err := ec2Client.DeregisterImage(context.TODO(), &ec2.DeregisterImageInput{ImageId: image.ImageId})
 	if err != nil {
@@ -239,6 +246,7 @@ func deregisterImage(ec2Client DeregisterImageClient, image ec2Types.Image) erro
 	return nil
 }
 
+// imageDeletionCheck verifies that conditions are met before deleting an AMI
 func imageDeletionCheck(imagesToDelete []ec2Types.Image, numOfImagesToDelete int, arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) bool {
 	return (len(imagesToDelete) == numOfImagesToDelete) || (len(arm64Images) <= 1 && len(legacyx86Images) <= 1 && len(x86Images) <= 1)
 }
