@@ -1,0 +1,32 @@
+#cloud-config
+# network-verifier-required-variables=AWS_REGION,CONFIG_PATH,DELAY,IMAGE,NOTLS,TIMEOUT,VALIDATOR_IMAGE,VALIDATOR_REPO,VALIDATOR_START_VERIFIER,VALIDATOR_END_VERIFIER
+repo_update: true
+write_files:
+  - path: /run-container.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      echo "${USERDATA_BEGIN}" >> /var/log/userdata-output
+      # Look for the image pre-pulled in the AMI, if not available, try to pull it
+      IMAGE=`docker images ${VALIDATOR_REPO} -q  | head -n 2 | tail -n 1`
+      if [[ -z "${IMAGE}" ]]; then
+        sudo docker pull ${VALIDATOR_IMAGE} >> /var/log/userdata-output
+        IMAGE=`docker images ${VALIDATOR_REPO} -q | head -n 2 | tail -n 1`
+      fi
+      echo "Using IMAGE: $IMAGE" >> /var/log/userdata-output
+      if [[ "${CACERT}" != "" ]]; then
+        echo "${CACERT}" | base64 --decode > /proxy.pem
+        sudo docker run -v /proxy.pem:/proxy.pem:Z -e "HTTP_PROXY=${HTTP_PROXY}" -e "HTTPS_PROXY=${HTTPS_PROXY}" -e "AWS_REGION=${AWS_REGION}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${IMAGE} --timeout=${TIMEOUT} --config=${CONFIG_PATH} --cacert=/proxy.pem --no-tls=${NOTLS}  >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
+      else
+        sudo docker run -e "AWS_REGION=${AWS_REGION}" -e "HTTP_PROXY=${HTTP_PROXY}" -e "HTTPS_PROXY=${HTTPS_PROXY}" -e "START_VERIFIER=${VALIDATOR_START_VERIFIER}" -e "END_VERIFIER=${VALIDATOR_END_VERIFIER}" ${IMAGE} --timeout=${TIMEOUT} --config=${CONFIG_PATH} >> /var/log/userdata-output || echo "Failed to successfully run the docker container"
+      fi
+      echo "${USERDATA_END}" >> /var/log/userdata-output
+runcmd:
+  - sudo systemctl start docker 2>1 > /dev/null || echo "docker not started by systemctl"
+  - HTTP_PROXY=${HTTP_PROXY} HTTPS_PROXY=${HTTPS_PROXY} /run-container.sh
+  - cat /var/log/userdata-output >/dev/console
+power_state:
+  delay: ${DELAY}
+  mode: poweroff
+  message: Auto-terminating instance due to timeout
+  timeout: 300
