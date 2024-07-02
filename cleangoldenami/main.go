@@ -19,6 +19,7 @@ const (
 	serviceCode          = "ec2"
 	quotaCode            = "L-0E3CBAB9"
 	timeLayout           = "2006-01-02T15:04:05.000Z"
+    // desiredImageCapacity is the number of free "image slots" desired in each region
 	desiredImageCapacity = 3
 )
 
