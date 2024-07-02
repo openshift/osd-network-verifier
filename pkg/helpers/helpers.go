@@ -22,6 +22,12 @@ const (
 	PlatformAWSHCP        = "aws-hcp"
 )
 
+// Enumerated type representing CPU architectures
+const (
+	ArchX86 = "x86"
+	ArchARM = "arm"
+)
+
 //go:embed config/userdata.yaml
 var UserdataTemplate string
 
