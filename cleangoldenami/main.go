@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	serviceCode          = "ec2"
-	quotaCode            = "L-0E3CBAB9"
-	timeLayout           = "2006-01-02T15:04:05.000Z"
-    // desiredImageCapacity is the number of free "image slots" desired in each region
+	serviceCode = "ec2"
+	quotaCode   = "L-0E3CBAB9"
+	timeLayout  = "2006-01-02T15:04:05.000Z"
+	// desiredImageCapacity is the number of free "image slots" desired in each region
 	desiredImageCapacity = 3
 )
 
@@ -104,23 +104,17 @@ func main() {
 						}
 					}
 				}
-				if *dryRun {
-					for _, image := range imagesToDelete {
-						for i, t := range image.Tags {
-							if *t.Key == "version" {
-								fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[i].Value)
-							}
-						}
-					}
-				} else {
-					for _, image := range imagesToDelete {
-						for i, t := range image.Tags {
-							if *t.Key == "version" {
+				for _, image := range imagesToDelete {
+					for i, t := range image.Tags {
+						if *t.Key == "version" {
+							if !*dryRun {
 								err = deregisterImage(ec2Client, image)
 								if err != nil {
 									fmt.Printf("error deregistering image %v (%v) in region %v: %v\n", *image.ImageId, *image.Tags[i].Value, regionName, err)
 								}
 								fmt.Printf("successfully deregistered image %v (%v) in region %v\n", *image.ImageId, *image.Tags[i].Value, regionName)
+							} else {
+								fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[i].Value)
 							}
 						}
 					}
