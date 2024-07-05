@@ -29,6 +29,7 @@ func main() {
 	probeStr := f.String("probe", "CurlJSON", "(Optional) Probe to validate, defaults to `CurlJSON`")
 	createOnly := f.Bool("create-only", false, "When specified, only create infrastructure and do not delete")
 	deleteOnly := f.Bool("delete-only", false, "When specified, delete infrastructure in an idempotent fashion")
+	debug := f.Bool("debug", false, "Enable verbose logging")
 	if err := f.Parse(os.Args[1:]); err != nil {
 		panic(err)
 	}
@@ -76,7 +77,7 @@ func main() {
 		return
 	}
 
-	if err := onvEgressCheck(cfg, *platform, probe, *data.GetPrivateSubnetId()); err != nil {
+	if err := onvEgressCheck(cfg, *platform, probe, *data.GetPrivateSubnetId(), *debug); err != nil {
 		panic(err)
 	}
 
@@ -85,7 +86,7 @@ func main() {
 	}
 }
 
-func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetId string) error {
+func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetId string, debug bool) error {
 	builder := ocmlog.NewStdLoggerBuilder()
 	logger, err := builder.Build()
 	if err != nil {
@@ -101,7 +102,7 @@ func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetI
 	defaultTags := map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
 
 	vei := verifier.ValidateEgressInput{
-		Timeout:      2 * time.Second,
+		Timeout:      4 * time.Second,
 		Ctx:          context.TODO(),
 		PlatformType: platform,
 		SubnetID:     subnetId,
@@ -113,7 +114,7 @@ func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetI
 	// Call egress validator
 	log.Println("Starting ONV egress validation")
 	out := verifier.ValidateEgress(awsVerifier, vei)
-	out.Summary(true)
+	out.Summary(debug)
 	egressFailures := out.GetEgressURLFailures()
 	for _, ef := range egressFailures {
 		log.Printf("egress failure: %s", ef.EgressURL())
