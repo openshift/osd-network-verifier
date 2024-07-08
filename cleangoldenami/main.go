@@ -68,32 +68,28 @@ func main() {
 				numOfImagesToDelete := desiredImageCapacity - (quota - imageCount)
 
 				arm64Images := filterImages(images, "arm64", "rhel-arm64")
-				if err != nil {
-					log.Fatalf("error fetching rhel arm64 images for region %v: %v", regionName, err)
-				}
-
 				legacyx86Images := filterImages(images, "x86_64", "legacy-x86_64")
-				if err != nil {
-					log.Fatalf("error fetching legacy x86_64 images for region %v: %v", regionName, err)
-				}
-
 				x86Images := filterImages(images, "x86_64", "rhel-x86_64")
-				if err != nil {
-					log.Fatalf("error fetching rhel x86_64 images for region %v: %v", regionName, err)
-				}
+
 				var imagesToDelete []ec2Types.Image
 
 				for !imageDeletionCheck(imagesToDelete, numOfImagesToDelete, arm64Images, legacyx86Images, x86Images) {
+					// Returns the most populated image type and the slice containing images of that type
 					mostPopulatedImagesByType, mostPopulatedImageType := getMostPopulatedImageType(arm64Images, legacyx86Images, x86Images)
 
+					// Returns the oldest image from the most populated type's slice along with its index value
 					ImageToDeleteIndex, ImageToDelete, err := getOldestImage(mostPopulatedImagesByType)
 					if err != nil {
+						// Log a fatal error if there was an issue retrieving the oldest image
 						log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
 					}
 
+					// If ImageToDeleteIndex is valid (non-negative), proceed with deletion
 					if ImageToDeleteIndex >= 0 {
+						// Add the image to the list of images to delete
 						imagesToDelete = append(imagesToDelete, ImageToDelete)
 
+						// Remove the deleted image from its respective slice based on its type
 						switch mostPopulatedImageType {
 						case "arm64Images":
 							arm64Images = append(arm64Images[:ImageToDeleteIndex], arm64Images[ImageToDeleteIndex+1:]...)

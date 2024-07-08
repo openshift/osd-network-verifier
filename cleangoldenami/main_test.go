@@ -439,3 +439,52 @@ func Test_getMostPopulatedImageType(t *testing.T) {
 		})
 	}
 }
+
+func Test_filterImages(t *testing.T) {
+	tests := []struct {
+		name                   string
+		images                 []ec2Types.Image
+		architecture           string
+		tag                    string
+		expectedFilteredImages []ec2Types.Image
+	}{
+		{
+			name: "filter arm64 images by matching architecture and tag",
+			images: []ec2Types.Image{
+				{ImageId: aws.String("a"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+				{ImageId: aws.String("b"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("legacy-x86_64")}}},
+				{ImageId: aws.String("c"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-x86_64")}}},
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+			architecture: "arm64",
+			tag:          "rhel-arm64",
+			expectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("a"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+		},
+		{
+			name: "filter arm64 Images with missing tag",
+			images: []ec2Types.Image{
+				{ImageId: aws.String("a"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("")}}},
+				{ImageId: aws.String("b"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("legacy-x86_64")}}},
+				{ImageId: aws.String("c"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-x86_64")}}},
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+			architecture: "arm64",
+			tag:          "rhel-arm64",
+			expectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filtered := filterImages(tt.images, tt.architecture, tt.tag)
+			if !reflect.DeepEqual(filtered, tt.expectedFilteredImages) {
+				t.Errorf("filterImages() got = %v, want %v", filtered, tt.expectedFilteredImages)
+			}
+		})
+	}
+}
