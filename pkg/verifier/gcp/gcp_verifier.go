@@ -99,7 +99,14 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 				Subnetwork: input.vpcSubnetID,
 			},
 		},
-
+		ServiceAccounts: []*computev1.ServiceAccount{
+			{
+				Email: "default",
+				Scopes: []string{
+					"https://www.googleapis.com/auth/cloud-platform",
+				},
+			},
+		},
 		Metadata: &computev1.Metadata{
 			Items: []*computev1.MetadataItems{
 				{
