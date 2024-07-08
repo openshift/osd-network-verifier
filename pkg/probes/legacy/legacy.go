@@ -12,7 +12,13 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
+// LegacyProbe is an implementation of the Probe interface that aims to mimic the functionality of
+// the verifier's egress check pre-experimental-probe (i.e., v0.4.10) as closely as possible ("bug-
+// for-bug"). This means launching a custom "validator binary" inside of a "validator container image"
+// inside of a "golden AMI." The list of URLs checked by this validator binary is baked into the image
+// and cannot be changed at runtime. This probe only supports X86 on AWS.
 type LegacyProbe struct{}
+type Probe = LegacyProbe // legacy.Probe is an alias for LegacyProbe
 
 //go:embed userdata-template.yaml
 var userDataTemplate string

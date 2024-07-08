@@ -64,7 +64,7 @@ func extendValidateEgress() {
 			SecurityGroupIDs: []string{"SecurityGroupID1", "OptionalSecurityGroupID2"},
 		},
 		PlatformType: helpers.PlatformAWS,
-		Probe:        curl_json.CurlJSONProbe{},
+		Probe:        curl_json.Probe{},
 	}
 
 	// Call egress function with either gcp or aws client

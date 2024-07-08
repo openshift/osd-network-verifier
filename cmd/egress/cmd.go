@@ -162,9 +162,9 @@ are set correctly before execution.
 				// Probe selection
 				switch strings.ToLower(config.probeName) {
 				case "", "curl", "curljson", "curljsonprobe":
-					vei.Probe = curl_json.CurlJSONProbe{}
+					vei.Probe = curl_json.Probe{}
 				case "legacy", "legacyprobe":
-					vei.Probe = legacy.LegacyProbe{}
+					vei.Probe = legacy.Probe{}
 				}
 
 				out := verifier.ValidateEgress(awsVerifier, vei)

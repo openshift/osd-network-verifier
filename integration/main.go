@@ -134,9 +134,9 @@ func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetI
 func GetProbeByName(probeName string) (probes.Probe, error) {
 	switch strings.ToLower(probeName) {
 	case "curl", "curljson", "curljsonprobe":
-		return curl_json.CurlJSONProbe{}, nil
+		return curl_json.Probe{}, nil
 	case "legacy", "legacyprobe":
-		return legacy.LegacyProbe{}, nil
+		return legacy.Probe{}, nil
 	}
 	return nil, fmt.Errorf("'%s' does not match any known probes", probeName)
 }

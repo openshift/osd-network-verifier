@@ -12,11 +12,20 @@ import (
 )
 
 // TestCurlJSONProbe_ImplementsProbeInterface simply forces the compiler
-// to confirm that the CurlJSONProbe type properly implements the Probe
-// interface. If not (e.g, because a required method is missing), this
-// test will fail to compile
+// to confirm that the CurlJSONProbe type and its Probe alias properly
+// implement the Probe interface. If not (e.g, because a required method
+// is missing), this test will fail to compile
 func TestCurlJSONProbe_ImplementsProbeInterface(t *testing.T) {
 	var _ probes.Probe = (*CurlJSONProbe)(nil)
+	var _ probes.Probe = (*Probe)(nil)
+}
+
+// TestCurlJSONProbe_ProbeTypeAlias simply forces the compiler to confirm
+// that this package contains an alias for the CurlJSONProbe type called Probe.
+// If not, this test will fail to compile
+func TestCurlJSONProbe_ProbeTypeAlias(t *testing.T) {
+	var _ CurlJSONProbe = Probe{}
+	var _ Probe = CurlJSONProbe{}
 }
 
 // TestCurlJSONProbe_GetExpandedUserData tests the correctness of the user-

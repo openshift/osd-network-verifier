@@ -13,11 +13,20 @@ import (
 )
 
 // TestLegacyProbe_ImplementsProbeInterface simply forces the compiler
-// to confirm that the LegacyProbe type properly implements the Probe
-// interface. If not (e.g, because a required method is missing), this
-// test will fail to compile
+// to confirm that the CurlJSONProbe type and its Probe alias properly
+// implement the Probe interface. If not (e.g, because a required method
+// is missing), this test will fail to compile
 func TestLegacyProbe_ImplementsProbeInterface(t *testing.T) {
 	var _ probes.Probe = (*LegacyProbe)(nil)
+	var _ probes.Probe = (*Probe)(nil)
+}
+
+// TestLegacyProbe_ProbeTypeAlias simply forces the compiler to confirm
+// that this package contains an alias for the LegacyProbe type called Probe.
+// If not, this test will fail to compile
+func TestCurlJSONProbe_ProbeTypeAlias(t *testing.T) {
+	var _ LegacyProbe = Probe{}
+	var _ Probe = LegacyProbe{}
 }
 
 // TestLegacyProbe_GetMachineImageID tests this probe's cloud VM image lookup table

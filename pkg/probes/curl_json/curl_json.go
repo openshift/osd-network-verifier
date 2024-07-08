@@ -11,7 +11,16 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
+// CurlJSONProbe is an implementation of the Probe interface that uses the venerable curl tool to
+// check for blocked egresses in a target network. It launches an unmodified RHEL9 instance (although
+// any OS with curl v7.76.1 or compatible will work) and uses userdata to transmit at runtime a list
+// of egress URLs to which curl will attempt to connect. Curl will return the results as JSON via
+// serial console, which this probe can then parse into a standard output format. Any reported
+// egressURL errors will contain curl's detailed error messages. Additional command line options can
+// be provided to curl via the CURLOPT userdataVariable. This probe has been confirmed to support X86
+// instances on AWS. In theory, it should also support GCP and any CPU architecture supported by RHEL.
 type CurlJSONProbe struct{}
+type Probe = CurlJSONProbe // curl_json.Probe is an alias for CurlJSONProbe
 
 //go:embed userdata-template.yaml
 var userDataTemplate string
