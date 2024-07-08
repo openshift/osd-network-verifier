@@ -10,7 +10,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
-const cloudImageIDDefault = "cos-97-lts"
+const cloudImageIDDefault = "rhel-9-v20240703"
 
 // validateEgress performs validation process for egress
 // Basic workflow is:
@@ -63,7 +63,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		userdata:     userData,
 		machineType:  vei.InstanceType,
 		instanceName: fmt.Sprintf("verifier-%v", rand.Intn(10000)),
-		sourceImage:  fmt.Sprintf("projects/cos-cloud/global/images/family/%s", vei.CloudImageID),
+		sourceImage:  fmt.Sprintf("projects/rhel-cloud/global/images/%s", vei.CloudImageID),
 		networkName:  fmt.Sprintf("projects/%s/global/networks/%s", vei.GCP.ProjectID, vei.GCP.VpcName),
 		tags:         vei.Tags,
 	})
