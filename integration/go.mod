@@ -32,5 +32,5 @@ require (
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	golang.org/x/net v0.24.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

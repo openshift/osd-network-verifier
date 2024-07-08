@@ -1,7 +1,6 @@
 package helpers
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -28,9 +27,6 @@ const (
 	ArchX86 = "x86"
 	ArchARM = "arm"
 )
-
-//go:embed config/userdata.yaml
-var UserdataTemplate string
 
 // RandSeq generates random string with n characters.
 func RandSeq(n int) string {

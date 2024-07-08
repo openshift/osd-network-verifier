@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	awsverifier "github.com/openshift/osd-network-verifier/pkg/verifier/aws"
@@ -63,6 +64,7 @@ func extendValidateEgress() {
 			SecurityGroupIDs: []string{"SecurityGroupID1", "OptionalSecurityGroupID2"},
 		},
 		PlatformType: helpers.PlatformAWS,
+		Probe:        curl_json.CurlJSONProbe{},
 	}
 
 	// Call egress function with either gcp or aws client

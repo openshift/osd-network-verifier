@@ -3,7 +3,6 @@ package awsverifier
 import (
 	"context"
 	"reflect"
-	"strings"
 	"testing"
 
 	awss "github.com/aws/aws-sdk-go-v2/aws"
@@ -12,10 +11,11 @@ import (
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
+	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
 	gomock "go.uber.org/mock/gomock"
 )
 
-func TestFindUnreachableEndpointsSuccess(t *testing.T) {
+func TestFindUnreachableEndpointsSuccessWithLegacyProbe(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	FakeEC2Cli := mocks.NewMockEC2Client(ctrl)
@@ -39,13 +39,13 @@ func TestFindUnreachableEndpointsSuccess(t *testing.T) {
 	cli.AwsClient.SetClient(FakeEC2Cli)
 	cli.Logger = &ocmlog.GlogLogger{}
 
-	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance")
+	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance", legacy.LegacyProbe{})
 	if err != nil {
 		t.Errorf("err should be nil when there's success in output, got: %v", err)
 	}
 }
 
-func TestFindUnreachableEndpointsNoSuccess(t *testing.T) {
+func TestFindUnreachableEndpointsNoSuccessWithLegacyProbe(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	FakeEC2Cli := mocks.NewMockEC2Client(ctrl)
@@ -68,30 +68,13 @@ func TestFindUnreachableEndpointsNoSuccess(t *testing.T) {
 	cli.AwsClient.SetClient(FakeEC2Cli)
 	cli.Logger = &ocmlog.GlogLogger{}
 
-	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance")
+	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance", legacy.LegacyProbe{})
 	if err != nil {
 		t.Errorf("Success! not found, but userdata end exists, err should be nil, got: %v", err)
 	}
 
 	if !cli.Output.IsSuccessful() {
 		t.Errorf("Success! not found, userdata end exists but no regex match for failure, it means success, got : %v", cli.Output)
-	}
-}
-
-// TestGenerateUserData tests generateUserData function when the user data exceeds the maximum size.
-func TestGenerateUserData_ExceededMaxSize(t *testing.T) {
-	const kiloByte = 1024
-	maxUserDataSize := 16 * kiloByte
-	value := strings.Repeat("a", maxUserDataSize+1)
-
-	maxUserData := map[string]string{
-		"CACERT": value,
-	}
-
-	// generateUserData should return an error if userData exceeds maximum size.
-	_, err := generateUserData(maxUserData)
-	if err == nil {
-		t.Error("generateUserData should return an error if userData exceeds maximum size")
 	}
 }
 
