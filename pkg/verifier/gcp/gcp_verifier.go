@@ -84,7 +84,7 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 		Disks: []*computev1.AttachedDisk{
 			{
 				InitializeParams: &computev1.AttachedDiskInitializeParams{
-					DiskSizeGb:  10,
+					DiskSizeGb:  20,
 					SourceImage: input.sourceImage,
 				},
 				AutoDelete: true,
