@@ -155,7 +155,6 @@ type createEC2InstanceInput struct {
 	SubnetID            string
 	userdata            string
 	KmsKeyID            string
-	securityGroupId     string // Deprecated: prefer securityGroupIDs
 	securityGroupIDs    []string
 	tempSecurityGroupID string
 	instanceCount       int32
@@ -179,12 +178,6 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	eniSpecification := ec2Types.InstanceNetworkInterfaceSpecification{
 		DeviceIndex: awsTools.Int32(0),
 		SubnetId:    awsTools.String(input.SubnetID),
-	}
-
-	// An empty string does not default to the default security group, and returns this error:
-	// error performing ec2:RunInstances: Value () for parameter groupId is invalid. The value cannot be empty
-	if input.securityGroupId != "" {
-		eniSpecification.Groups = append(eniSpecification.Groups, input.securityGroupId)
 	}
 
 	if len(input.securityGroupIDs) > 0 {
