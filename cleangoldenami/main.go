@@ -60,12 +60,12 @@ func main() {
 				log.Fatalf("error fetching images for region %v: %v", regionName, err)
 			}
 
-			if imageCount := len(images); (5 - imageCount) >= desiredImageCapacity {
+			if imageCount := len(images); (quota - imageCount) >= desiredImageCapacity {
 				if *verbose {
 					fmt.Printf("Region %v is under quota. (Images: %v, Quota: %v)\n", regionName, imageCount, quota)
 				}
 			} else {
-				numOfImagesToDelete := desiredImageCapacity - (5 - imageCount)
+				numOfImagesToDelete := desiredImageCapacity - (quota - imageCount)
 
 				arm64Images, legacyx86Images, x86Images := filterImages(images)
 
