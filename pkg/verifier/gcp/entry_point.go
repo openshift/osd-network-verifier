@@ -68,10 +68,8 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		tags:         vei.Tags,
 	})
 	if err != nil {
+		g.Output.AddError(err)
 		err = g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
-		if err != nil {
-			g.Output.AddError(err)
-		}
 		return g.Output.AddError(err) // fatal
 	}
 
