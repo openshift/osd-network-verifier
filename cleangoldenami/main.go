@@ -60,44 +60,37 @@ func main() {
 				log.Fatalf("error fetching images for region %v: %v", regionName, err)
 			}
 
-			if imageCount := len(images); (quota - imageCount) >= desiredImageCapacity {
+			if imageCount := len(images); (5 - imageCount) >= desiredImageCapacity {
 				if *verbose {
 					fmt.Printf("Region %v is under quota. (Images: %v, Quota: %v)\n", regionName, imageCount, quota)
 				}
 			} else {
-				numOfImagesToDelete := desiredImageCapacity - (quota - imageCount)
+				numOfImagesToDelete := desiredImageCapacity - (5 - imageCount)
 
-				arm64Images := filterImages(images, "arm64", "rhel-arm64")
-				legacyx86Images := filterImages(images, "x86_64", "legacy-x86_64")
-				x86Images := filterImages(images, "x86_64", "rhel-x86_64")
+				arm64Images, legacyx86Images, x86Images := filterImages(images)
 
 				var imagesToDelete []ec2Types.Image
 
-				for !imageDeletionCheck(imagesToDelete, numOfImagesToDelete, arm64Images, legacyx86Images, x86Images) {
+				for shouldDeleteImages(imagesToDelete, numOfImagesToDelete, arm64Images, legacyx86Images, x86Images) {
 					// Returns the most populated image type and the slice containing images of that type
 					mostPopulatedImagesByType, mostPopulatedImageType := getMostPopulatedImageType(arm64Images, legacyx86Images, x86Images)
 
-					// Returns the oldest image from the most populated type's slice along with its index value
-					ImageToDeleteIndex, ImageToDelete, err := getOldestImage(mostPopulatedImagesByType)
+					imageToDeleteIndex, imageToDelete, err := getOldestImage(mostPopulatedImagesByType)
 					if err != nil {
-						// Log a fatal error if there was an issue retrieving the oldest image
 						log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
 					}
 
-					// If ImageToDeleteIndex is valid (non-negative), proceed with deletion
-					if ImageToDeleteIndex >= 0 {
-						// Add the image to the list of images to delete
-						imagesToDelete = append(imagesToDelete, ImageToDelete)
+					// Add the image to the list of images to delete
+					imagesToDelete = append(imagesToDelete, imageToDelete)
 
-						// Remove the deleted image from its respective slice based on its type
-						switch mostPopulatedImageType {
-						case "arm64Images":
-							arm64Images = append(arm64Images[:ImageToDeleteIndex], arm64Images[ImageToDeleteIndex+1:]...)
-						case "legacyx86Images":
-							legacyx86Images = append(legacyx86Images[:ImageToDeleteIndex], legacyx86Images[ImageToDeleteIndex+1:]...)
-						case "x86Images":
-							x86Images = append(x86Images[:ImageToDeleteIndex], x86Images[ImageToDeleteIndex+1:]...)
-						}
+					// Remove the deleted image from its respective slice based on its type
+					switch mostPopulatedImageType {
+					case "arm64Images":
+						arm64Images = append(arm64Images[:imageToDeleteIndex], arm64Images[imageToDeleteIndex+1:]...)
+					case "legacyx86Images":
+						legacyx86Images = append(legacyx86Images[:imageToDeleteIndex], legacyx86Images[imageToDeleteIndex+1:]...)
+					case "x86Images":
+						x86Images = append(x86Images[:imageToDeleteIndex], x86Images[imageToDeleteIndex+1:]...)
 					}
 				}
 				for _, image := range imagesToDelete {
@@ -183,7 +176,7 @@ func getPublicImages(ec2Client DescribeImagesClient) ([]ec2Types.Image, error) {
 	return describeImagesResponse.Images, nil
 }
 
-func hasMatchingTag(image ec2Types.Image, tag string) bool {
+func hasVersionTag(image ec2Types.Image, tag string) bool {
 	for _, t := range image.Tags {
 		if *t.Key == "version" && *t.Value == tag {
 			return true
@@ -192,20 +185,24 @@ func hasMatchingTag(image ec2Types.Image, tag string) bool {
 	return false
 }
 
-func hasMatchingArchitecture(image ec2Types.Image, architecture string) bool {
-	return string(image.Architecture) == architecture
+func hasMatchingArchitecture(image ec2Types.Image, architecture ec2Types.ArchitectureValues) bool {
+	return image.Architecture == architecture
 }
 
 // filterImages filters AWS AMIs based on their version tag and architecture.
-func filterImages(images []ec2Types.Image, architecture string, tag string) []ec2Types.Image {
-	var filteredImages []ec2Types.Image
+func filterImages(images []ec2Types.Image) ([]ec2Types.Image, []ec2Types.Image, []ec2Types.Image) {
+	var arm64Images, legacyx86Images, x86Images []ec2Types.Image
 	for _, image := range images {
 
-		if hasMatchingTag(image, tag) && hasMatchingArchitecture(image, architecture) {
-			filteredImages = append(filteredImages, image)
+		if hasVersionTag(image, "rhel-arm64") && hasMatchingArchitecture(image, "arm64") {
+			arm64Images = append(arm64Images, image)
+		} else if hasVersionTag(image, "legacy-x86_64") && hasMatchingArchitecture(image, "x86_64") {
+			legacyx86Images = append(legacyx86Images, image)
+		} else if hasVersionTag(image, "rhel-x86_64") && hasMatchingArchitecture(image, "x86_64") {
+			x86Images = append(x86Images, image)
 		}
 	}
-	return filteredImages
+	return arm64Images, legacyx86Images, x86Images
 }
 
 // getOldestImage retrieves the oldest AWS AMI based on creation date
@@ -214,9 +211,6 @@ func getOldestImage(images []ec2Types.Image) (int, ec2Types.Image, error) {
 	var oldestImageTimestamp int64
 	var oldestImageIndex = -1
 
-	if len(images) <= 1 {
-		return -1, oldestImage, nil
-	}
 	for i, image := range images {
 		creationTime, err := time.Parse(timeLayout, *image.CreationDate)
 		if err != nil {
@@ -228,12 +222,7 @@ func getOldestImage(images []ec2Types.Image) (int, ec2Types.Image, error) {
 			oldestImageIndex = i
 		}
 	}
-	if oldestImageIndex >= 0 {
-		return oldestImageIndex, oldestImage, nil
-
-	}
-
-	return -1, oldestImage, nil
+	return oldestImageIndex, oldestImage, nil
 }
 
 // deregisterImage deregisters an AWS AMI
@@ -245,7 +234,7 @@ func deregisterImage(ec2Client DeregisterImageClient, image ec2Types.Image) erro
 	return nil
 }
 
-// imageDeletionCheck verifies that conditions are met before deleting an AMI
-func imageDeletionCheck(imagesToDelete []ec2Types.Image, numOfImagesToDelete int, arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) bool {
-	return (len(imagesToDelete) == numOfImagesToDelete) || (len(arm64Images) <= 1 && len(legacyx86Images) <= 1 && len(x86Images) <= 1)
+// shouldDeleteImages verifies that conditions are met before deleting an AMI
+func shouldDeleteImages(imagesToDelete []ec2Types.Image, numOfImagesToDelete int, arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) bool {
+	return !((len(imagesToDelete) == numOfImagesToDelete) || (len(arm64Images) <= 1 && len(legacyx86Images) <= 1 && len(x86Images) <= 1))
 }
