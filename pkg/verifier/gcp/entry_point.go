@@ -57,15 +57,16 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	//image list https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel
 
 	instance, err := g.createComputeServiceInstance(createComputeServiceInstanceInput{
-		projectID:    vei.GCP.ProjectID,
-		zone:         vei.GCP.Zone,
-		vpcSubnetID:  fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", vei.GCP.ProjectID, vei.GCP.Region, vei.SubnetID),
-		userdata:     userData,
-		machineType:  vei.InstanceType,
-		instanceName: fmt.Sprintf("verifier-%v", rand.Intn(10000)),
-		sourceImage:  fmt.Sprintf("projects/rhel-cloud/global/images/%s", vei.CloudImageID),
-		networkName:  fmt.Sprintf("projects/%s/global/networks/%s", vei.GCP.ProjectID, vei.GCP.VpcName),
-		tags:         vei.Tags,
+		projectID:        vei.GCP.ProjectID,
+		zone:             vei.GCP.Zone,
+		vpcSubnetID:      fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", vei.GCP.ProjectID, vei.GCP.Region, vei.SubnetID),
+		userdata:         userData,
+		machineType:      vei.InstanceType,
+		instanceName:     fmt.Sprintf("verifier-%v", rand.Intn(10000)),
+		sourceImage:      fmt.Sprintf("projects/rhel-cloud/global/images/%s", vei.CloudImageID),
+		networkName:      fmt.Sprintf("projects/%s/global/networks/%s", vei.GCP.ProjectID, vei.GCP.VpcName),
+		tags:             vei.Tags,
+		serialportenable: "true",
 	})
 	if err != nil {
 		g.Output.AddError(err)

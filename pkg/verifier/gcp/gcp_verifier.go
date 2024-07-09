@@ -63,15 +63,16 @@ func (g *GcpVerifier) validateMachineType(projectID, zone, instanceType string) 
 }
 
 type createComputeServiceInstanceInput struct {
-	projectID    string
-	zone         string
-	vpcSubnetID  string
-	userdata     string
-	machineType  string
-	instanceName string
-	sourceImage  string
-	networkName  string
-	tags         map[string]string
+	projectID        string
+	zone             string
+	vpcSubnetID      string
+	userdata         string
+	machineType      string
+	instanceName     string
+	sourceImage      string
+	networkName      string
+	tags             map[string]string
+	serialportenable string
 }
 
 // this fuciton is a logic function that lieves some where else
@@ -109,7 +110,10 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 		},
 		Metadata: &computev1.Metadata{
 			Items: []*computev1.MetadataItems{
-
+				{
+					Key:   "serial-port-enable",
+					Value: &input.serialportenable,
+				},
 				{
 					Key:   "startup-script",
 					Value: &input.userdata,
