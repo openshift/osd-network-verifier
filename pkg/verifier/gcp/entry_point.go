@@ -43,7 +43,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"NOTLS":                    strconv.FormatBool(vei.Proxy.NoTls),
 	}
 
-	userData, err := generateUserData(userDataVariables)
+	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)
 	}
@@ -85,7 +85,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	g.Logger.Info(vei.Ctx, "Gathering and parsing console log output...")
 
-	err = g.findUnreachableEndpoints(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
+	err = g.findUnreachableEndpoints(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name, vei.Probe)
 	if err != nil {
 		g.Output.AddError(err)
 	}

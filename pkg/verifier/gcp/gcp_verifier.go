@@ -3,8 +3,7 @@ package gcpverifier
 import (
 	"context"
 	"fmt"
-	"os"
-	"regexp"
+	"strings"
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
@@ -12,6 +11,7 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/probes"
 	"golang.org/x/oauth2/google"
 	computev1 "google.golang.org/api/compute/v1"
 )
@@ -157,57 +157,64 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 
 }
 
-func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName string) error {
-	// Compile the regular expressions once
-	reVerify := regexp.MustCompile(userdataEndVerifier)
-	reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
+func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName string, probe probes.Probe) error {
 
-	// getConsoleOutput then parse, use c.output to store result of the execution
+	// Compile the regular expressions once
+	// reVerify := regexp.MustCompile(userdataEndVerifier)
+	// reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
+
+	var consoleOutput string
+	g.Logger.Debug(context.TODO(), "Scraping console output and waiting for user data script to complete...")
+
+	// Scrapes console at specified interval up to specified timeout
 	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
+		// Get the console output from the ComputeService instance
 		output, err := g.GcpClient.GetInstancePorts(projectID, zone, instanceName)
 		if err != nil {
 			return false, err
 		}
 
-		if output != nil {
-			// First, gather the ComputeService console output
-			scriptOutput := fmt.Sprintf("%#v", output)
-			if err != nil {
-				// unable to decode output. we will try again
-				g.Logger.Debug(context.TODO(), "Error while collecting console output, will retry on next check interval: %s", err)
+		if output == nil {
 				return false, nil
 			}
 
-			// In the early stages, an ComputeService instance may be running but the console is not populated with any data, retry if that is the case
-			if len(scriptOutput) < 1 {
+		if len(output.Contents) == 0 {
 				g.Logger.Debug(context.TODO(), "ComputeService console output not yet populated with data, continuing to wait...")
 				return false, nil
 			}
+		consoleOutput = string(output.Contents)
 
-			// Check for the specific string we output in the generated userdata file at the end to verify the userdata script has run
-			// It is possible we get EC2 console output, but the userdata script has not yet completed.
-			verifyMatch := reVerify.FindString(string(scriptOutput))
-			if len(verifyMatch) < 1 {
-				g.Logger.Debug(context.TODO(), "ComputeService console output contains data, but end of userdata script not seen, continuing to wait...")
+		// Check for startingToken and endingToken
+		startingTokenSeen := strings.Contains(consoleOutput, probe.GetStartingToken())
+		endingTokenSeen := strings.Contains(consoleOutput, probe.GetEndingToken())
+		if !startingTokenSeen {
+			if endingTokenSeen {
+				g.Logger.Debug(context.TODO(), "raw console logs:\n---\n%s\n---", output.Contents)
+				g.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("probe output corrupted: endingToken encountered before startingToken")))
 				return false, nil
 			}
-
-			// check output failures, report as exception if they occurred
-			var rgx = regexp.MustCompile(`(?m)^(.*Cannot.*)|(.*Could not.*)|(.*Failed.*)|(.*command not found.*)`)
-			notFoundMatch := rgx.FindAllStringSubmatch(string(scriptOutput), -1)
-
-			if len(notFoundMatch) > 0 { //&& len(success) < 1
-				g.Output.AddException(handledErrors.NewEgressURLError("internet connectivity problem: please ensure there's internet access in given vpc subnets"))
-			}
-
-			// If debug logging is enabled, output the full console log that appears to include the full userdata run
-			g.Logger.Debug(context.TODO(), "Full ComputeService console output:\n---\n%s\n---", output)
-
-			g.Output.SetEgressFailures(reUnreachableErrors.FindAllString(string(scriptOutput), -1))
-			return true, nil
+			g.Logger.Debug(context.TODO(), "consoleOutput contains data, but probe has not yet printed startingToken, continuing to wait...")
+			return false, nil
 		}
-		g.Logger.Debug(context.TODO(), "Waiting for UserData script to complete...")
-		return false, nil
+		if !endingTokenSeen {
+			g.Logger.Debug(context.TODO(), "consoleOutput contains data, but probe has not yet printed endingToken, continuing to wait...")
+			return false, nil
+		}
+
+		// If we make it this far, we know that both startingTokenSeen and endingTokenSeen are true
+
+		// Separate the probe's output from the rest of the console output (using startingToken and endingToken)
+		rawProbeOutput := strings.TrimSpace(helpers.CutBetween(consoleOutput, probe.GetStartingToken(), probe.GetEndingToken()))
+		if len(rawProbeOutput) < 1 {
+			g.Logger.Debug(context.TODO(), "raw console logs:\n---\n%s\n---", consoleOutput)
+			g.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("probe output corrupted: no data between startingToken and endingToken")))
+			return false, nil
+		}
+		// Send probe's output off to the Probe interface for parsing
+		g.Logger.Debug(context.TODO(), "probe output:\n---\n%s\n---", rawProbeOutput)
+		probe.ParseProbeOutput(rawProbeOutput, &g.Output)
+
+		return true, nil
 	})
 
 	return err
@@ -267,12 +274,12 @@ func (c *GcpVerifier) waitForComputeServiceInstanceCompletion(projectID, zone, i
 	return err
 }
 
-func generateUserData(variables map[string]string) (string, error) {
-	variableMapper := func(varName string) string {
-		return variables[varName]
-	}
-	// TODO: REPLACE JUNK VALUE "helpers.UserdataTemplate" BELOW
-	data := os.Expand("helpers.UserdataTemplate", variableMapper)
+// func generateUserData(variables map[string]string) (string, error) {
+// 	variableMapper := func(varName string) string {
+// 		return variables[varName]
+// 	}
+// 	data :=
+// 	data := os.Expand(helpers.UserdataTemplate, variableMapper)
 
-	return data, nil
-}
+// 	return data, nil
+// }

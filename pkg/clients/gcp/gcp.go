@@ -30,7 +30,7 @@ func NewClient(credentials *google.Credentials) (*Client, error) {
 // terminateComputeServiceInstance terminates target ComputeService instance
 // uses c.output to store result of the execution
 func (c *Client) TerminateComputeServiceInstance(projectID, zone, instanceName string) error {
-	_, err := c.computeService.Instances.Stop(projectID, zone, instanceName).Context(context.TODO()).Do()
+	_, err := c.computeService.Instances.Delete(projectID, zone, instanceName).Context(context.TODO()).Do()
 	return err
 }
 
