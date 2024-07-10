@@ -161,9 +161,9 @@ are set correctly before execution.
 
 				// Probe selection
 				switch strings.ToLower(config.probeName) {
-				case "", "curl", "curljson", "curljsonprobe":
+				case "", "curl", "curlprobe", "curl.probe":
 					vei.Probe = curl.Probe{}
-				case "legacy", "legacyprobe":
+				case "legacy", "legacyprobe", "legacy.probe":
 					vei.Probe = legacy.Probe{}
 				}
 
