@@ -1,4 +1,4 @@
-package curl_json
+package curl
 
 import (
 	_ "embed"
@@ -12,11 +12,11 @@ import (
 )
 
 // TestCurlJSONProbe_ImplementsProbeInterface simply forces the compiler
-// to confirm that the CurlJSONProbe type properly implements the Probe
-// interface. If not (e.g, because a required method is missing), this
-// test will fail to compile
+// to confirm that the CurlJSONProbe type and its Probe alias properly
+// implement the Probe interface. If not (e.g, because a required method
+// is missing), this test will fail to compile
 func TestCurlJSONProbe_ImplementsProbeInterface(t *testing.T) {
-	var _ probes.Probe = (*CurlJSONProbe)(nil)
+	var _ probes.Probe = (*Probe)(nil)
 }
 
 // TestCurlJSONProbe_GetExpandedUserData tests the correctness of the user-
@@ -130,11 +130,11 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 				t.SkipNow()
 			}
 
-			prb := CurlJSONProbe{}
+			prb := Probe{}
 			// First check if function is returning an error
 			got, err := prb.GetExpandedUserData(tt.userDataVariables)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CurlJSONProbe.GetExpandedUserData() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("curl.Probe.GetExpandedUserData() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -142,7 +142,7 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 			if len(tt.wantRegex) > 0 {
 				reWant := regexp.MustCompile(tt.wantRegex)
 				if len(reWant.FindString(got)) < 1 {
-					t.Errorf("CurlJSONProbe.GetExpandedUserData() output does not match regex `%s`, content=%v", tt.wantRegex, got)
+					t.Errorf("curl.Probe.GetExpandedUserData() output does not match regex `%s`, content=%v", tt.wantRegex, got)
 				}
 			}
 
@@ -151,7 +151,7 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 			var unmarshalled interface{}
 			err = yaml.Unmarshal(gotByteSlice, &unmarshalled)
 			if err != nil {
-				t.Errorf("CurlJSONProbe.GetExpandedUserData() produced invalid YAML (err: %v), content=%v", err, got)
+				t.Errorf("curl.Probe.GetExpandedUserData() produced invalid YAML (err: %v), content=%v", err, got)
 				return
 			}
 		})
@@ -166,7 +166,7 @@ func TestCurlJSONProbe_UserDataTemplateContainsDeclaredVariables(t *testing.T) {
 	// Check preset variables
 	for presetVariableName := range presetUserDataVariables {
 		if !strings.Contains(userDataTemplate, "${"+presetVariableName+"}") {
-			t.Errorf("CurlJSONProbe.presetUserDataVariables has key %[1]s, but could not find required '${%[1]s}' in probe's userdata-template.yaml", presetVariableName)
+			t.Errorf("curl.Probe.presetUserDataVariables has key %[1]s, but could not find required '${%[1]s}' in probe's userdata-template.yaml", presetVariableName)
 			return
 		}
 	}
@@ -175,7 +175,7 @@ func TestCurlJSONProbe_UserDataTemplateContainsDeclaredVariables(t *testing.T) {
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 	for _, requiredVariableName := range requiredVariables {
 		if !strings.Contains(directivelessUserDataTemplate, "${"+requiredVariableName+"}") {
-			t.Errorf("CurlJSONProbe's userdata-template.yaml declares %[1]s as required, but could not find '${%[1]s}' in file", requiredVariableName)
+			t.Errorf("curl.Probe's userdata-template.yaml declares %[1]s as required, but could not find '${%[1]s}' in file", requiredVariableName)
 			return
 		}
 	}
@@ -297,17 +297,17 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prb := CurlJSONProbe{}
+			prb := Probe{}
 			got, err := prb.GetMachineImageID(tt.args.platformType, tt.args.cpuArch, tt.args.region)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CurlJSONProbe.GetMachineImageID() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("curl.Probe.GetMachineImageID() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			// Check if function's output contains a regex match
 			if len(tt.wantRegex) > 0 {
 				reWant := regexp.MustCompile(tt.wantRegex)
 				if len(reWant.FindString(got)) < 1 {
-					t.Errorf("CurlJSONProbe.GetMachineImageID() output does not match regex `%s`, content=%v", tt.wantRegex, got)
+					t.Errorf("curl.Probe.GetMachineImageID() output does not match regex `%s`, content=%v", tt.wantRegex, got)
 				}
 			}
 		})

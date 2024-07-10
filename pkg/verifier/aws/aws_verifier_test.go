@@ -39,7 +39,7 @@ func TestFindUnreachableEndpointsSuccessWithLegacyProbe(t *testing.T) {
 	cli.AwsClient.SetClient(FakeEC2Cli)
 	cli.Logger = &ocmlog.GlogLogger{}
 
-	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance", legacy.LegacyProbe{})
+	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance", legacy.Probe{})
 	if err != nil {
 		t.Errorf("err should be nil when there's success in output, got: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestFindUnreachableEndpointsNoSuccessWithLegacyProbe(t *testing.T) {
 	cli.AwsClient.SetClient(FakeEC2Cli)
 	cli.Logger = &ocmlog.GlogLogger{}
 
-	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance", legacy.LegacyProbe{})
+	err := cli.findUnreachableEndpoints(context.TODO(), "dummy-instance", legacy.Probe{})
 	if err != nil {
 		t.Errorf("Success! not found, but userdata end exists, err should be nil, got: %v", err)
 	}

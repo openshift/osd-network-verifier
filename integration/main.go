@@ -12,7 +12,7 @@ import (
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	inttestaws "github.com/openshift/osd-network-verifier/integration/pkg/aws"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
-	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	awsverifier "github.com/openshift/osd-network-verifier/pkg/verifier/aws"
@@ -26,7 +26,7 @@ func main() {
 	region := f.String("region", "us-east-1", "AWS Region")
 	profile := f.String("profile", "", "AWS Profile")
 	platform := f.String("platform", "aws", "(Optional) Platform type to validate, defaults to `aws`")
-	probeStr := f.String("probe", "CurlJSON", "(Optional) Probe to validate, defaults to `CurlJSON`")
+	probeStr := f.String("probe", "curl", "(Optional) Probe to validate, defaults to `curl`")
 	createOnly := f.Bool("create-only", false, "When specified, only create infrastructure and do not delete")
 	deleteOnly := f.Bool("delete-only", false, "When specified, delete infrastructure in an idempotent fashion")
 	debug := f.Bool("debug", false, "Enable verbose logging")
@@ -133,10 +133,10 @@ func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetI
 // input string. Some variance in naming is allowed for convenience
 func GetProbeByName(probeName string) (probes.Probe, error) {
 	switch strings.ToLower(probeName) {
-	case "curl", "curljson", "curljsonprobe":
-		return curl_json.CurlJSONProbe{}, nil
-	case "legacy", "legacyprobe":
-		return legacy.LegacyProbe{}, nil
+	case "curl", "curlprobe", "curl.probe":
+		return curl.Probe{}, nil
+	case "legacy", "legacyprobe", "legacy.probe":
+		return legacy.Probe{}, nil
 	}
 	return nil, fmt.Errorf("'%s' does not match any known probes", probeName)
 }

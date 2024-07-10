@@ -1,4 +1,4 @@
-package curl_json
+package curl
 
 import (
 	"reflect"
