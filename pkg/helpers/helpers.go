@@ -22,12 +22,6 @@ const (
 	PlatformAWSHCP        = "aws-hcp"
 )
 
-// Enumerated type representing CPU architectures
-const (
-	ArchX86 = "x86"
-	ArchARM = "arm"
-)
-
 // RandSeq generates random string with n characters.
 func RandSeq(n int) string {
 	b := make([]rune, n)

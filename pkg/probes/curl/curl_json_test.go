@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
 	"gopkg.in/yaml.v3"
@@ -186,7 +187,7 @@ func TestCurlJSONProbe_UserDataTemplateContainsDeclaredVariables(t *testing.T) {
 func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 	type args struct {
 		platformType string
-		cpuArch      string
+		cpuArch      cpu.Architecture
 		region       string
 	}
 	tests := []struct {
@@ -201,7 +202,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "AWS happy path",
 			args: args{
 				platformType: helpers.PlatformAWS,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
 			wantRegex: `ami-\w+`,
@@ -211,7 +212,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "GCP happy path",
 			args: args{
 				platformType: helpers.PlatformGCP,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "europe-west1-c",
 			},
 			wantRegex: `rhel-\d`,
@@ -221,7 +222,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "AWS alt platform name",
 			args: args{
 				platformType: helpers.PlatformAWSClassic,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
 			wantRegex: `ami-\w+`,
@@ -231,7 +232,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "GCP alt platform name",
 			args: args{
 				platformType: helpers.PlatformGCPClassic,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "europe-west1-c",
 			},
 			wantRegex: `rhel-\d`,
@@ -241,7 +242,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "AWS ARM",
 			args: args{
 				platformType: helpers.PlatformAWSClassic,
-				cpuArch:      helpers.ArchARM,
+				cpuArch:      cpu.ArchARM,
 				region:       "us-east-1",
 			},
 			wantRegex: `ami-\w+`,
@@ -251,7 +252,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "GCP ARM",
 			args: args{
 				platformType: helpers.PlatformGCP,
-				cpuArch:      helpers.ArchARM,
+				cpuArch:      cpu.ArchARM,
 				region:       "europe-west1-c",
 			},
 			wantRegex: `rhel-\d-arm64`,
@@ -261,7 +262,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "bad plaform",
 			args: args{
 				platformType: "foobar",
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "europe-west1-c",
 			},
 			wantErr: true,
@@ -279,7 +280,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "bad AWS region",
 			args: args{
 				platformType: helpers.PlatformAWS,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "foobar",
 			},
 			wantErr: true,
@@ -288,7 +289,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "ignore bad GCP region",
 			args: args{
 				platformType: helpers.PlatformGCP,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "foobar",
 			},
 			wantRegex: `rhel-\d`,

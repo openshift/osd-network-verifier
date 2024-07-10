@@ -17,6 +17,7 @@ import (
 	"github.com/go-playground/validator"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -83,9 +84,9 @@ type AwsVerifier struct {
 //
 // Deprecated: GetAMIForRegion doesn't provide a way to check machine image IDs for platforms other than AWS, architectures
 // other than X86, or probes other than CurlJSONProbe. It also doesn't return detailed errors. Instead, use:
-// [probe_package].[ProbeName].GetMachineImageID(platformType string, cpuArchitecture string, region string)
+// [probe_package].[ProbeName].GetMachineImageID(platformType, cpuArch, region)
 func GetAMIForRegion(region string) string {
-	ami, err := curl.Probe{}.GetMachineImageID(helpers.PlatformAWS, helpers.ArchX86, region)
+	ami, err := curl.Probe{}.GetMachineImageID(helpers.PlatformAWS, cpu.ArchX86, region)
 	if err != nil {
 		return ""
 	}

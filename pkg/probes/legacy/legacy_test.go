@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
@@ -24,7 +25,7 @@ func TestLegacyProbe_ImplementsProbeInterface(t *testing.T) {
 func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 	type args struct {
 		platformType string
-		cpuArch      string
+		cpuArch      cpu.Architecture
 		region       string
 	}
 	tests := []struct {
@@ -39,7 +40,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 			name: "AWS happy path",
 			args: args{
 				platformType: helpers.PlatformAWS,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
 			wantRegex: `ami-\w+`,
@@ -49,7 +50,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 			name: "AWS alt platform name",
 			args: args{
 				platformType: helpers.PlatformAWSClassic,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
 			wantRegex: `ami-\w+`,
@@ -59,7 +60,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 			name: "GCP must error",
 			args: args{
 				platformType: helpers.PlatformGCP,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "europe-west1-c",
 			},
 			wantErr: true,
@@ -68,7 +69,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 			name: "alt-GCP must error",
 			args: args{
 				platformType: helpers.PlatformGCPClassic,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "europe-west1-c",
 			},
 			wantErr: true,
@@ -77,7 +78,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 			name: "ARM must error",
 			args: args{
 				platformType: helpers.PlatformAWSClassic,
-				cpuArch:      helpers.ArchARM,
+				cpuArch:      cpu.ArchARM,
 				region:       "us-east-1",
 			},
 			wantErr: true,
@@ -86,7 +87,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 			name: "bad AWS region",
 			args: args{
 				platformType: helpers.PlatformAWS,
-				cpuArch:      helpers.ArchX86,
+				cpuArch:      cpu.ArchX86,
 				region:       "foobar",
 			},
 			wantErr: true,
