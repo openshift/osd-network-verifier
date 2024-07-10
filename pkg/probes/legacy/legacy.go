@@ -12,13 +12,12 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
-// LegacyProbe is an implementation of the Probe interface that aims to mimic the functionality of
-// the verifier's egress check pre-experimental-probe (i.e., v0.4.10) as closely as possible ("bug-
+// legacy.Probe is an implementation of the probes.Probe interface that aims to mimic the functionality
+// of the verifier's egress check pre-experimental-probe (i.e., v0.4.10) as closely as possible ("bug-
 // for-bug"). This means launching a custom "validator binary" inside of a "validator container image"
 // inside of a "golden AMI." The list of URLs checked by this validator binary is baked into the image
 // and cannot be changed at runtime. This probe only supports X86 on AWS.
-type LegacyProbe struct{}
-type Probe = LegacyProbe // legacy.Probe is an alias for LegacyProbe
+type Probe struct{}
 
 //go:embed userdata-template.yaml
 var userDataTemplate string
@@ -41,13 +40,13 @@ var presetUserDataVariables = map[string]string{
 }
 
 // GetStartingToken returns the string token used to signal the beginning of the probe's output
-func (prb LegacyProbe) GetStartingToken() string { return startingToken }
+func (lgp Probe) GetStartingToken() string { return startingToken }
 
 // GetEndingToken returns the string token used to signal the end of the probe's output
-func (prb LegacyProbe) GetEndingToken() string { return endingToken }
+func (lgp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
-func (prb LegacyProbe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
+func (lgp Probe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
 	// Validate/normalize platformType
 	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
 	if err != nil {
@@ -58,7 +57,7 @@ func (prb LegacyProbe) GetMachineImageID(platformType string, cpuArch string, re
 	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][region]
 	if !keyExists {
 		return "", fmt.Errorf(
-			"no default LegacyProbe machine image for arch %s in region %s of platform %s",
+			"no default legacy probe machine image for arch %s in region %s of platform %s",
 			cpuArch,
 			region,
 			normalizedPlatformType,
@@ -75,7 +74,7 @@ func (prb LegacyProbe) GetMachineImageID(platformType string, cpuArch string, re
 // variables listed in the template's "network-verifier-required-variables" directive, or if
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
-func (prb LegacyProbe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
+func (lgp Probe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
 	// Extract required variables specified in template (if any)
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 
@@ -98,7 +97,7 @@ func (prb LegacyProbe) GetExpandedUserData(userDataVariables map[string]string) 
 // ParseProbeOutput accepts a string containing all probe output that appeared between
 // the startingToken and the endingToken and a pointer to an Output object. outputDestination
 // will be filled with the results from the egress check
-func (prb LegacyProbe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
+func (lgp Probe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
 	// reSuccess indicates that network validation was successful
 	reSuccess := regexp.MustCompile(`Success!`)
 

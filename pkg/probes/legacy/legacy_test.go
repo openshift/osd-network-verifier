@@ -17,16 +17,7 @@ import (
 // implement the Probe interface. If not (e.g, because a required method
 // is missing), this test will fail to compile
 func TestLegacyProbe_ImplementsProbeInterface(t *testing.T) {
-	var _ probes.Probe = (*LegacyProbe)(nil)
 	var _ probes.Probe = (*Probe)(nil)
-}
-
-// TestLegacyProbe_ProbeTypeAlias simply forces the compiler to confirm
-// that this package contains an alias for the LegacyProbe type called Probe.
-// If not, this test will fail to compile
-func TestCurlJSONProbe_ProbeTypeAlias(t *testing.T) {
-	var _ LegacyProbe = Probe{}
-	var _ Probe = LegacyProbe{}
 }
 
 // TestLegacyProbe_GetMachineImageID tests this probe's cloud VM image lookup table
@@ -103,17 +94,17 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prb := LegacyProbe{}
+			prb := Probe{}
 			got, err := prb.GetMachineImageID(tt.args.platformType, tt.args.cpuArch, tt.args.region)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("LegacyProbe.GetMachineImageID() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("legacy.Probe.GetMachineImageID() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			// Check if function's output contains a regex match
 			if len(tt.wantRegex) > 0 {
 				reWant := regexp.MustCompile(tt.wantRegex)
 				if len(reWant.FindString(got)) < 1 {
-					t.Errorf("LegacyProbe.GetMachineImageID() output does not match regex `%s`, content=%v", tt.wantRegex, got)
+					t.Errorf("legacy.Probe.GetMachineImageID() output does not match regex `%s`, content=%v", tt.wantRegex, got)
 				}
 			}
 		})
@@ -209,11 +200,11 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 				t.SkipNow()
 			}
 
-			prb := LegacyProbe{}
+			prb := Probe{}
 			// First check if function is returning an error
 			got, err := prb.GetExpandedUserData(tt.userDataVariables)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("LegacyProbe.GetExpandedUserData() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("legacy.Probe.GetExpandedUserData() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -221,7 +212,7 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 			if len(tt.wantRegex) > 0 {
 				reWant := regexp.MustCompile(tt.wantRegex)
 				if len(reWant.FindString(got)) < 1 {
-					t.Errorf("LegacyProbe.GetExpandedUserData() output does not match regex `%s`, content=%v", tt.wantRegex, got)
+					t.Errorf("legacy.Probe.GetExpandedUserData() output does not match regex `%s`, content=%v", tt.wantRegex, got)
 				}
 			}
 
@@ -230,7 +221,7 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 			var unmarshalled interface{}
 			err = yaml.Unmarshal(gotByteSlice, &unmarshalled)
 			if err != nil {
-				t.Errorf("LegacyProbe.GetExpandedUserData() produced invalid YAML (err: %v), content=%v", err, got)
+				t.Errorf("legacy.Probe.GetExpandedUserData() produced invalid YAML (err: %v), content=%v", err, got)
 				return
 			}
 		})

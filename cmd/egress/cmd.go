@@ -10,7 +10,7 @@ import (
 
 	"github.com/openshift/osd-network-verifier/cmd/utils"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
-	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
@@ -162,7 +162,7 @@ are set correctly before execution.
 				// Probe selection
 				switch strings.ToLower(config.probeName) {
 				case "", "curl", "curljson", "curljsonprobe":
-					vei.Probe = curl_json.Probe{}
+					vei.Probe = curl.Probe{}
 				case "legacy", "legacyprobe":
 					vei.Probe = legacy.Probe{}
 				}

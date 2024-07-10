@@ -12,7 +12,7 @@ import (
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	inttestaws "github.com/openshift/osd-network-verifier/integration/pkg/aws"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
-	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	awsverifier "github.com/openshift/osd-network-verifier/pkg/verifier/aws"
@@ -134,7 +134,7 @@ func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetI
 func GetProbeByName(probeName string) (probes.Probe, error) {
 	switch strings.ToLower(probeName) {
 	case "curl", "curljson", "curljsonprobe":
-		return curl_json.Probe{}, nil
+		return curl.Probe{}, nil
 	case "legacy", "legacyprobe":
 		return legacy.Probe{}, nil
 	}

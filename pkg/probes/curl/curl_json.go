@@ -1,4 +1,4 @@
-package curl_json
+package curl
 
 import (
 	_ "embed"
@@ -11,7 +11,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
-// CurlJSONProbe is an implementation of the Probe interface that uses the venerable curl tool to
+// curl.Probe is an implementation of the probes.Probe interface that uses the venerable curl tool to
 // check for blocked egresses in a target network. It launches an unmodified RHEL9 instance (although
 // any OS with curl v7.76.1 or compatible will work) and uses userdata to transmit at runtime a list
 // of egress URLs to which curl will attempt to connect. Curl will return the results as JSON via
@@ -19,8 +19,7 @@ import (
 // egressURL errors will contain curl's detailed error messages. Additional command line options can
 // be provided to curl via the CURLOPT userdataVariable. This probe has been confirmed to support X86
 // instances on AWS. In theory, it should also support GCP and any CPU architecture supported by RHEL.
-type CurlJSONProbe struct{}
-type Probe = CurlJSONProbe // curl_json.Probe is an alias for CurlJSONProbe
+type Probe struct{}
 
 //go:embed userdata-template.yaml
 var userDataTemplate string
@@ -36,13 +35,13 @@ var presetUserDataVariables = map[string]string{
 }
 
 // GetStartingToken returns the string token used to signal the beginning of the probe's output
-func (prb CurlJSONProbe) GetStartingToken() string { return startingToken }
+func (clp Probe) GetStartingToken() string { return startingToken }
 
 // GetEndingToken returns the string token used to signal the end of the probe's output
-func (prb CurlJSONProbe) GetEndingToken() string { return endingToken }
+func (clp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
-func (prb CurlJSONProbe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
+func (clp Probe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
 	// Validate/normalize platformType
 	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
 	if err != nil {
@@ -59,7 +58,7 @@ func (prb CurlJSONProbe) GetMachineImageID(platformType string, cpuArch string, 
 	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][normalizedRegion]
 	if !keyExists {
 		return "", fmt.Errorf(
-			"no default CurlJSONProbe machine image for arch %s in region %s of platform %s",
+			"no default curl probe machine image for arch %s in region %s of platform %s",
 			cpuArch,
 			normalizedRegion,
 			normalizedPlatformType,
@@ -76,7 +75,7 @@ func (prb CurlJSONProbe) GetMachineImageID(platformType string, cpuArch string, 
 // variables listed in the template's "network-verifier-required-variables" directive, or if
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
-func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
+func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
 	// Extract required variables specified in template (if any)
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 
@@ -153,7 +152,7 @@ func (prb CurlJSONProbe) GetExpandedUserData(userDataVariables map[string]string
 // ParseProbeOutput accepts a string containing all probe output that appeared between
 // the startingToken and the endingToken and a pointer to an Output object. outputDestination
 // will be filled with the results from the egress check
-func (prb CurlJSONProbe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
+func (clp Probe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
 	// probeOutput first needs to be "repaired" due to curl and AWS bugs
 	repairedProbeOutput := helpers.FixLeadingZerosInJSON(helpers.RemoveTimestamps(probeOutput))
 	probeResults, errMap := bulkDeserializeCurlJSONProbeResult(repairedProbeOutput)

@@ -21,7 +21,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
-	"github.com/openshift/osd-network-verifier/pkg/probes/curl_json"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 )
 
 // defaultIpPermissions contains the base set of ipPermissions (egress rules)
@@ -85,7 +85,7 @@ type AwsVerifier struct {
 // other than X86, or probes other than CurlJSONProbe. It also doesn't return detailed errors. Instead, use:
 // [probe_package].[ProbeName].GetMachineImageID(platformType string, cpuArchitecture string, region string)
 func GetAMIForRegion(region string) string {
-	ami, err := curl_json.Probe{}.GetMachineImageID(helpers.PlatformAWS, helpers.ArchX86, region)
+	ami, err := curl.Probe{}.GetMachineImageID(helpers.PlatformAWS, helpers.ArchX86, region)
 	if err != nil {
 		return ""
 	}
