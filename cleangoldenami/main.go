@@ -21,6 +21,8 @@ const (
 	timeLayout  = "2006-01-02T15:04:05.000Z"
 	// desiredImageCapacity is the number of free "image slots" desired in each region
 	desiredImageCapacity = 3
+	ArchitectureARM64    = ec2Types.ArchitectureValuesArm64
+	ArchitectureX86      = ec2Types.ArchitectureValuesX8664
 )
 
 func main() {
@@ -200,11 +202,11 @@ func filterImages(images []ec2Types.Image) ([]ec2Types.Image, []ec2Types.Image, 
 	var arm64Images, legacyx86Images, x86Images []ec2Types.Image
 	for _, image := range images {
 
-		if hasVersionTag(image, "rhel-arm64") && hasMatchingArchitecture(image, "arm64") {
+		if hasVersionTag(image, "rhel-arm64") && hasMatchingArchitecture(image, ArchitectureARM64) {
 			arm64Images = append(arm64Images, image)
-		} else if hasVersionTag(image, "legacy-x86_64") && hasMatchingArchitecture(image, "x86_64") {
+		} else if hasVersionTag(image, "legacy-x86_64") && hasMatchingArchitecture(image, ArchitectureX86) {
 			legacyx86Images = append(legacyx86Images, image)
-		} else if hasVersionTag(image, "rhel-x86_64") && hasMatchingArchitecture(image, "x86_64") {
+		} else if hasVersionTag(image, "rhel-x86_64") && hasMatchingArchitecture(image, ArchitectureX86) {
 			x86Images = append(x86Images, image)
 		}
 	}
