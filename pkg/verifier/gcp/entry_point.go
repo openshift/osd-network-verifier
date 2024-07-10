@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/probes/dummy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
@@ -29,20 +30,26 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return g.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
 
+	// Fetch the egress URL list as two strings (one for normal URLs, the other
+	// for TLS disabled URLs); note that this is TOTALLY IGNORED by LegacyProbe,
+	// as that probe only knows how to use the egress URL lists baked into its
+	// AMIs/container images
+	// egressListStr, tlsDisabledEgressListStr, err := egress_lists.GetEgressListAsString(vei.PlatformType, a.AwsClient.Region)
+	// if err != nil {
+	// 	return a.Output.AddError(err)
+	// }
 	userDataVariables := map[string]string{
-		"AWS_REGION":               "us-east-2", // Not sure if this is the correct data
-		"USERDATA_BEGIN":           "USERDATA BEGIN",
-		"USERDATA_END":             userdataEndVerifier,
-		"VALIDATOR_START_VERIFIER": "VALIDATOR START",
-		"VALIDATOR_END_VERIFIER":   "VALIDATOR END",
-		"VALIDATOR_IMAGE":          networkValidatorImage,
-		"TIMEOUT":                  vei.Timeout.String(),
-		"HTTP_PROXY":               vei.Proxy.HttpProxy,
-		"HTTPS_PROXY":              vei.Proxy.HttpsProxy,
-		"CACERT":                   base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
-		"NOTLS":                    strconv.FormatBool(vei.Proxy.NoTls),
+		"AWS_REGION":  "us-east-2", // Not sure if this is the correct data
+		"TIMEOUT":     vei.Timeout.String(),
+		"HTTP_PROXY":  vei.Proxy.HttpProxy,
+		"HTTPS_PROXY": vei.Proxy.HttpsProxy,
+		"CACERT":      base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NOTLS":       strconv.FormatBool(vei.Proxy.NoTls),
+		"DELAY":       "5",
+		"URLS":        "quay.io",
 	}
-
+	// set probe
+	vei.Probe = dummy.DummyProbe{}
 	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)

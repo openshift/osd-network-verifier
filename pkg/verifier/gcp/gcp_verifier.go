@@ -16,12 +16,6 @@ import (
 	computev1 "google.golang.org/api/compute/v1"
 )
 
-var (
-	// TODO find a location for future docker images
-	networkValidatorImage string = "quay.io/app-sre/osd-network-verifier:v0.1.159-9a6e0eb"
-	userdataEndVerifier   string = "USERDATA END"
-)
-
 type GcpVerifier struct {
 	GcpClient gcp.Client
 	Logger    ocmlog.Logger
@@ -175,13 +169,13 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 		}
 
 		if output == nil {
-				return false, nil
-			}
+			return false, nil
+		}
 
 		if len(output.Contents) == 0 {
-				g.Logger.Debug(context.TODO(), "ComputeService console output not yet populated with data, continuing to wait...")
-				return false, nil
-			}
+			g.Logger.Debug(context.TODO(), "ComputeService console output not yet populated with data, continuing to wait...")
+			return false, nil
+		}
 		consoleOutput = string(output.Contents)
 
 		// Check for startingToken and endingToken
@@ -273,13 +267,3 @@ func (c *GcpVerifier) waitForComputeServiceInstanceCompletion(projectID, zone, i
 
 	return err
 }
-
-// func generateUserData(variables map[string]string) (string, error) {
-// 	variableMapper := func(varName string) string {
-// 		return variables[varName]
-// 	}
-// 	data :=
-// 	data := os.Expand(helpers.UserdataTemplate, variableMapper)
-
-// 	return data, nil
-// }
