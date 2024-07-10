@@ -276,71 +276,6 @@ func Test_deregisterImage(t *testing.T) {
 	}
 }
 
-func Test_imageDeletionCheck(t *testing.T) {
-	tests := []struct {
-		name                string
-		imagesToDelete      []ec2Types.Image
-		numOfImagesToDelete int
-		arm64Images         []ec2Types.Image
-		legacyx86Images     []ec2Types.Image
-		x86Images           []ec2Types.Image
-		want                bool
-	}{
-		{
-			name: "imagesToDelete length matches numOfImagesToDelete",
-			imagesToDelete: []ec2Types.Image{
-				{ImageId: aws.String("a")},
-				{ImageId: aws.String("b")},
-				{ImageId: aws.String("c")},
-			},
-			numOfImagesToDelete: 3,
-			want:                true,
-		},
-		{
-			name: "one of the architecture slices has <= 1 image",
-			arm64Images: []ec2Types.Image{
-				{ImageId: aws.String("a")},
-			},
-			legacyx86Images: []ec2Types.Image{
-				{ImageId: aws.String("b")},
-			},
-			x86Images: []ec2Types.Image{
-				{ImageId: aws.String("c")},
-			},
-			want: true,
-		},
-		{
-			name: "none of the conditions are met",
-			imagesToDelete: []ec2Types.Image{
-				{ImageId: aws.String("a")},
-				{ImageId: aws.String("b")},
-			},
-			numOfImagesToDelete: 3,
-			arm64Images: []ec2Types.Image{
-				{ImageId: aws.String("c")},
-				{ImageId: aws.String("d")},
-			},
-			legacyx86Images: []ec2Types.Image{
-				{ImageId: aws.String("d")},
-				{ImageId: aws.String("e")},
-			},
-			x86Images: []ec2Types.Image{
-				{ImageId: aws.String("f")},
-				{ImageId: aws.String("g")},
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := shouldDeleteImages(tt.imagesToDelete, tt.numOfImagesToDelete, tt.arm64Images, tt.legacyx86Images, tt.x86Images)
-			if got == tt.want {
-				t.Errorf("imageDeletionCheck() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_getMostPopulatedImageType(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -495,6 +430,90 @@ func Test_filterImages(t *testing.T) {
 				t.Errorf("filterImages() got = %v, want %v", legacyx86Images, tt.legacyx86ExpectedFilteredImages)
 			} else if !reflect.DeepEqual(x86Images, tt.x86ExpectedFilteredImages) {
 				t.Errorf("filterImages() got = %v, want %v", x86Images, tt.x86ExpectedFilteredImages)
+			}
+		})
+	}
+}
+
+func Test_canDeleteImages(t *testing.T) {
+	testCases := []struct {
+		name                string
+		numOfImagesToDelete int
+		arm64Images         []ec2Types.Image
+		legacyx86Images     []ec2Types.Image
+		x86Images           []ec2Types.Image
+		expected            bool
+	}{
+		{
+			name:                "Delete 3 images when rhel-arm64: 3, legacy-x86_64: 2, rhel-x86_64: 2",
+			numOfImagesToDelete: 3,
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")},
+				{ImageId: aws.String("c")}},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")},
+				{ImageId: aws.String("e")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("f")},
+				{ImageId: aws.String("g")}},
+			expected: true,
+		},
+		{
+			name:                "Delete 2 images when rhel-arm64: 3, legacy-x86_64: 2, rhel-x86_64: 1",
+			numOfImagesToDelete: 2,
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")},
+				{ImageId: aws.String("c")}},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")},
+				{ImageId: aws.String("e")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("f")}},
+			expected: true,
+		},
+		{
+			name:                "Delete 1 image when rhel-arm64: 1, legacy-x86_64: 2, rhel-x86_64: 2",
+			numOfImagesToDelete: 1,
+			arm64Images:         []ec2Types.Image{},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("c")},
+				{ImageId: aws.String("d")}},
+			expected: true,
+		},
+		{
+			name:                "Delete 2 image when rhel-arm64: 0, legacy-x86_64: 1, rhel-x86_64: 1",
+			numOfImagesToDelete: 2,
+			arm64Images:         []ec2Types.Image{},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("a")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("b")}},
+			expected: false,
+		},
+		{
+			name:                "Delete 3 image when rhel-arm64: 1, legacy-x86_64: 2, rhel-x86_64: 1",
+			numOfImagesToDelete: 3,
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")}},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("b")},
+				{ImageId: aws.String("c")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")}},
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := canDeleteImages(tc.numOfImagesToDelete, tc.arm64Images, tc.legacyx86Images, tc.x86Images)
+			if result != tc.expected {
+				t.Errorf("Expected %v but got %v for test case '%s'", tc.expected, result, tc.name)
 			}
 		})
 	}

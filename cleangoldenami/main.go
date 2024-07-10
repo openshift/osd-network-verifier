@@ -71,42 +71,48 @@ func main() {
 
 				var imagesToDelete []ec2Types.Image
 
-				for shouldDeleteImages(imagesToDelete, numOfImagesToDelete, arm64Images, legacyx86Images, x86Images) {
-					// Returns the most populated image type and the slice containing images of that type
-					mostPopulatedImagesByType, mostPopulatedImageType := getMostPopulatedImageType(arm64Images, legacyx86Images, x86Images)
+				if canDeleteImages(numOfImagesToDelete, arm64Images, legacyx86Images, x86Images) {
+					for len(imagesToDelete) < numOfImagesToDelete {
+						// Returns the most populated image type and the slice containing images of that type
+						mostPopulatedImagesByType, mostPopulatedImageType := getMostPopulatedImageType(arm64Images, legacyx86Images, x86Images)
 
-					imageToDeleteIndex, imageToDelete, err := getOldestImage(mostPopulatedImagesByType)
-					if err != nil {
-						log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
+						imageToDeleteIndex, imageToDelete, err := getOldestImage(mostPopulatedImagesByType)
+						if err != nil {
+							log.Fatalf("error determining which image to delete in region %v: %v", regionName, err)
+						}
+
+						// Add the image to the list of images to delete
+						imagesToDelete = append(imagesToDelete, imageToDelete)
+
+						// Remove the deleted image from its respective slice based on its type
+						switch mostPopulatedImageType {
+						case "arm64Images":
+							arm64Images = append(arm64Images[:imageToDeleteIndex], arm64Images[imageToDeleteIndex+1:]...)
+						case "legacyx86Images":
+							legacyx86Images = append(legacyx86Images[:imageToDeleteIndex], legacyx86Images[imageToDeleteIndex+1:]...)
+						case "x86Images":
+							x86Images = append(x86Images[:imageToDeleteIndex], x86Images[imageToDeleteIndex+1:]...)
+						}
 					}
-
-					// Add the image to the list of images to delete
-					imagesToDelete = append(imagesToDelete, imageToDelete)
-
-					// Remove the deleted image from its respective slice based on its type
-					switch mostPopulatedImageType {
-					case "arm64Images":
-						arm64Images = append(arm64Images[:imageToDeleteIndex], arm64Images[imageToDeleteIndex+1:]...)
-					case "legacyx86Images":
-						legacyx86Images = append(legacyx86Images[:imageToDeleteIndex], legacyx86Images[imageToDeleteIndex+1:]...)
-					case "x86Images":
-						x86Images = append(x86Images[:imageToDeleteIndex], x86Images[imageToDeleteIndex+1:]...)
-					}
-				}
-				for _, image := range imagesToDelete {
-					for i, t := range image.Tags {
-						if *t.Key == "version" {
-							if !*dryRun {
-								err = deregisterImage(ec2Client, image)
-								if err != nil {
-									fmt.Printf("error deregistering image %v (%v) in region %v: %v\n", *image.ImageId, *image.Tags[i].Value, regionName, err)
+					for _, image := range imagesToDelete {
+						for i, t := range image.Tags {
+							if *t.Key == "version" {
+								if !*dryRun {
+									err = deregisterImage(ec2Client, image)
+									if err != nil {
+										fmt.Printf("error deregistering image %v (%v) in region %v: %v\n", *image.ImageId, *image.Tags[i].Value, regionName, err)
+									}
+									fmt.Printf("successfully deregistered image %v (%v) in region %v\n", *image.ImageId, *image.Tags[i].Value, regionName)
+								} else {
+									fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[i].Value)
 								}
-								fmt.Printf("successfully deregistered image %v (%v) in region %v\n", *image.ImageId, *image.Tags[i].Value, regionName)
-							} else {
-								fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[i].Value)
+								break
 							}
 						}
 					}
+				} else {
+					fmt.Printf("ERROR: MANUAL ACTION REQUIRED - Unable to delete images in region %v (Total Images: %v, rhel-arm64: %v, legacy-x86_64: %v, rhel-x86_64: %v, Quota: %v, ImagesToDelete: %v)\n",
+						regionName, imageCount, len(arm64Images), len(legacyx86Images), len(x86Images), quota, numOfImagesToDelete)
 				}
 			}
 		}(*enabledRegion.RegionName)
@@ -234,7 +240,23 @@ func deregisterImage(ec2Client DeregisterImageClient, image ec2Types.Image) erro
 	return nil
 }
 
-// shouldDeleteImages verifies that conditions are met before deleting an AMI
-func shouldDeleteImages(imagesToDelete []ec2Types.Image, numOfImagesToDelete int, arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) bool {
-	return !((len(imagesToDelete) == numOfImagesToDelete) || (len(arm64Images) <= 1 && len(legacyx86Images) <= 1 && len(x86Images) <= 1))
+// canDeleteImages verifies it's safe to delete the required number of images from each of the provided image slices while ensuring that deleting images won't reduce any slice length below 1
+func canDeleteImages(numOfImagesToDelete int, arm64Images []ec2Types.Image, legacyx86Images []ec2Types.Image, x86Images []ec2Types.Image) bool {
+	// Calculate the maximum number of images that can be safely deleted from each slice
+	canDeleteArm64 := max(0, len(arm64Images)-1)
+	canDeleteLegacyX86 := max(0, len(legacyx86Images)-1)
+	canDeleteX86 := max(0, len(x86Images)-1)
+
+	// Calculate the total number of images that can be safely deleted across all slices
+	totalCanDelete := canDeleteArm64 + canDeleteLegacyX86 + canDeleteX86
+
+	return totalCanDelete >= numOfImagesToDelete
+}
+
+// Helper function to get the maximum of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
