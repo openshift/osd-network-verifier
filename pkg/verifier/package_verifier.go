@@ -40,7 +40,6 @@ type ValidateEgressInput struct {
 }
 type AwsEgressConfig struct {
 	KmsKeyID          string
-	SecurityGroupId   string // Deprecated: prefer securityGroupIDs
 	SecurityGroupIDs  []string
 	TempSecurityGroup string
 }
