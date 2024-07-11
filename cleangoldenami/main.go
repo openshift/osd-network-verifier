@@ -96,17 +96,23 @@ func main() {
 							x86Images = append(x86Images[:imageToDeleteIndex], x86Images[imageToDeleteIndex+1:]...)
 						}
 					}
+					if !*dryRun {
+						fmt.Printf("Region %v image capacity is currently at %v out of %v:\n", regionName, len(images), quota)
+					} else {
+						fmt.Printf("Region %v image capacity is currently at %v out of %v - would delete the following AMIs:\n", regionName, len(images), quota)
+					}
 					for _, image := range imagesToDelete {
-						for i, t := range image.Tags {
+						for _, t := range image.Tags {
 							if *t.Key == "version" {
 								if !*dryRun {
 									err = deregisterImage(ec2Client, image)
 									if err != nil {
-										fmt.Printf("error deregistering image %v (%v) in region %v: %v\n", *image.ImageId, *image.Tags[i].Value, regionName, err)
+										fmt.Printf("  - error deregistering image %v (%v): %v\n", *image.ImageId, *t.Value, err)
+									} else {
+										fmt.Printf("  - successfully deregistered image %v (%v)\n", *image.ImageId, *t.Value)
 									}
-									fmt.Printf("successfully deregistered image %v (%v) in region %v\n", *image.ImageId, *image.Tags[i].Value, regionName)
 								} else {
-									fmt.Printf("Region %v is at quota (%v) - would delete %v (%v)\n", regionName, quota, *image.ImageId, *image.Tags[i].Value)
+									fmt.Printf("  - %v (%v)\n", *image.ImageId, *t.Value)
 								}
 								break
 							}
