@@ -35,5 +35,4 @@ func (prb DummyProbe) GetExpandedUserData(userDataVariables map[string]string) (
 
 // ParseProbeOutput is not implemented for this dummy probe
 func (prb DummyProbe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
-	return
 }
