@@ -48,6 +48,10 @@ func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 	if err != nil {
 		return "", err
 	}
+	if normalizedPlatformType == helpers.PlatformHostedCluster {
+		// HCP uses the same AMIs as Classic
+		normalizedPlatformType = helpers.PlatformAWS
+	}
 
 	// Normalize region key (GCP images are global/not region-scoped)
 	normalizedRegion := region
