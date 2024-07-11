@@ -10,6 +10,10 @@ var defaultInstanceTypes = map[string]map[Architecture]string{
 		ArchX86: "t3.micro",
 		ArchARM: "t4g.micro",
 	},
+	helpers.PlatformHostedCluster: {
+		ArchX86: "t3.micro",
+		ArchARM: "t4g.micro",
+	},
 	helpers.PlatformGCP: {
 		ArchX86: "e2-micro",
 		ArchARM: "t2a-standard-1",
