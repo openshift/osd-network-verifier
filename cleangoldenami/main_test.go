@@ -190,10 +190,11 @@ func Test_getPublicImages(t *testing.T) {
 
 func Test_getOldestImage(t *testing.T) {
 	tests := []struct {
-		name    string
-		images  []ec2Types.Image
-		want    ec2Types.Image
-		wantErr bool
+		name      string
+		images    []ec2Types.Image
+		wantIndex int
+		wantImage ec2Types.Image
+		wantErr   bool
 	}{
 		{
 			name: "error when parsing time",
@@ -201,19 +202,18 @@ func Test_getOldestImage(t *testing.T) {
 				{
 					CreationDate: aws.String("not a time"),
 				},
+				{
+					CreationDate: aws.String("not a time"),
+				},
 			},
-			wantErr: true,
+			wantErr:   true,
+			wantIndex: -1,
 		},
 		{
-			name: "successfully handles empty slice",
+			name:      "successfully handles empty slice",
+			wantIndex: -1,
 		},
-		{
-			name: "successfully handles slice with one image",
-			images: []ec2Types.Image{
-				{ImageId: aws.String("a"), CreationDate: aws.String("2024-04-26T15:04:05.000Z")},
-			},
-			want: ec2Types.Image{ImageId: aws.String("a"), CreationDate: aws.String("2024-04-26T15:04:05.000Z")},
-		},
+
 		{
 			name: "successfully handles slice with multiple images",
 			images: []ec2Types.Image{
@@ -222,18 +222,22 @@ func Test_getOldestImage(t *testing.T) {
 				{ImageId: aws.String("c"), CreationDate: aws.String("2024-03-26T15:04:06.000Z")},
 				{ImageId: aws.String("d"), CreationDate: aws.String("2024-03-26T15:04:05.000Z")},
 			},
-			want: ec2Types.Image{ImageId: aws.String("d"), CreationDate: aws.String("2024-03-26T15:04:05.000Z")},
+			wantIndex: 3,
+			wantImage: ec2Types.Image{ImageId: aws.String("d"), CreationDate: aws.String("2024-03-26T15:04:05.000Z")},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getOldestImage(tt.images)
+			gotIndex, gotImage, err := getOldestImage(tt.images)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getOldestImage() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getOldestImage() got = %v, want %v", got, tt.want)
+			if gotIndex != tt.wantIndex {
+				t.Errorf("getOldestImage() gotIndex = %v, wantIndex %v", gotIndex, tt.wantIndex)
+			}
+			if !reflect.DeepEqual(gotImage, tt.wantImage) {
+				t.Errorf("getOldestImage() gotImage = %v, wantImage %v", gotImage, tt.wantImage)
 			}
 		})
 	}
@@ -267,6 +271,249 @@ func Test_deregisterImage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := deregisterImage(tt.ec2Client, ec2Types.Image{}); (err != nil) != tt.wantErr {
 				t.Errorf("deregisterImage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_getMostPopulatedImageType(t *testing.T) {
+	tests := []struct {
+		name            string
+		arm64Images     []ec2Types.Image
+		legacyx86Images []ec2Types.Image
+		x86Images       []ec2Types.Image
+		wantSlice       []ec2Types.Image
+		wantSliceName   string
+	}{
+		{
+			name: "arm64Images has the longest slice",
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")},
+			},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("c")},
+			},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")},
+				{ImageId: aws.String("e")},
+			},
+			wantSlice:     []ec2Types.Image{{ImageId: aws.String("a")}, {ImageId: aws.String("b")}},
+			wantSliceName: "arm64Images",
+		},
+		{
+			name: "legacyx86Images has the longest slice",
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+			},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("b")},
+				{ImageId: aws.String("c")},
+			},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")},
+			},
+			wantSlice:     []ec2Types.Image{{ImageId: aws.String("b")}, {ImageId: aws.String("c")}},
+			wantSliceName: "legacyx86Images",
+		},
+		{
+			name: "x86Images has the longest slice",
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+			},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("b")},
+			},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("c")},
+				{ImageId: aws.String("d")},
+				{ImageId: aws.String("e")},
+			},
+			wantSlice:     []ec2Types.Image{{ImageId: aws.String("c")}, {ImageId: aws.String("d")}, {ImageId: aws.String("e")}},
+			wantSliceName: "x86Images",
+		},
+		{
+			name: "all slices have the same length, should return arm64Images",
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")},
+			},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("c")},
+				{ImageId: aws.String("d")},
+			},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("e")},
+				{ImageId: aws.String("f")},
+			},
+			wantSlice:     []ec2Types.Image{{ImageId: aws.String("a")}, {ImageId: aws.String("b")}},
+			wantSliceName: "arm64Images",
+		},
+		{
+			name:          "all slices are empty",
+			wantSlice:     nil,
+			wantSliceName: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSlice, gotSliceName := getMostPopulatedImageType(tt.arm64Images, tt.legacyx86Images, tt.x86Images)
+			if !reflect.DeepEqual(gotSlice, tt.wantSlice) {
+				t.Errorf("getMostPopulatedImageType() gotSlice = %v, want %v", gotSlice, tt.wantSlice)
+			}
+			if gotSliceName != tt.wantSliceName {
+				t.Errorf("getMostPopulatedImageType() gotSliceName = %v, want %v", gotSliceName, tt.wantSliceName)
+			}
+		})
+	}
+}
+
+func Test_filterImages(t *testing.T) {
+	tests := []struct {
+		name                            string
+		images                          []ec2Types.Image
+		architecture                    string
+		tag                             string
+		arm64ExpectedFilteredImages     []ec2Types.Image
+		legacyx86ExpectedFilteredImages []ec2Types.Image
+		x86ExpectedFilteredImages       []ec2Types.Image
+	}{
+		{
+			name: "filter arm64 images by matching architecture and tag",
+			images: []ec2Types.Image{
+				{ImageId: aws.String("a"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+				{ImageId: aws.String("b"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("legacy-x86_64")}}},
+				{ImageId: aws.String("c"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-x86_64")}}},
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+			architecture: "arm64",
+			tag:          "rhel-arm64",
+			arm64ExpectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("a"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+			legacyx86ExpectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("b"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("legacy-x86_64")}}},
+			},
+			x86ExpectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("c"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-x86_64")}}},
+			},
+		},
+		{
+			name: "filter arm64 Images with missing tag",
+			images: []ec2Types.Image{
+				{ImageId: aws.String("a"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("")}}},
+				{ImageId: aws.String("b"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("legacy-x86_64")}}},
+				{ImageId: aws.String("c"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-x86_64")}}},
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+			architecture: "arm64",
+			tag:          "rhel-arm64",
+			arm64ExpectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("d"), Architecture: "arm64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-arm64")}}},
+			},
+			legacyx86ExpectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("b"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("legacy-x86_64")}}},
+			},
+			x86ExpectedFilteredImages: []ec2Types.Image{
+				{ImageId: aws.String("c"), Architecture: "x86_64", Tags: []ec2Types.Tag{{Key: aws.String("version"), Value: aws.String("rhel-x86_64")}}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			arm64Images, legacyx86Images, x86Images := filterImages(tt.images)
+			if !reflect.DeepEqual(arm64Images, tt.arm64ExpectedFilteredImages) {
+				t.Errorf("filterImages() got = %v, want %v", arm64Images, tt.arm64ExpectedFilteredImages)
+			} else if !reflect.DeepEqual(legacyx86Images, tt.legacyx86ExpectedFilteredImages) {
+				t.Errorf("filterImages() got = %v, want %v", legacyx86Images, tt.legacyx86ExpectedFilteredImages)
+			} else if !reflect.DeepEqual(x86Images, tt.x86ExpectedFilteredImages) {
+				t.Errorf("filterImages() got = %v, want %v", x86Images, tt.x86ExpectedFilteredImages)
+			}
+		})
+	}
+}
+
+func Test_canDeleteImages(t *testing.T) {
+	testCases := []struct {
+		name                string
+		numOfImagesToDelete int
+		arm64Images         []ec2Types.Image
+		legacyx86Images     []ec2Types.Image
+		x86Images           []ec2Types.Image
+		expected            bool
+	}{
+		{
+			name:                "Delete 3 images when rhel-arm64: 3, legacy-x86_64: 2, rhel-x86_64: 2",
+			numOfImagesToDelete: 3,
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")},
+				{ImageId: aws.String("c")}},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")},
+				{ImageId: aws.String("e")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("f")},
+				{ImageId: aws.String("g")}},
+			expected: true,
+		},
+		{
+			name:                "Delete 2 images when rhel-arm64: 3, legacy-x86_64: 2, rhel-x86_64: 1",
+			numOfImagesToDelete: 2,
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")},
+				{ImageId: aws.String("c")}},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")},
+				{ImageId: aws.String("e")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("f")}},
+			expected: true,
+		},
+		{
+			name:                "Delete 1 image when rhel-arm64: 1, legacy-x86_64: 2, rhel-x86_64: 2",
+			numOfImagesToDelete: 1,
+			arm64Images:         []ec2Types.Image{},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("a")},
+				{ImageId: aws.String("b")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("c")},
+				{ImageId: aws.String("d")}},
+			expected: true,
+		},
+		{
+			name:                "Delete 2 image when rhel-arm64: 0, legacy-x86_64: 1, rhel-x86_64: 1",
+			numOfImagesToDelete: 2,
+			arm64Images:         []ec2Types.Image{},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("a")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("b")}},
+			expected: false,
+		},
+		{
+			name:                "Delete 3 image when rhel-arm64: 1, legacy-x86_64: 2, rhel-x86_64: 1",
+			numOfImagesToDelete: 3,
+			arm64Images: []ec2Types.Image{
+				{ImageId: aws.String("a")}},
+			legacyx86Images: []ec2Types.Image{
+				{ImageId: aws.String("b")},
+				{ImageId: aws.String("c")}},
+			x86Images: []ec2Types.Image{
+				{ImageId: aws.String("d")}},
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := canDeleteImages(tc.numOfImagesToDelete, tc.arm64Images, tc.legacyx86Images, tc.x86Images)
+			if result != tc.expected {
+				t.Errorf("Expected %v but got %v for test case '%s'", tc.expected, result, tc.name)
 			}
 		})
 	}

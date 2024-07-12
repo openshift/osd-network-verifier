@@ -1,8 +1,8 @@
 # osd-network-verifier clean golden ami
 
-This module contains a Go script
-that will loop through each region supported by the verifier
-and delete the oldest public AMI if the resource quota is at capacity.
+This module includes a Go script that loops through each region supported by the verifier. 
+It determines the public image quota limit for each region and ensures there is space for at least three new public images: one for the legacy binary on AMD architecture, one for the curl binary (base RHEL9) on AMD architecture, and another for the curl binary on ARM architecture. 
+The script prioritizes deleting the oldest image from the image type with the most available images until the public image count for that region has enough space for three new images.
 
 ## Usage
 
