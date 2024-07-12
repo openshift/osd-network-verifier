@@ -9,6 +9,7 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -161,7 +162,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	// Select AMI based on region if one isn't provided
 	if vei.CloudImageID == "" {
 		// TODO handle architectures other than X86
-		vei.CloudImageID, err = vei.Probe.GetMachineImageID(helpers.PlatformAWS, helpers.ArchX86, a.AwsClient.Region)
+		vei.CloudImageID, err = vei.Probe.GetMachineImageID(helpers.PlatformAWS, cpu.ArchX86, a.AwsClient.Region)
 		if err != nil {
 			return a.Output.AddError(err)
 		}

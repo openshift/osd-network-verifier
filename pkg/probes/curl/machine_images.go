@@ -1,16 +1,19 @@
 package curl
 
-import "github.com/openshift/osd-network-verifier/pkg/helpers"
+import (
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
+)
 
 // cloudMachineImageMap is a lookup table mapping VM image IDs to their
 // respective cloud platforms, CPU architectures, and cloud regions. To
 // access, reference cloudMachineImageMap[$CLOUD_PLATFORM][$CPU_ARCH][$REGION];
-// e.g., cloudMachineImageMap[helpers.PlatformAWS][helpers.ArchX86]["us-east-1"]
+// e.g., cloudMachineImageMap[helpers.PlatformAWS][cpu.ArchX86]["us-east-1"]
 // Note that GCP images are global/not region-scoped, so the region key will
 // always be "*"
-var cloudMachineImageMap = map[string]map[string]map[string]string{
+var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
 	helpers.PlatformAWS: {
-		helpers.ArchX86: {
+		cpu.ArchX86: {
 			"af-south-1":     "ami-02f0e23026ca00b2b",
 			"ap-east-1":      "ami-0981ad6d75e659d4d",
 			"ap-northeast-1": "ami-074c8721d73ba4b0d",
@@ -39,7 +42,7 @@ var cloudMachineImageMap = map[string]map[string]map[string]string{
 			"us-west-1":      "ami-096b3a8ac97ec26d0",
 			"us-west-2":      "ami-0e6f3bbd0f97807e8",
 		},
-		helpers.ArchARM: {
+		cpu.ArchARM: {
 			"af-south-1":     "ami-TODO",
 			"ap-east-1":      "ami-TODO",
 			"ap-northeast-1": "ami-TODO",
@@ -71,10 +74,10 @@ var cloudMachineImageMap = map[string]map[string]map[string]string{
 	},
 	// See function docstring's note on GCP; tl;dr: deepest key should be "*"
 	helpers.PlatformGCP: {
-		helpers.ArchX86: {
+		cpu.ArchX86: {
 			"*": "rhel-9",
 		},
-		helpers.ArchARM: {
+		cpu.ArchARM: {
 			"*": "rhel-9-arm64",
 		},
 	},

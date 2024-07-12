@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -46,7 +47,7 @@ func (lgp Probe) GetStartingToken() string { return startingToken }
 func (lgp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
-func (lgp Probe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
+func (lgp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
 	// Validate/normalize platformType
 	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
 	if err != nil {
