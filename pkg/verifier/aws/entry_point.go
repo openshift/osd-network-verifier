@@ -63,14 +63,24 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	// Validate InstanceType and use default if necessary
 	usingDefaultInstanceType := (vei.InstanceType == "")
 	if !usingDefaultInstanceType {
-		if err := a.validateInstanceType(vei.Ctx, vei.InstanceType); err != nil {
+		usesNitro, err := a.instanceTypeUsesNitro(vei.Ctx, vei.InstanceType)
+		if err != nil {
+			return a.Output.AddError(fmt.Errorf("failed to get hypervisor of instance type %s: %w", vei.InstanceType, err))
+		}
+		if !usesNitro {
 			// Specified InstanceType is invalid (i.e., doesn't exist or doesn't use the "Nitro"
 			// hypervisor, which is necessary for collecting serial console output)
-			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("cannot use instance type %s: %s", vei.InstanceType, err))
+			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("cannot use instance type %s because it uses an unsupported (non-Nitro) hypervisor", vei.InstanceType))
 			usingDefaultInstanceType = true
 		}
 	}
 	if usingDefaultInstanceType {
+		// Default to X86 if no valid CPUArchitecture specified
+		if !vei.CPUArchitecture.IsValid() {
+			vei.CPUArchitecture = cpu.ArchX86
+			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to CPU arch %s", vei.CPUArchitecture))
+		}
+
 		// Select an appropriate default instance type for the selected CPU architecture
 		vei.InstanceType, err = vei.CPUArchitecture.DefaultInstanceType(vei.PlatformType)
 		if err != nil {

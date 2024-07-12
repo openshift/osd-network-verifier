@@ -123,32 +123,32 @@ func NewAwsVerifier(accessID, accessSecret, sessionToken, region, profile string
 	return &AwsVerifier{awsClient, logger, output.Output{}}, nil
 }
 
-func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType string) error {
+// instanceTypeUsesNitro asks the AWS API whether or not the provided instanceType uses the "Nitro"
+// hypervisor. Nitro is the only hypervisor supporting serial console output, which we need to
+// collect in order to gather probe results
+func (a *AwsVerifier) instanceTypeUsesNitro(ctx context.Context, instanceType string) (bool, error) {
+	a.writeDebugLogs(ctx, fmt.Sprintf("Gathering description of instance type %s from EC2", instanceType))
 	descInput := ec2.DescribeInstanceTypesInput{
 		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(instanceType)},
 	}
-
-	a.writeDebugLogs(ctx, fmt.Sprintf("Gathering description of instance type %s from EC2", instanceType))
 	descOut, err := a.AwsClient.DescribeInstanceTypes(ctx, &descInput)
 	if err != nil {
-		return handledErrors.NewGenericError(err)
+		return false, handledErrors.NewGenericError(err)
 	}
 
 	// Effectively guaranteed to only have one match since we are casting c.instanceType into ec2Types.InstanceType
 	// and placing it as the only InstanceType filter. Otherwise, ec2:DescribeInstanceTypes also accepts multiple as
 	// an array of InstanceTypes which could return multiple matches.
-	if len(descOut.InstanceTypes) != 1 {
-		a.writeDebugLogs(ctx, fmt.Sprintf("matched instance types: %v", descOut.InstanceTypes))
-		return fmt.Errorf("expected one instance type match for %s, got %d", instanceType, len(descOut.InstanceTypes))
+	if len(descOut.InstanceTypes) != 1 || string(descOut.InstanceTypes[0].InstanceType) != instanceType {
+		return false, fmt.Errorf("unexpected instance type matches for %s, got %v", instanceType, descOut.InstanceTypes)
 	}
 
-	if string(descOut.InstanceTypes[0].InstanceType) == instanceType {
-		if descOut.InstanceTypes[0].Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
-			return fmt.Errorf("probe instances must use 'nitro' hypervisor to support reliable result collection, but %s uses '%s'", instanceType, descOut.InstanceTypes[0].Hypervisor)
-		}
+	// Ensure instance type uses nitro
+	if descOut.InstanceTypes[0].Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
+		return false, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 type createEC2InstanceInput struct {
