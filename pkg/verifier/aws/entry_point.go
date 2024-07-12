@@ -73,6 +73,8 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("cannot use instance type %s because it uses an unsupported (non-Nitro) hypervisor", vei.InstanceType))
 			usingDefaultInstanceType = true
 		}
+
+		// TODO use instanceTypeArchitecture() to set/validate CPUArchitecture in this case
 	}
 	if usingDefaultInstanceType {
 		// Default to X86 if no valid CPUArchitecture specified
