@@ -6,29 +6,73 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 )
 
-// Enumerated type representing CPU architectures
-type Architecture string
+// Architecture type represents specific CPU architectures and stores information on how they
+// map to cloud instance types. The verifier currently supports two: cpu.ArchX86 and cpu.ArchARM
+type Architecture struct {
+	// names holds 3 unique lowercase names of the CPU architecture (e.g., "x86"). We use a fixed-
+	// size array so that this struct remains comparable. Any of the 3 values can be used to refer
+	// to this specific CPU architecture via cpu.ArchitectureByName(), but only the first (element
+	// 0) element will be the "preferred name" returned by Architecture.String()
+	names [3]string
 
-const (
-	// ArchX86 represents a 64-bit CPU using the x86_64 instruction set. Also commonly known as
-	// "amd64 CPUs" or simply "Intel CPUs"
-	ArchX86 Architecture = "x86"
+	// defaultAWSInstanceType is the name of a low-cost AWS EC2 instance type that uses this CPU
+	// architecture and can be considered a sane default for the verifier Probe instance
+	defaultAWSInstanceType string
 
-	// ArchARM represents a 64-bit CPU using an ARM-based instruction set. Also commonly known as
-	// "arm64" or "aarch64"
-	ArchARM Architecture = "arm"
+	// defaultGCPInstanceType is the name of a low-cost GCP Compute Engine machine type that uses
+	// this CPU architecture and can be considered a sane default for the verifier Probe instance
+	defaultGCPInstanceType string
+}
+
+// If adding a new Arch, be sure to add it to the switch case in Architecture.IsValid()
+var (
+	// ArchX86 represents a 64-bit CPU using an ARM-based instruction set
+	ArchX86 = Architecture{
+		names:                  [3]string{"x86", "x86_64", "amd64"},
+		defaultAWSInstanceType: "t3.micro",
+		defaultGCPInstanceType: "e2-micro",
+	}
+
+	// ArchARM represents a 64-bit CPU using an ARM-based instruction set
+	ArchARM = Architecture{
+		names:                  [3]string{"arm", "arm64", "aarch64"},
+		defaultAWSInstanceType: "t4g.micro",
+		defaultGCPInstanceType: "t2a-standard-1",
+	}
 )
 
-// DefaultInstanceType returns an instance type available on the given cloud platform that's small,
-// low-cost, and uses the parent CPU Architecture. See instance_types.go for values
-func (arch Architecture) DefaultInstanceType(platformType string) (string, error) {
-	platformTypeStr, err := helpers.GetPlatformType(platformType)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch default %s instance type for platform %s: %w", arch, platformTypeStr, err)
+// IsValid returns true if the Architecture is non-empty and supported by the network verifier
+func (arch Architecture) IsValid() bool {
+	switch arch {
+	case ArchX86, ArchARM:
+		return true
+	default:
+		return false
 	}
-	if instanceType, ok := defaultInstanceTypes[platformTypeStr][arch]; ok {
-		return instanceType, nil
+}
+
+// String returns the "preferred name" of the Architecture
+func (arch Architecture) String() string {
+	return arch.names[0]
+}
+
+// DefaultInstanceType returns a sane default instance/machine type for the given cloud platform
+func (arch Architecture) DefaultInstanceType(platformType string) (string, error) {
+	if !arch.IsValid() {
+		return "", fmt.Errorf("invalid Architecture")
 	}
 
-	return "", fmt.Errorf("no default %s instance type for platform %s", arch, platformTypeStr)
+	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
+	if err != nil {
+		return "", err
+	}
+
+	switch normalizedPlatformType {
+	case helpers.PlatformAWS, helpers.PlatformHostedCluster:
+		return arch.defaultAWSInstanceType, nil
+	case helpers.PlatformGCP:
+		return arch.defaultGCPInstanceType, nil
+	default:
+		return "", fmt.Errorf("no default instance type for %s", normalizedPlatformType)
+	}
 }

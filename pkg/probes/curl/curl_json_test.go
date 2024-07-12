@@ -271,7 +271,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			name: "bad arch",
 			args: args{
 				platformType: helpers.PlatformGCP,
-				cpuArch:      "foobar",
+				cpuArch:      cpu.Architecture{},
 				region:       "europe-west1-c",
 			},
 			wantErr: true,
