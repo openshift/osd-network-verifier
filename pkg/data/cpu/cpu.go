@@ -2,6 +2,8 @@ package cpu
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 )
@@ -24,7 +26,7 @@ type Architecture struct {
 	defaultGCPInstanceType string
 }
 
-// If adding a new Arch, be sure to add it to the switch case in Architecture.IsValid()
+// If adding a new Arch, be sure to add it to Architecture.IsValid() and cpu.ArchitectureByName()
 var (
 	// ArchX86 represents a 64-bit CPU using an ARM-based instruction set
 	ArchX86 = Architecture{
@@ -40,16 +42,6 @@ var (
 		defaultGCPInstanceType: "t2a-standard-1",
 	}
 )
-
-// IsValid returns true if the Architecture is non-empty and supported by the network verifier
-func (arch Architecture) IsValid() bool {
-	switch arch {
-	case ArchX86, ArchARM:
-		return true
-	default:
-		return false
-	}
-}
 
 // String returns the "preferred name" of the Architecture
 func (arch Architecture) String() string {
@@ -75,4 +67,30 @@ func (arch Architecture) DefaultInstanceType(platformType string) (string, error
 	default:
 		return "", fmt.Errorf("no default instance type for %s", normalizedPlatformType)
 	}
+}
+
+// IsValid returns true if the Architecture is non-empty and supported by the network verifier
+func (arch Architecture) IsValid() bool {
+	switch arch {
+	case ArchX86, ArchARM:
+		return true
+	default:
+		return false
+	}
+}
+
+// ArchitectureByName returns an Architecture supported by the verifier if the given name
+// matches any known common names for a supported Architecture. It returns an empty/invalid
+// architecture if the provided name isn't supported
+func ArchitectureByName(name string) Architecture {
+	normalizedName := strings.TrimSpace(strings.ToLower(name))
+	if slices.Contains(ArchX86.names[:], normalizedName) {
+		return ArchX86
+	}
+
+	if slices.Contains(ArchARM.names[:], normalizedName) {
+		return ArchARM
+	}
+
+	return Architecture{}
 }

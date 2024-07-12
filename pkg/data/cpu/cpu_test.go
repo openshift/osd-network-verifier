@@ -148,3 +148,42 @@ func TestArchitecture_IsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestArchitectureByName(t *testing.T) {
+	tests := []struct {
+		name string
+		want Architecture
+	}{
+		{
+			name: "X86",
+			want: ArchX86,
+		},
+		{
+			name: "  x86_64   ",
+			want: ArchX86,
+		},
+		{
+			name: "AmD64",
+			want: ArchX86,
+		},
+		{
+			name: "aarch64",
+			want: ArchARM,
+		},
+		{
+			name: "ARM",
+			want: ArchARM,
+		},
+		{
+			name: "invalid name",
+			want: Architecture{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ArchitectureByName(tt.name); got != tt.want {
+				t.Errorf("ArchitectureByName() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
