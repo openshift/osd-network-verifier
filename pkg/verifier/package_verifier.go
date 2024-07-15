@@ -28,17 +28,25 @@ type verifierService interface {
 type ValidateEgressInput struct {
 	// Timeout sets the maximum duration an egress endpoint request can take before it aborts and
 	// is retried or marked as blocked
-	Timeout                                            time.Duration
-	Ctx                                                context.Context
-	SubnetID, CloudImageID, InstanceType, PlatformType string
-	Proxy                                              proxy.ProxyConfig
-	Tags                                               map[string]string
-	AWS                                                AwsEgressConfig
-	GCP                                                GcpEgressConfig
-	SkipInstanceTermination                            bool
-	TerminateDebugInstance                             string
-	ImportKeyPair                                      string
-	ForceTempSecurityGroup                             bool
+	Timeout                              time.Duration
+	Ctx                                  context.Context
+	SubnetID, CloudImageID, PlatformType string
+	Proxy                                proxy.ProxyConfig
+	Tags                                 map[string]string
+	AWS                                  AwsEgressConfig
+	GCP                                  GcpEgressConfig
+	SkipInstanceTermination              bool
+	TerminateDebugInstance               string
+	ImportKeyPair                        string
+	ForceTempSecurityGroup               bool
+
+	// InstanceType sets the type or size of the instance (VM) launched into the target subnet. Only
+	// instance types using 64-bit X86 or ARM CPUs are supported. For AWS, only instance types using
+	// the "Nitro" hypervisor are supported, as other hypervisors don't allow the verifier to gather
+	// probe results from the instance's serial console. If no valid InstanceType is provided, the
+	// verifier falls back to a supported default using the same CPU architecture as the requested
+	// instance type (if applicable) or as specified in the CPUArchitecture field
+	InstanceType string
 
 	// Probe controls the behavior of the instance that the verifier launches into the target
 	// subnet. Defaults to a curl-based probe (curl.Probe) if unset. legacy.Probe is also available
