@@ -25,6 +25,8 @@ type verifierService interface {
 }
 
 type ValidateEgressInput struct {
+	// Timeout sets the maximum duration an egress endpoint request can take before it aborts and
+	// is retried or marked as blocked
 	Timeout                                            time.Duration
 	Ctx                                                context.Context
 	SubnetID, CloudImageID, InstanceType, PlatformType string
