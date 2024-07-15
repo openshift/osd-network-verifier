@@ -54,41 +54,55 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
-	// Default to X86 if no valid CPUArchitecture specified
-	if !vei.CPUArchitecture.IsValid() {
-		vei.CPUArchitecture = cpu.ArchX86
-		a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to %s", vei.InstanceType))
-	}
-
-	// Validate InstanceType and use default if necessary
-	usingDefaultInstanceType := (vei.InstanceType == "")
-	if !usingDefaultInstanceType {
-		usesNitro, err := a.instanceTypeUsesNitro(vei.Ctx, vei.InstanceType)
+	// Validate any user-provided instance type
+	instanceTypeSpecified := (vei.InstanceType != "")
+	var specifiedInstanceTypeUsesNitro bool
+	if instanceTypeSpecified {
+		specifiedInstanceTypeUsesNitro, err = a.instanceTypeUsesNitro(vei.Ctx, vei.InstanceType)
 		if err != nil {
-			return a.Output.AddError(fmt.Errorf("failed to get hypervisor of instance type %s: %w", vei.InstanceType, err))
-		}
-		if !usesNitro {
-			// Specified InstanceType is invalid (i.e., doesn't exist or doesn't use the "Nitro"
-			// hypervisor, which is necessary for collecting serial console output)
-			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("cannot use instance type %s because it uses an unsupported (non-Nitro) hypervisor", vei.InstanceType))
-			usingDefaultInstanceType = true
+			return a.Output.AddError(
+				fmt.Errorf("failed to determine hypervisor of instance type %s: %w", vei.InstanceType, err),
+			)
 		}
 
-		// TODO use instanceTypeArchitecture() to set/validate CPUArchitecture in this case
+		// Regardless of validity, derive CPU arch from the given InstanceType so that we can pick
+		// an appropriate AMI, and if necessary, an alternative instance type with the same CPU arch
+		vei.CPUArchitecture, err = a.instanceTypeArchitecture(vei.Ctx, vei.InstanceType)
+		if err != nil {
+			return a.Output.AddError(
+				fmt.Errorf("failed to determine CPU architecture of instance type %s: %w", vei.InstanceType, err),
+			)
+		}
 	}
-	if usingDefaultInstanceType {
-		// Default to X86 if no valid CPUArchitecture specified
-		if !vei.CPUArchitecture.IsValid() {
-			vei.CPUArchitecture = cpu.ArchX86
-			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to CPU arch %s", vei.CPUArchitecture))
-		}
 
-		// Select an appropriate default instance type for the selected CPU architecture
+	// If user did not provide a valid instance type, select one based on CPU arch
+	if !instanceTypeSpecified || (instanceTypeSpecified && !specifiedInstanceTypeUsesNitro) {
+		if !vei.CPUArchitecture.IsValid() {
+			// No valid CPU arch provided; default to X86
+			vei.CPUArchitecture = cpu.ArchX86
+			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to %s CPU architecture", vei.CPUArchitecture))
+		}
 		vei.InstanceType, err = vei.CPUArchitecture.DefaultInstanceType(vei.PlatformType)
 		if err != nil {
-			return a.Output.AddError(err)
+			return a.Output.AddError(
+				fmt.Errorf("failed to determine default instance type for CPU architecture %s: %w", vei.CPUArchitecture, err),
+			)
 		}
-		a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to instance type %s", vei.InstanceType))
+		defaultingMessage := fmt.Sprintf("defaulted to instance type %s", vei.InstanceType)
+		if instanceTypeSpecified && !specifiedInstanceTypeUsesNitro {
+			// Warn user that we're ignoring their invalid requested instance type
+			defaultingMessage = "ignored requested instance type due to its use of a non-Nitro hypervisor and instead " + defaultingMessage
+		}
+		a.writeDebugLogs(vei.Ctx, defaultingMessage)
+	}
+
+	// If no AMI specificed, select one based on CPU arch and region
+	if vei.CloudImageID == "" {
+		vei.CloudImageID, err = vei.Probe.GetMachineImageID(vei.PlatformType, vei.CPUArchitecture, a.AwsClient.Region)
+		if err != nil {
+			return a.Output.AddError(fmt.Errorf("failed to determine default machine image: %w", err))
+		}
+		a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to machine image %s", vei.CloudImageID))
 	}
 
 	// Select legacy probe config file based on platform type (ignored unless legacy.Probe in use)
@@ -194,14 +208,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	userData := base64.StdEncoding.EncodeToString([]byte(unencodedUserData))
 
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
-
-	// Select AMI based on region if one isn't provided
-	if vei.CloudImageID == "" {
-		vei.CloudImageID, err = vei.Probe.GetMachineImageID(helpers.PlatformAWS, vei.CPUArchitecture, a.AwsClient.Region)
-		if err != nil {
-			return a.Output.AddError(err)
-		}
-	}
 
 	vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 	if err != nil {
