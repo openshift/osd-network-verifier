@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
@@ -38,7 +39,16 @@ type ValidateEgressInput struct {
 	TerminateDebugInstance                             string
 	ImportKeyPair                                      string
 	ForceTempSecurityGroup                             bool
-	Probe                                              probes.Probe
+
+	// Probe controls the behavior of the instance that the verifier launches into the target
+	// subnet. Defaults to a curl-based probe (curl.Probe) if unset. legacy.Probe is also available
+	// if you'd like the verifier to emulate its pre-1.0 behavior, or you may provide your own
+	// implementation of the probes.Probe interface
+	Probe probes.Probe
+
+	// CPUArchitecture controls the CPU architecture of the default/fallback cloud instance type.
+	// Has no effect if a supported value of InstanceType is provided.
+	CPUArchitecture cpu.Architecture
 }
 type AwsEgressConfig struct {
 	KmsKeyID          string
