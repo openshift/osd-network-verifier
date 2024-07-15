@@ -49,7 +49,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		a.writeDebugLogs(vei.Ctx, "defaulted to curl probe")
 	}
 
-	// Assume 5sec timeout if none specified
+	// Default to 5sec per-request timeout if none specified
 	if vei.Timeout <= 0 {
 		vei.Timeout = time.Duration(5e9) // 5x10^9 nanoseconds = 5 seconds
 	}
