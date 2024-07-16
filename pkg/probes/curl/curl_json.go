@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
@@ -47,6 +48,10 @@ func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
 	if err != nil {
 		return "", err
+	}
+	if normalizedPlatformType == helpers.PlatformHostedCluster {
+		// HCP uses the same AMIs as Classic
+		normalizedPlatformType = helpers.PlatformAWS
 	}
 
 	// Normalize region key (GCP images are global/not region-scoped)
@@ -160,8 +165,11 @@ func (clp Probe) ParseProbeOutput(probeOutput string, outputDestination *output.
 	for _, probeResult := range probeResults {
 		outputDestination.AddDebugLogs(fmt.Sprintf("%+v\n", probeResult))
 		if !probeResult.IsSuccessfulConnection() {
+			// Replace "telnet" with "tcp" in output to prevent confusion over a probe
+			// implementation detail
+			url := strings.Replace(probeResult.URL, "telnet", "tcp", 1)
 			outputDestination.SetEgressFailures(
-				[]string{fmt.Sprintf("%s (%s)", probeResult.URL, probeResult.ErrorMsg)},
+				[]string{fmt.Sprintf("%s (%s)", url, probeResult.ErrorMsg)},
 			)
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -14,6 +15,7 @@ import (
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
@@ -31,7 +33,27 @@ const (
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `a.output` which stores the execution results
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
-	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Using configured timeout of %s for each egress request", vei.Timeout.String()))
+	// Validate cloud platform type and default to PlatformAWS if necessary
+	if vei.PlatformType == "" {
+		vei.PlatformType = helpers.PlatformAWS
+	}
+	normalizedPlatformType, err := helpers.GetPlatformType(vei.PlatformType)
+	if err != nil {
+		return a.Output.AddError(fmt.Errorf("cannot use platform type %s: %w", vei.PlatformType, err))
+	}
+	vei.PlatformType = normalizedPlatformType
+
+	// Default to curl.Probe if no Probe specified
+	if vei.Probe == nil {
+		vei.Probe = curl.Probe{}
+		a.writeDebugLogs(vei.Ctx, "defaulted to curl probe")
+	}
+
+	// Default to 5sec per-request timeout if none specified
+	if vei.Timeout <= 0 {
+		vei.Timeout = time.Duration(5e9) // 5x10^9 nanoseconds = 5 seconds
+	}
+	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
 	// Set default instance type if none is found
 	if vei.InstanceType == "" {

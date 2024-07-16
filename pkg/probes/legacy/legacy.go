@@ -53,6 +53,10 @@ func (lgp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 	if err != nil {
 		return "", err
 	}
+	if normalizedPlatformType == helpers.PlatformHostedCluster {
+		// HCP uses the same AMIs as Classic
+		normalizedPlatformType = helpers.PlatformAWS
+	}
 
 	// Access lookup table
 	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][region]

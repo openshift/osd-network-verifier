@@ -239,6 +239,16 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			wantErr:   false,
 		},
 		{
+			name: "AWS HCP",
+			args: args{
+				platformType: helpers.PlatformAWSHCP,
+				cpuArch:      cpu.ArchX86,
+				region:       "us-east-1",
+			},
+			wantRegex: `ami-\w+`,
+			wantErr:   false,
+		},
+		{
 			name: "AWS ARM",
 			args: args{
 				platformType: helpers.PlatformAWSClassic,
