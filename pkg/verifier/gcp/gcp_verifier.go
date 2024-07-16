@@ -176,7 +176,7 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 			g.Logger.Debug(context.TODO(), "ComputeService console output not yet populated with data, continuing to wait...")
 			return false, nil
 		}
-		consoleOutput = string(output.Contents)
+		consoleOutput = output.Contents
 
 		// Check for startingToken and endingToken
 		startingTokenSeen := strings.Contains(consoleOutput, probe.GetStartingToken())
