@@ -84,7 +84,7 @@ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credent
 are set correctly before execution.
 
 # Verify that essential OpenShift domains are reachable from a given SUBNET_ID/SECURITY_GROUP association
-./osd-network-verifier egress --subnet-id ${SUBNET_ID} --security-group-id ${SECURITY_GROUP}`,
+./osd-network-verifier egress --subnet-id ${SUBNET_ID} --security-group-ids ${SECURITY_GROUP}`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// OSD-20380 - remapping for backwards compatibility
 			platformType, err := helpers.GetPlatformType(config.platformType)
@@ -253,7 +253,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.terminateDebugInstance, "terminate-debug", "", "(optional) Takes the debug instance ID and terminates it")
 	validateEgressCmd.Flags().StringVar(&config.importKeyPair, "import-keypair", "", "(optional) Takes the path to your public key used to connect to Debug Instance. Automatically skips Termination")
 	validateEgressCmd.Flags().BoolVar(&config.ForceTempSecurityGroup, "force-temp-security-group", false, "(optional) Enforces creation of Temporary SG even if --security-group-ids flag is used")
-	validateEgressCmd.Flags().StringVar(&config.probeName, "probe", "CurlJSON", "(optional) select the probe to be used for egress testing. Either 'CurlJSON' (default) or 'Legacy'")
+	validateEgressCmd.Flags().StringVar(&config.probeName, "probe", "Curl", "(optional) select the probe to be used for egress testing. Either 'Curl' (default) or 'Legacy'")
 	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
 		validateEgressCmd.PrintErr(err)
 	}
