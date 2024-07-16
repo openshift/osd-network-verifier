@@ -153,6 +153,10 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 
 func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName string, probe probes.Probe) error {
 
+	// Compile the regular expressions once
+	// reVerify := regexp.MustCompile(userdataEndVerifier)
+	// reUnreachableErrors := regexp.MustCompile(`Unable to reach (\S+)`)
+
 	var consoleOutput string
 	g.Logger.Debug(context.TODO(), "Scraping console output and waiting for user data script to complete...")
 
