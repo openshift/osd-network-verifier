@@ -50,7 +50,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"URLS":        "quay.io",
 	}
 	// set probe
-	vei.Probe = dummy.DummyProbe{}
+	vei.Probe = dummy.Probe{}
 	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)
