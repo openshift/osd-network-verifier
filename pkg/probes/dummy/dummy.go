@@ -18,12 +18,12 @@ func (prb Probe) GetStartingToken() string { return startingToken }
 func (prb Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
-func (prb Probe) GetMachineImageID(platformType string, cpuArch string, region string) (string, error) {
+func (prb Probe) GetMachineImageID(string, string, string) (string, error) {
 	return "rhel-9", nil
 }
 
 // GetExpandedUserData returns a bash-formatted userdata string
-func (prb Probe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
+func (prb Probe) GetExpandedUserData(map[string]string) (string, error) {
 	return `#!/bin/sh
 	systemctl mask --now serial-getty@ttyS0.service
 	systemctl disable --now syslog.socket rsyslog.service
@@ -34,5 +34,4 @@ func (prb Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 }
 
 // ParseProbeOutput is not implemented for this dummy probe
-func (prb Probe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
-}
+func (prb Probe) ParseProbeOutput(string, *output.Output) {}

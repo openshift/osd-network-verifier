@@ -11,7 +11,10 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
-const cloudImageIDDefault = "rhel-9-v20240703"
+const (
+	cloudImageIDDefault   = "rhel-9-v20240703"
+	DEFAULT_INSTANCE_TYPE = "e2-micro"
+)
 
 // validateEgress performs validation process for egress
 // Basic workflow is:
@@ -23,10 +26,12 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	g.Logger.Debug(vei.Ctx, "Using configured timeout of %s for each egress request", vei.Timeout.String())
 	//default gcp machine e2
 	if vei.InstanceType == "" {
-		vei.InstanceType = "e2-standard-2"
+		vei.InstanceType = DEFAULT_INSTANCE_TYPE
 	}
 
-	vei.InstanceType = "e2-micro"
+	// need to set InstanceType here because default is a AWS machine type
+	vei.InstanceType = DEFAULT_INSTANCE_TYPE
+
 	if err := g.validateMachineType(vei.GCP.ProjectID, vei.GCP.Zone, vei.InstanceType); err != nil {
 		return g.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
