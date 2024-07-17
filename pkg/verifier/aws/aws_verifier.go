@@ -189,6 +189,58 @@ func (a *AwsVerifier) instanceTypeArchitecture(ctx context.Context, instanceType
 	return cpu.Architecture{}, fmt.Errorf("instance type %s doesn't support any of our supported architectures", instanceType)
 }
 
+// selectInstanceType selects an approriate EC2 instance type based on the caller's preferences and
+// the verifier's limitations. All parameters are optional: leaving one or more "empty" (i.e.,
+// passing "zero values") will result in a value being inferred from other parameters or from a
+// pre-programmed default. Any provided parameters may be overridden (e.g., if an unsupported
+// non-Nitro instance type is requested) with the "next best" supported alternative. For example,
+// calling selectInstanceType(ctx, "c4.large", cpu.ArchX86) will return ("t3.micro", cpu.ArchX86,
+// nil) because c4-type instances do not use Nitro hypervisors and t3.micro is a suitable
+// alternative that uses the same CPU architecture as c4.large.
+func (a *AwsVerifier) selectInstanceType(ctx context.Context, instanceType string, cpuArchitecture cpu.Architecture) (string, cpu.Architecture, error) {
+	var err error
+
+	// Validate any requested instance type
+	validInstanceTypeRequested := false
+	if instanceType != "" {
+		// Derive CPU arch from requested InstanceType so that we can pick an appropriate AMI, and
+		// if necessary (e.g., because given type is non-Nitro), an alternative instance type with
+		// the same CPU arch
+		cpuArchitecture, err = a.instanceTypeArchitecture(ctx, instanceType)
+		if err != nil {
+			return "", cpu.Architecture{}, fmt.Errorf("failed to determine CPU architecture of instance type %s: %w", instanceType, err)
+		}
+
+		// Determine if given InstanceType uses the required Nitro hypervisor
+		validInstanceTypeRequested, err = a.instanceTypeUsesNitro(ctx, instanceType)
+		if err != nil {
+			return "", cpu.Architecture{}, fmt.Errorf("failed to determine hypervisor of instance type %s: %w", instanceType, err)
+		}
+	}
+
+	// Ensure we have a valid CPU arch beyond this point, defaulting to X86 if necessary
+	if !cpuArchitecture.IsValid() {
+		cpuArchitecture = cpu.ArchX86
+		a.writeDebugLogs(ctx, fmt.Sprintf("defaulted to %s CPU architecture", cpuArchitecture))
+	}
+
+	// If no instance type was requested (or if instance type  is invalid), select one based on CPU arch
+	if !validInstanceTypeRequested {
+		if instanceType != "" {
+			// Warn user that we're ignoring their invalid requested instance type
+			a.writeDebugLogs(ctx, fmt.Sprintf("ignoring requested instance type %s because it uses a non-Nitro hypervisor", instanceType))
+		}
+
+		instanceType, err = cpuArchitecture.DefaultInstanceType(helpers.PlatformAWS)
+		if err != nil {
+			return "", cpu.Architecture{}, fmt.Errorf("failed to determine default instance type for CPU architecture %s: %w", cpuArchitecture, err)
+		}
+		a.writeDebugLogs(ctx, fmt.Sprintf("defaulted to instance type %s", instanceType))
+	}
+
+	return instanceType, cpuArchitecture, nil
+}
+
 type createEC2InstanceInput struct {
 	amiID               string
 	SubnetID            string

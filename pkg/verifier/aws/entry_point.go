@@ -10,7 +10,6 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -54,46 +53,10 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
-	// Validate any user-provided instance type
-	instanceTypeSpecified := (vei.InstanceType != "")
-	var specifiedInstanceTypeUsesNitro bool
-	if instanceTypeSpecified {
-		specifiedInstanceTypeUsesNitro, err = a.instanceTypeUsesNitro(vei.Ctx, vei.InstanceType)
-		if err != nil {
-			return a.Output.AddError(
-				fmt.Errorf("failed to determine hypervisor of instance type %s: %w", vei.InstanceType, err),
-			)
-		}
-
-		// Regardless of validity, derive CPU arch from the given InstanceType so that we can pick
-		// an appropriate AMI, and if necessary, an alternative instance type with the same CPU arch
-		vei.CPUArchitecture, err = a.instanceTypeArchitecture(vei.Ctx, vei.InstanceType)
-		if err != nil {
-			return a.Output.AddError(
-				fmt.Errorf("failed to determine CPU architecture of instance type %s: %w", vei.InstanceType, err),
-			)
-		}
-	}
-
-	// If user did not provide a valid instance type, select one based on CPU arch
-	if !instanceTypeSpecified || (instanceTypeSpecified && !specifiedInstanceTypeUsesNitro) {
-		if !vei.CPUArchitecture.IsValid() {
-			// No valid CPU arch provided; default to X86
-			vei.CPUArchitecture = cpu.ArchX86
-			a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to %s CPU architecture", vei.CPUArchitecture))
-		}
-		vei.InstanceType, err = vei.CPUArchitecture.DefaultInstanceType(vei.PlatformType)
-		if err != nil {
-			return a.Output.AddError(
-				fmt.Errorf("failed to determine default instance type for CPU architecture %s: %w", vei.CPUArchitecture, err),
-			)
-		}
-		defaultingMessage := fmt.Sprintf("defaulted to instance type %s", vei.InstanceType)
-		if instanceTypeSpecified && !specifiedInstanceTypeUsesNitro {
-			// Warn user that we're ignoring their invalid requested instance type
-			defaultingMessage = "ignored requested instance type due to its use of a non-Nitro hypervisor and instead " + defaultingMessage
-		}
-		a.writeDebugLogs(vei.Ctx, defaultingMessage)
+	// Determine instance type and CPUArchitecture
+	vei.InstanceType, vei.CPUArchitecture, err = a.selectInstanceType(vei.Ctx, vei.InstanceType, vei.CPUArchitecture)
+	if err != nil {
+		return a.Output.AddError(err)
 	}
 
 	// If no AMI specificed, select one based on CPU arch and region

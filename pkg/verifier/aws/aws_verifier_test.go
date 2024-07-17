@@ -10,6 +10,8 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
 	gomock "go.uber.org/mock/gomock"
@@ -385,6 +387,92 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ipPermissionSetFromURLs() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAwsVerifier_selectInstanceType(t *testing.T) {
+	x86DefaultInstanceType, _ := cpu.ArchX86.DefaultInstanceType(helpers.PlatformAWS)
+	armDefaultInstanceType, _ := cpu.ArchARM.DefaultInstanceType(helpers.PlatformAWS)
+
+	tests := []struct {
+		name                               string
+		inputInstanceType                  string
+		inputCPUArch                       cpu.Architecture
+		mockCPUArchForInputInstanceType    ec2Types.ArchitectureType
+		mockHypervisorForInputInstanceType ec2Types.InstanceTypeHypervisor
+		expectInstanceType                 string
+		expectCPUArch                      cpu.Architecture
+		expectErr                          bool
+	}{
+		{
+			name:               "nothing requested",
+			expectInstanceType: x86DefaultInstanceType,
+			expectCPUArch:      cpu.ArchX86,
+		},
+		{
+			name:               "X86 requested",
+			expectInstanceType: x86DefaultInstanceType,
+			expectCPUArch:      cpu.ArchX86,
+		},
+		{
+			name:               "ARM requested",
+			inputCPUArch:       cpu.ArchARM,
+			expectInstanceType: armDefaultInstanceType,
+			expectCPUArch:      cpu.ArchARM,
+		},
+		{
+			name:                               "valid X86 type requested",
+			inputInstanceType:                  "t3.nano",
+			mockCPUArchForInputInstanceType:    ec2Types.ArchitectureTypeX8664,
+			mockHypervisorForInputInstanceType: ec2Types.InstanceTypeHypervisorNitro,
+			expectInstanceType:                 "t3.nano",
+			expectCPUArch:                      cpu.ArchX86,
+		},
+		{
+			name:                               "valid ARM type requested",
+			inputInstanceType:                  "t4g.nano",
+			mockCPUArchForInputInstanceType:    ec2Types.ArchitectureTypeArm64,
+			mockHypervisorForInputInstanceType: ec2Types.InstanceTypeHypervisorNitro,
+			expectInstanceType:                 "t4g.nano",
+			expectCPUArch:                      cpu.ArchARM,
+		},
+		{
+			name:                               "non-Nitro type requested",
+			inputInstanceType:                  "c4.large",
+			mockCPUArchForInputInstanceType:    ec2Types.ArchitectureTypeX8664,
+			mockHypervisorForInputInstanceType: ec2Types.InstanceTypeHypervisorXen,
+			expectInstanceType:                 x86DefaultInstanceType,
+			expectCPUArch:                      cpu.ArchX86,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var fakeInstanceTypeInfo *ec2Types.InstanceTypeInfo
+			if tt.inputInstanceType != "" {
+				fakeInstanceTypeInfo = &ec2Types.InstanceTypeInfo{
+					Hypervisor:   tt.mockHypervisorForInputInstanceType,
+					InstanceType: ec2Types.InstanceType(tt.inputInstanceType),
+					ProcessorInfo: &ec2Types.ProcessorInfo{
+						SupportedArchitectures: []ec2Types.ArchitectureType{tt.mockCPUArchForInputInstanceType},
+					},
+				}
+			}
+			a := &AwsVerifier{
+				Logger:                 &ocmlog.GlogLogger{},
+				cachedInstanceTypeInfo: fakeInstanceTypeInfo,
+			}
+			gotInstanceType, gotCPUArch, err := a.selectInstanceType(context.TODO(), tt.inputInstanceType, tt.inputCPUArch)
+			if (err != nil) != tt.expectErr {
+				t.Errorf("AwsVerifier.selectInstanceType() error = %v, wantErr %v", err, tt.expectErr)
+				return
+			}
+			if gotInstanceType != tt.expectInstanceType {
+				t.Errorf("AwsVerifier.selectInstanceType() gotInstanceType = %v, want %v", gotInstanceType, tt.expectInstanceType)
+			}
+			if gotCPUArch != tt.expectCPUArch {
+				t.Errorf("AwsVerifier.selectInstanceType() gotCPUArch = %v, want %v", gotCPUArch, tt.expectCPUArch)
 			}
 		})
 	}
