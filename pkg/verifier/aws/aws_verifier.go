@@ -208,7 +208,7 @@ func (a *AwsVerifier) selectInstanceType(ctx context.Context, instanceType strin
 		// the same CPU arch
 		cpuArchitecture, err = a.instanceTypeArchitecture(ctx, instanceType)
 		if err != nil {
-			return "", cpu.Architecture{}, fmt.Errorf("failed to determine CPU architecture of instance type %s: %w", instanceType, err)
+			return "", cpu.Architecture{}, fmt.Errorf("failed to validate CPU architecture of instance type %s: %w", instanceType, err)
 		}
 
 		// Determine if given InstanceType uses the required Nitro hypervisor
