@@ -7,13 +7,14 @@ import (
 	"strconv"
 
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	"github.com/openshift/osd-network-verifier/pkg/probes/dummy"
+	"github.com/openshift/osd-network-verifier/pkg/probes/gcp_curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
 const (
 	cloudImageIDDefault   = "rhel-9-v20240703"
 	DEFAULT_INSTANCE_TYPE = "e2-micro"
+	DEFAULT_TIMEOUT       = 5
 )
 
 // validateEgress performs validation process for egress
@@ -27,6 +28,9 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	//default gcp machine e2
 	if vei.InstanceType == "" {
 		vei.InstanceType = DEFAULT_INSTANCE_TYPE
+	}
+	if vei.Timeout == 0 {
+		vei.Timeout = DEFAULT_TIMEOUT
 	}
 
 	// need to set InstanceType here because default is a AWS machine type
@@ -55,7 +59,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"URLS":        "quay.io",
 	}
 	// set probe
-	vei.Probe = dummy.Probe{}
+	vei.Probe = gcp_curl.Probe{}
 	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)
