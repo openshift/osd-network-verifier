@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,6 +41,7 @@ type egressConfig struct {
 	instanceType               string
 	cpuArchName                string
 	securityGroupIDs           []string
+	egressListLocation         string
 	cloudTags                  map[string]string
 	debug                      bool
 	region                     string
@@ -163,6 +168,13 @@ are set correctly before execution.
 				switch strings.ToLower(config.probeName) {
 				case "", "curl", "curlprobe", "curl.probe":
 					vei.Probe = curl.Probe{}
+					if config.egressListLocation != "" {
+						vei.EgressListYaml, err = getCustomEgressListFromFlag(config.egressListLocation)
+						if err != nil {
+							fmt.Println(err)
+							return
+						}
+					}
 				case "legacy", "legacyprobe", "legacy.probe":
 					vei.Probe = legacy.Probe{}
 				}
@@ -249,6 +261,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
 	validateEgressCmd.Flags().StringVar(&config.cpuArchName, "cpu-arch", "", "(optional) compute instance CPU architecture. Ignored if valid instance-type specified")
 	validateEgressCmd.Flags().StringSliceVar(&config.securityGroupIDs, "security-group-ids", []string{}, "(optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created")
+	validateEgressCmd.Flags().StringVar(&config.egressListLocation, "egress-list-location", "", "(optional) the location of the egress URL list to use. Can either be a local file path or an external URL starting with http(s). This value is ignored for the legacy probe.")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
@@ -270,4 +283,48 @@ are set correctly before execution.
 	}
 
 	return validateEgressCmd
+}
+
+func getCustomEgressListFromFlag(location string) (string, error) {
+	var egressListYaml string
+	if _, err := os.Stat(location); err == nil {
+		egressListYaml, err = GetCustomLocalEgressList(location)
+		if err != nil {
+			return "", fmt.Errorf("Failed to fetch egress URL list from %s: %v\n", location, err)
+		}
+		absPath, _ := filepath.Abs(location) // if we've gotten this far, we know the path is valid
+		fmt.Printf("Using local egress list from %s\n", absPath)
+		return egressListYaml, nil
+	}
+
+	parsedUrl, err := url.ParseRequestURI(location)
+	if err != nil {
+		return "", fmt.Errorf("Failed to parse URL %s: %w\n", location, err)
+	}
+	egressListYaml, err = GetCustomExternalEgressList(parsedUrl.String())
+	if err != nil {
+		return "", fmt.Errorf("Failed to fetch egress URL list from %s: %w\n", parsedUrl.String(), err)
+	}
+	fmt.Printf("Using external egress list from %s\n", parsedUrl.String())
+	return egressListYaml, nil
+}
+
+func GetCustomLocalEgressList(filePath string) (string, error) {
+	file, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	return string(file), nil
+}
+
+func GetCustomExternalEgressList(url string) (string, error) {
+	response, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	b, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }

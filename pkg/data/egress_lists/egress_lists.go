@@ -105,7 +105,7 @@ type endpoint struct {
 	TLSDisabled bool   `yaml:"tlsDisabled"`
 }
 
-// endpoint list type (as it appears in the current YAML schema)
+// reachabilityConfig list type (as it appears in the current YAML schema)
 // Borrowed from osd-network-verifier-golden-ami/build/bin/network-validator.go
 type reachabilityConfig struct {
 	Endpoints []endpoint `yaml:"endpoints"`
