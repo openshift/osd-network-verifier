@@ -136,11 +136,30 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return &a.Output
 	}
 
-	// Fetch the egress URL list as two strings (one for normal URLs, the other
-	// for TLS disabled URLs); note that this is TOTALLY IGNORED by LegacyProbe,
+	// Fetch the egress URL list from github, falling back to local lists in the event of a failure.
+	// Note that this is TOTALLY IGNORED by LegacyProbe,
 	// as that probe only knows how to use the egress URL lists baked into its
 	// AMIs/container images
-	egressListStr, tlsDisabledEgressListStr, err := egress_lists.GetEgressListAsString(vei.PlatformType, a.AwsClient.Region)
+	var egressListYaml string
+	githubEgressList, err := egress_lists.GetGithubEgressList(vei.PlatformType)
+	if err != nil {
+		a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+	} else {
+		egressListYaml, err = githubEgressList.GetContent()
+		if err != nil {
+			a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+		}
+		a.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
+	}
+
+	if egressListYaml == "" {
+		egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
+		if err != nil {
+			return a.Output.AddError(err)
+		}
+	}
+
+	egressListStr, tlsDisabledEgressListStr, err := egress_lists.EgressListToString(egressListYaml, map[string]string{"AWS_REGION": a.AwsClient.Region})
 	if err != nil {
 		return a.Output.AddError(err)
 	}
