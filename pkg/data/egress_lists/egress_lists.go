@@ -52,7 +52,7 @@ func GetGithubEgressList(platformType string) (*github.RepositoryContent, error)
 	default:
 		return nil, fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}
-	fileContentResponse, _, _, err := ghClient.Repositories.GetContents(context.TODO(), "openshift", "osd-network-verifier", path, nil)
+	fileContentResponse, _, _, err := ghClient.Repositories.GetContents(context.TODO(), "openshift", "osd-network-verifier", fmt.Sprintf("%s.yaml", path), nil)
 	return fileContentResponse, err
 }
 
