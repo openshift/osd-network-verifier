@@ -74,9 +74,10 @@ const (
 
 // AwsVerifier holds an aws client and knows how to fulfill the VerifierService which contains all functions needed for verifier
 type AwsVerifier struct {
-	AwsClient              *aws.Client
-	Logger                 ocmlog.Logger
-	Output                 output.Output
+	AwsClient *aws.Client
+	Logger    ocmlog.Logger
+	Output    output.Output
+	// This cache is only to be used inside of describeInstanceType() to minimize nil ptr error risk
 	cachedInstanceTypeInfo *ec2Types.InstanceTypeInfo
 }
 
