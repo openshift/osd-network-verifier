@@ -17,5 +17,7 @@ go build .
 
 The executable also supports the following flags:
 
-* `--verbose` - When specified, explicitly states which regions are not at their quota.
+* `--verbose` - When specified, enables verbose output logging. This inclues
+  * explicitly stating which regions are not at their quota
+  * outputting when a region is done processing
 * `--dry-run` - When specified, show which AMIs would be deregistered without actually deregistering them.
