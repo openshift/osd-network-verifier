@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openshift/osd-network-verifier/cmd/utils"
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
@@ -34,6 +35,7 @@ type egressConfig struct {
 	vpcSubnetID                string
 	cloudImageID               string
 	instanceType               string
+	cpuArchName                string
 	securityGroupIDs           []string
 	cloudTags                  map[string]string
 	debug                      bool
@@ -165,6 +167,14 @@ are set correctly before execution.
 					vei.Probe = legacy.Probe{}
 				}
 
+				// Map specified CPU architecture name to cpu.Architecture type
+				vei.CPUArchitecture = cpu.ArchitectureByName(config.cpuArchName)
+				if config.cpuArchName != "" && !vei.CPUArchitecture.IsValid() {
+					// Unknown cpu.Architecture specified
+					fmt.Printf("unknown CPU architecture '%s'\n", config.cpuArchName)
+					os.Exit(1)
+				}
+
 				out := verifier.ValidateEgress(awsVerifier, vei)
 				out.Summary(config.debug)
 
@@ -236,7 +246,8 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%v', '%v', or '%v' (hypershift)", helpers.PlatformAWSClassic, helpers.PlatformGCPClassic, helpers.PlatformAWSHCP))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "target subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
-	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "t3.micro", "(optional) compute instance type")
+	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
+	validateEgressCmd.Flags().StringVar(&config.cpuArchName, "cpu-arch", "", "(optional) compute instance CPU architecture. Ignored if valid instance-type specified")
 	validateEgressCmd.Flags().StringSliceVar(&config.securityGroupIDs, "security-group-ids", []string{}, "(optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
 	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")

@@ -2,6 +2,7 @@ package awsverifier
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
 	gomock "go.uber.org/mock/gomock"
@@ -385,6 +388,138 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ipPermissionSetFromURLs() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestAwsVerifier_selectInstanceType uses a mock EC2 API client to test the logic used for selecting
+// an instance type and CPU architecture based on user inputs and programmed defaults
+func TestAwsVerifier_selectInstanceType(t *testing.T) {
+	x86DefaultInstanceType, _ := cpu.ArchX86.DefaultInstanceType(helpers.PlatformAWS)
+	armDefaultInstanceType, _ := cpu.ArchARM.DefaultInstanceType(helpers.PlatformAWS)
+
+	type MockInstanceInfo struct {
+		CPUArchitecture ec2Types.ArchitectureType
+		Hypervisor      ec2Types.InstanceTypeHypervisor
+	}
+
+	tests := []struct {
+		name              string
+		inputInstanceType string
+		inputCPUArch      cpu.Architecture
+		// mockInstanceInfo defines the answer that the mock EC2 API will give to any calls to
+		// ec2.DescribeInstanceTypes(). Leaving this nil means we don't expect any API calls in
+		// this test case
+		mockInstanceInfo   *MockInstanceInfo
+		expectInstanceType string
+		expectCPUArch      cpu.Architecture
+		expectErr          bool
+	}{
+		{
+			name:               "nothing requested",
+			expectInstanceType: x86DefaultInstanceType,
+			expectCPUArch:      cpu.ArchX86,
+		},
+		{
+			name:               "X86 requested",
+			expectInstanceType: x86DefaultInstanceType,
+			expectCPUArch:      cpu.ArchX86,
+		},
+		{
+			name:               "ARM requested",
+			inputCPUArch:       cpu.ArchARM,
+			expectInstanceType: armDefaultInstanceType,
+			expectCPUArch:      cpu.ArchARM,
+		},
+		{
+			name:               "valid X86 type requested",
+			inputInstanceType:  "t3.nano",
+			mockInstanceInfo:   &MockInstanceInfo{ec2Types.ArchitectureTypeX8664, ec2Types.InstanceTypeHypervisorNitro},
+			expectInstanceType: "t3.nano",
+			expectCPUArch:      cpu.ArchX86,
+		},
+		{
+			name:               "valid ARM type requested",
+			inputInstanceType:  "t4g.nano",
+			mockInstanceInfo:   &MockInstanceInfo{ec2Types.ArchitectureTypeArm64, ec2Types.InstanceTypeHypervisorNitro},
+			expectInstanceType: "t4g.nano",
+			expectCPUArch:      cpu.ArchARM,
+		},
+		{
+			name:               "non-Nitro type requested",
+			inputInstanceType:  "c4.large",
+			mockInstanceInfo:   &MockInstanceInfo{ec2Types.ArchitectureTypeX8664, ec2Types.InstanceTypeHypervisorXen},
+			expectInstanceType: x86DefaultInstanceType,
+			expectCPUArch:      cpu.ArchX86,
+		},
+		{
+			name:              "Nitro type with unsupported CPU requested",
+			inputInstanceType: "mac1.metal",
+			mockInstanceInfo:  &MockInstanceInfo{ec2Types.ArchitectureTypeX8664Mac, ec2Types.InstanceTypeHypervisorNitro},
+			expectErr:         true,
+		},
+		{
+			name:              "invalid type requested",
+			inputInstanceType: "foobar",
+			expectErr:         true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &AwsVerifier{
+				Logger:    &ocmlog.GlogLogger{},
+				AwsClient: &aws.Client{},
+			}
+
+			// Set up mock EC2 API client
+			mockController := gomock.NewController(t)
+			defer mockController.Finish()
+			mockEC2Client := mocks.NewMockEC2Client(mockController)
+
+			// Only expect API calls if an instance type was requested and needs to be validated
+			if tt.inputInstanceType != "" {
+				if tt.mockInstanceInfo != nil {
+					// Mock EC2 API returns a valid answer with mocked instance info
+					expectedDescribeInstanceTypesInput := &ec2.DescribeInstanceTypesInput{
+						InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(tt.inputInstanceType)},
+					}
+					mockDescribeInstanceTypesOutput := &ec2.DescribeInstanceTypesOutput{
+						InstanceTypes: []ec2Types.InstanceTypeInfo{
+							{
+								Hypervisor:   tt.mockInstanceInfo.Hypervisor,
+								InstanceType: ec2Types.InstanceType(tt.inputInstanceType),
+								ProcessorInfo: &ec2Types.ProcessorInfo{
+									SupportedArchitectures: []ec2Types.ArchitectureType{tt.mockInstanceInfo.CPUArchitecture},
+								},
+							},
+						},
+					}
+					mockEC2Client.EXPECT().DescribeInstanceTypes(gomock.Any(), expectedDescribeInstanceTypesInput).Times(1).Return(
+						mockDescribeInstanceTypesOutput,
+						nil,
+					)
+				} else {
+					// Mock EC2 API always answers DescribeInstanceTypes() calls with "not valid"
+					mockEC2Client.EXPECT().DescribeInstanceTypes(gomock.Any(), gomock.Any()).Times(1).Return(
+						nil,
+						fmt.Errorf("(MOCK) not a valid instance type"),
+					)
+				}
+			}
+			a.AwsClient.SetClient(mockEC2Client)
+
+			gotInstanceType, gotCPUArch, err := a.selectInstanceType(context.TODO(), tt.inputInstanceType, tt.inputCPUArch)
+			if (err != nil) != tt.expectErr {
+				t.Errorf("AwsVerifier.selectInstanceType() error = %v, wantErr %v", err, tt.expectErr)
+				return
+			}
+			if gotInstanceType != tt.expectInstanceType {
+				t.Errorf("AwsVerifier.selectInstanceType() gotInstanceType = %v, want %v", gotInstanceType, tt.expectInstanceType)
+			}
+			if gotCPUArch != tt.expectCPUArch {
+				t.Errorf("AwsVerifier.selectInstanceType() gotCPUArch = %v, want %v", gotCPUArch, tt.expectCPUArch)
 			}
 		})
 	}

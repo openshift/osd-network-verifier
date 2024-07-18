@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
@@ -27,18 +28,35 @@ type verifierService interface {
 type ValidateEgressInput struct {
 	// Timeout sets the maximum duration an egress endpoint request can take before it aborts and
 	// is retried or marked as blocked
-	Timeout                                            time.Duration
-	Ctx                                                context.Context
-	SubnetID, CloudImageID, InstanceType, PlatformType string
-	Proxy                                              proxy.ProxyConfig
-	Tags                                               map[string]string
-	AWS                                                AwsEgressConfig
-	GCP                                                GcpEgressConfig
-	SkipInstanceTermination                            bool
-	TerminateDebugInstance                             string
-	ImportKeyPair                                      string
-	ForceTempSecurityGroup                             bool
-	Probe                                              probes.Probe
+	Timeout                              time.Duration
+	Ctx                                  context.Context
+	SubnetID, CloudImageID, PlatformType string
+	Proxy                                proxy.ProxyConfig
+	Tags                                 map[string]string
+	AWS                                  AwsEgressConfig
+	GCP                                  GcpEgressConfig
+	SkipInstanceTermination              bool
+	TerminateDebugInstance               string
+	ImportKeyPair                        string
+	ForceTempSecurityGroup               bool
+
+	// InstanceType sets the type or size of the instance (VM) launched into the target subnet. Only
+	// instance types using 64-bit X86 or ARM CPUs are supported. For AWS, only instance types using
+	// the "Nitro" hypervisor are supported, as other hypervisors don't allow the verifier to gather
+	// probe results from the instance's serial console. If no valid InstanceType is provided, the
+	// verifier falls back to a supported default using the same CPU architecture as the requested
+	// instance type (if applicable) or as specified in the CPUArchitecture field
+	InstanceType string
+
+	// Probe controls the behavior of the instance that the verifier launches into the target
+	// subnet. Defaults to a curl-based probe (curl.Probe) if unset. legacy.Probe is also available
+	// if you'd like the verifier to emulate its pre-1.0 behavior, or you may provide your own
+	// implementation of the probes.Probe interface
+	Probe probes.Probe
+
+	// CPUArchitecture controls the CPU architecture of the default/fallback cloud instance type.
+	// Has no effect if a supported value of InstanceType is provided.
+	CPUArchitecture cpu.Architecture
 }
 type AwsEgressConfig struct {
 	KmsKeyID          string

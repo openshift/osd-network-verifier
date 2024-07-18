@@ -124,6 +124,16 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "invalid NOTLS",
+			userDataVariables: map[string]string{
+				"TIMEOUT": "1",
+				"DELAY":   "2",
+				"URLS":    "http://example.com:80 https://example.org:443",
+				"NOTLS":   "maybe?",
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -185,6 +195,8 @@ func TestCurlJSONProbe_UserDataTemplateContainsDeclaredVariables(t *testing.T) {
 
 // TestCurlJSONProbe_GetMachineImageID tests this probe's cloud VM image lookup table
 func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
+	// All AMIs created after June 2018 have IDs like "ami-[17-character hex string]"
+	const amiIDRegex string = `^ami-[a-f\d]{17}$`
 	type args struct {
 		platformType string
 		cpuArch      cpu.Architecture
@@ -205,7 +217,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
-			wantRegex: `ami-\w+`,
+			wantRegex: amiIDRegex,
 			wantErr:   false,
 		},
 		{
@@ -225,7 +237,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
-			wantRegex: `ami-\w+`,
+			wantRegex: amiIDRegex,
 			wantErr:   false,
 		},
 		{
@@ -245,7 +257,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
-			wantRegex: `ami-\w+`,
+			wantRegex: amiIDRegex,
 			wantErr:   false,
 		},
 		{
@@ -255,7 +267,7 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 				cpuArch:      cpu.ArchARM,
 				region:       "us-east-1",
 			},
-			wantRegex: `ami-\w+`,
+			wantRegex: amiIDRegex,
 			wantErr:   false,
 		},
 		{

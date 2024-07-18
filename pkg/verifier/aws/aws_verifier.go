@@ -77,6 +77,8 @@ type AwsVerifier struct {
 	AwsClient *aws.Client
 	Logger    ocmlog.Logger
 	Output    output.Output
+	// This cache is only to be used inside of describeInstanceType() to minimize nil ptr error risk
+	cachedInstanceTypeInfo *ec2Types.InstanceTypeInfo
 }
 
 // GetAMIForRegion returns the default X86 AWS AMI for the CurlJSONProbe given a region. This is unused within this codebase,
@@ -120,35 +122,124 @@ func NewAwsVerifier(accessID, accessSecret, sessionToken, region, profile string
 		return &AwsVerifier{}, err
 	}
 
-	return &AwsVerifier{awsClient, logger, output.Output{}}, nil
+	return &AwsVerifier{
+		AwsClient: awsClient,
+		Logger:    logger,
+		Output:    output.Output{},
+	}, nil
 }
 
-func (a *AwsVerifier) validateInstanceType(ctx context.Context, instanceType string) error {
-	descInput := ec2.DescribeInstanceTypesInput{
-		InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(instanceType)},
+// describeInstanceType calls the AWS EC2 API's "DescribeInstanceTypes" endpoint for the given
+// instanceType and caches the answer in a.cachedInstanceTypeInfo. Subsequent
+func (a *AwsVerifier) describeInstanceType(ctx context.Context, instanceType string) (*ec2Types.InstanceTypeInfo, error) {
+	// Make API request if cache is empty or doesn't match requested instanceType
+	if a.cachedInstanceTypeInfo == nil || string(a.cachedInstanceTypeInfo.InstanceType) != instanceType {
+		a.writeDebugLogs(ctx, fmt.Sprintf("Gathering description of instance type %s from EC2", instanceType))
+		descInput := ec2.DescribeInstanceTypesInput{
+			InstanceTypes: []ec2Types.InstanceType{ec2Types.InstanceType(instanceType)},
+		}
+		descOut, err := a.AwsClient.DescribeInstanceTypes(ctx, &descInput)
+		if err != nil {
+			return nil, handledErrors.NewGenericError(err)
+		}
+
+		// Effectively guaranteed to only have one match since we are casting c.instanceType into ec2Types.InstanceType
+		// and placing it as the only InstanceType filter. Otherwise, ec2:DescribeInstanceTypes also accepts multiple as
+		// an array of InstanceTypes which could return multiple matches.
+		if len(descOut.InstanceTypes) != 1 || string(descOut.InstanceTypes[0].InstanceType) != instanceType {
+			return nil, fmt.Errorf("unexpected instance type matches for %s, got %v", instanceType, descOut.InstanceTypes)
+		}
+
+		a.cachedInstanceTypeInfo = &descOut.InstanceTypes[0]
 	}
 
-	a.writeDebugLogs(ctx, fmt.Sprintf("Gathering description of instance type %s from EC2", instanceType))
-	descOut, err := a.AwsClient.DescribeInstanceTypes(ctx, &descInput)
+	return a.cachedInstanceTypeInfo, nil
+}
+
+// instanceTypeUsesNitro asks the AWS API whether or not the provided instanceType uses the "Nitro"
+// hypervisor. Nitro is the only hypervisor supporting serial console output, which we need to
+// collect in order to gather probe results
+func (a *AwsVerifier) instanceTypeUsesNitro(ctx context.Context, instanceType string) (bool, error) {
+	// Fetch instance type info
+	instanceTypeInfo, err := a.describeInstanceType(ctx, instanceType)
 	if err != nil {
-		return handledErrors.NewGenericError(err)
+		return false, err
 	}
 
-	// Effectively guaranteed to only have one match since we are casting c.instanceType into ec2Types.InstanceType
-	// and placing it as the only InstanceType filter. Otherwise, ec2:DescribeInstanceTypes also accepts multiple as
-	// an array of InstanceTypes which could return multiple matches.
-	if len(descOut.InstanceTypes) != 1 {
-		a.writeDebugLogs(ctx, fmt.Sprintf("matched instance types: %v", descOut.InstanceTypes))
-		return fmt.Errorf("expected one instance type match for %s, got %d", instanceType, len(descOut.InstanceTypes))
+	// Return true if instance type uses nitro
+	return (instanceTypeInfo.Hypervisor == ec2Types.InstanceTypeHypervisorNitro), nil
+}
+
+// instanceTypeArchitecture asks the AWS API about the CPU architecture(s) supported by the provided
+// instanceType and returns the first answer matching a cpu.Architecture known to the verifier. An
+// error is returned if the API call fails or if the verifier has no support for the instanceType's CPU
+func (a *AwsVerifier) instanceTypeArchitecture(ctx context.Context, instanceType string) (cpu.Architecture, error) {
+	// Fetch instance type info
+	instanceTypeInfo, err := a.describeInstanceType(ctx, instanceType)
+	if err != nil {
+		return cpu.Architecture{}, err
 	}
 
-	if string(descOut.InstanceTypes[0].InstanceType) == instanceType {
-		if descOut.InstanceTypes[0].Hypervisor != ec2Types.InstanceTypeHypervisorNitro {
-			return fmt.Errorf("probe instances must use 'nitro' hypervisor to support reliable result collection, but %s uses '%s'", instanceType, descOut.InstanceTypes[0].Hypervisor)
+	// Iterate over SupportedArchitectures until a matching cpu.Architecture is found
+	for _, instanceArch := range instanceTypeInfo.ProcessorInfo.SupportedArchitectures {
+		if arch := cpu.ArchitectureByName(string(instanceArch)); arch.IsValid() {
+			return arch, nil
 		}
 	}
 
-	return nil
+	return cpu.Architecture{}, fmt.Errorf("instance type %s doesn't support any of our supported architectures", instanceType)
+}
+
+// selectInstanceType selects an approriate EC2 instance type based on the caller's preferences and
+// the verifier's limitations. All parameters are optional: leaving one or more "empty" (i.e.,
+// passing "zero values") will result in a value being inferred from other parameters or from a
+// pre-programmed default. Any provided parameters may be overridden (e.g., if an unsupported
+// non-Nitro instance type is requested) with the "next best" supported alternative. For example,
+// calling selectInstanceType(ctx, "c4.large", cpu.ArchX86) will return ("t3.micro", cpu.ArchX86,
+// nil) because c4-type instances do not use Nitro hypervisors and t3.micro is a suitable
+// alternative that uses the same CPU architecture as c4.large.
+func (a *AwsVerifier) selectInstanceType(ctx context.Context, instanceType string, cpuArchitecture cpu.Architecture) (string, cpu.Architecture, error) {
+	var err error
+
+	// Validate any requested instance type
+	validInstanceTypeRequested := false
+	if instanceType != "" {
+		// Derive CPU arch from requested InstanceType so that we can pick an appropriate AMI, and
+		// if necessary (e.g., because given type is non-Nitro), an alternative instance type with
+		// the same CPU arch
+		cpuArchitecture, err = a.instanceTypeArchitecture(ctx, instanceType)
+		if err != nil {
+			return "", cpu.Architecture{}, fmt.Errorf("failed to validate CPU architecture of instance type %s: %w", instanceType, err)
+		}
+
+		// Determine if given InstanceType uses the required Nitro hypervisor
+		validInstanceTypeRequested, err = a.instanceTypeUsesNitro(ctx, instanceType)
+		if err != nil {
+			return "", cpu.Architecture{}, fmt.Errorf("failed to determine hypervisor of instance type %s: %w", instanceType, err)
+		}
+	}
+
+	// Ensure we have a valid CPU arch beyond this point, defaulting to X86 if necessary
+	if !cpuArchitecture.IsValid() {
+		cpuArchitecture = cpu.ArchX86
+		a.writeDebugLogs(ctx, fmt.Sprintf("defaulted to %s CPU architecture", cpuArchitecture))
+	}
+
+	// If no instance type was requested (or if instance type  is invalid), select one based on CPU arch
+	if !validInstanceTypeRequested {
+		if instanceType != "" {
+			// Warn user that we're ignoring their invalid requested instance type
+			a.writeDebugLogs(ctx, fmt.Sprintf("ignoring requested instance type %s because it uses a non-Nitro hypervisor", instanceType))
+		}
+
+		instanceType, err = cpuArchitecture.DefaultInstanceType(helpers.PlatformAWS)
+		if err != nil {
+			return "", cpu.Architecture{}, fmt.Errorf("failed to determine default instance type for CPU architecture %s: %w", cpuArchitecture, err)
+		}
+		a.writeDebugLogs(ctx, fmt.Sprintf("defaulted to instance type %s", instanceType))
+	}
+
+	return instanceType, cpuArchitecture, nil
 }
 
 type createEC2InstanceInput struct {

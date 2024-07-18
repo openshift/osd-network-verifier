@@ -10,7 +10,6 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -21,9 +20,8 @@ import (
 
 const (
 	// Base path of the config file
-	CONFIG_PATH_FSTRING   = "/app/build/config/%s.yaml"
-	DEBUG_KEY_NAME        = "onv-debug-key"
-	DEFAULT_INSTANCE_TYPE = "t3.micro"
+	CONFIG_PATH_FSTRING = "/app/build/config/%s.yaml"
+	DEBUG_KEY_NAME      = "onv-debug-key"
 )
 
 // ValidateEgress performs validation process for egress
@@ -55,30 +53,23 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
-	// Set default instance type if none is found
-	if vei.InstanceType == "" {
-		vei.InstanceType = DEFAULT_INSTANCE_TYPE
-	}
-
-	// Validates the provided instance type will work with the verifier
-	// NOTE a "nitro" EC2 instance type is required to be used
-	if err := a.validateInstanceType(vei.Ctx, vei.InstanceType); err != nil {
-		a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Cannot use specified instance type: %s. Falling back to instance type %s", err, DEFAULT_INSTANCE_TYPE))
-
-		vei.InstanceType = DEFAULT_INSTANCE_TYPE
-	}
-
-	// Select LegacyProbe config file based on platform type
-	platformTypeStr, err := helpers.GetPlatformType(vei.PlatformType)
+	// Determine instance type and CPUArchitecture
+	vei.InstanceType, vei.CPUArchitecture, err = a.selectInstanceType(vei.Ctx, vei.InstanceType, vei.CPUArchitecture)
 	if err != nil {
 		return a.Output.AddError(err)
 	}
-	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, platformTypeStr)
-	if platformTypeStr == "" {
-		// Default to AWS
-		configPath = fmt.Sprintf(CONFIG_PATH_FSTRING, helpers.PlatformAWS)
+
+	// If no AMI specificed, select one based on CPU arch and region
+	if vei.CloudImageID == "" {
+		vei.CloudImageID, err = vei.Probe.GetMachineImageID(vei.PlatformType, vei.CPUArchitecture, a.AwsClient.Region)
+		if err != nil {
+			return a.Output.AddError(fmt.Errorf("failed to determine default machine image: %w", err))
+		}
+		a.writeDebugLogs(vei.Ctx, fmt.Sprintf("defaulted to machine image %s", vei.CloudImageID))
 	}
-	a.Logger.Debug(vei.Ctx, fmt.Sprintf("using config file: %s", configPath))
+
+	// Select legacy probe config file based on platform type (ignored unless legacy.Probe in use)
+	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, vei.PlatformType)
 
 	var debugPubKey []byte
 	// Check if Import-keypair flag has been passed
@@ -199,15 +190,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	userData := base64.StdEncoding.EncodeToString([]byte(unencodedUserData))
 
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("base64-encoded generated userdata script:\n---\n%s\n---", userData))
-
-	// Select AMI based on region if one isn't provided
-	if vei.CloudImageID == "" {
-		// TODO handle architectures other than X86
-		vei.CloudImageID, err = vei.Probe.GetMachineImageID(helpers.PlatformAWS, cpu.ArchX86, a.AwsClient.Region)
-		if err != nil {
-			return a.Output.AddError(err)
-		}
-	}
 
 	vpcId, err := a.GetVpcIdFromSubnetId(vei.Ctx, vei.SubnetID)
 	if err != nil {
