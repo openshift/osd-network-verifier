@@ -49,7 +49,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Default to 5sec per-request timeout if none specified
 	if vei.Timeout <= 0 {
-		vei.Timeout = time.Duration(5e9) // 5x10^9 nanoseconds = 5 seconds
+		vei.Timeout = 5 * time.Second
 	}
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
@@ -132,24 +132,27 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	// as that probe only knows how to use the egress URL lists baked into its
 	// AMIs/container images
 	var egressListYaml string
-	githubEgressList, err := egress_lists.GetGithubEgressList(vei.PlatformType)
-	if err != nil {
-		a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+	if vei.EgressListYaml != "" {
+		egressListYaml = vei.EgressListYaml
 	} else {
-		egressListYaml, err = githubEgressList.GetContent()
+		githubEgressList, err := egress_lists.GetGithubEgressList(vei.PlatformType)
 		if err != nil {
 			a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+		} else {
+			egressListYaml, err = githubEgressList.GetContent()
+			if err != nil {
+				a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+			}
+			a.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
 		}
-		a.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
-	}
 
-	if egressListYaml == "" {
-		egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
-		if err != nil {
-			return a.Output.AddError(err)
+		if egressListYaml == "" {
+			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
+			if err != nil {
+				return a.Output.AddError(err)
+			}
 		}
 	}
-
 	egressListStr, tlsDisabledEgressListStr, err := egress_lists.EgressListToString(egressListYaml, map[string]string{"AWS_REGION": a.AwsClient.Region})
 	if err != nil {
 		return a.Output.AddError(err)

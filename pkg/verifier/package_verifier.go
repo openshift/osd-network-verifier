@@ -10,8 +10,8 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 )
 
-// VerifierService defines the behaviors necessary to run verifier completely. Any clients that use that fullfills this interface
-// will be able to run all verifier test
+// VerifierService defines the behaviors necessary to run verifier completely.
+// Any clients that fulfill this interface will be able to run all verifier tests
 type verifierService interface {
 
 	// ValidateEgress validates that all required targets are reachable from the vpcsubnet
@@ -31,6 +31,7 @@ type ValidateEgressInput struct {
 	Timeout                              time.Duration
 	Ctx                                  context.Context
 	SubnetID, CloudImageID, PlatformType string
+	EgressListYaml                       string
 	Proxy                                proxy.ProxyConfig
 	Tags                                 map[string]string
 	AWS                                  AwsEgressConfig
@@ -67,7 +68,7 @@ type GcpEgressConfig struct {
 	Region, Zone, ProjectID, VpcName string
 }
 
-// ValidateEgress pass in a GCP or AWS client that know how to fufill above interface
+// ValidateEgress pass in a GCP or AWS client that know how to fulfill the above interface
 func ValidateEgress(vs verifierService, vei ValidateEgressInput) *output.Output {
 	return vs.ValidateEgress(vei)
 }
@@ -77,7 +78,7 @@ type VerifyDnsInput struct {
 	VpcID string
 }
 
-// VerifyDns pass in a GCP or AWS client that know how to fufill above interface
+// VerifyDns pass in a GCP or AWS client that know how to fulfill the above interface
 func VerifyDns(vs verifierService, vdi VerifyDnsInput) *output.Output {
 	return vs.VerifyDns(vdi)
 }
