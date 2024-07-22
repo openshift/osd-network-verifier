@@ -1,5 +1,12 @@
 #!/bin/sh
 
+cat <<EOF > /usr/bin/terminate.sh
+#! /bin/sh
+if gcloud --quiet compute instances delete $(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google') --zone=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google'); then : ; else
+    exit 255
+fi
+EOF
+
 cat <<EOF > /usr/bin/curl.sh
 #! /bin/sh
 if echo ${USERDATA_BEGIN} > /dev/ttyS0 ; then : ; else
@@ -43,7 +50,27 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOF
 
-chmod 777 /usr/bin/curl.sh
+cat <<EOF > /etc/systemd/system/terminate.service
+[Unit]
+Description=Service to terminate instance
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/terminate.sh
+Restart=on-failure
+EOF
+
+cat <<EOF > /etc/systemd/system/terminate.timer
+[Unit]
+Description=Timer to terminate instance
+[Timer]
+OnBootSec=${DELAY}min
+Unit=terminate.service
+[Install]
+WantedBy=multi-user.target
+EOF
+
+chmod 777 /usr/bin/curl.sh /usr/bin/terminate.sh
 systemctl daemon-reload
 systemctl start silence
 systemctl start curl
+systemctl start terminate.timer
