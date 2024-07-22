@@ -92,6 +92,11 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 			{
 				Name:       input.networkName,
 				Subnetwork: input.vpcSubnetID,
+				AccessConfigs: []*computev1.AccessConfig{
+					{
+						Name: "External NAT",
+					},
+				},
 			},
 		},
 		ServiceAccounts: []*computev1.ServiceAccount{

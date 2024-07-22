@@ -33,6 +33,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		vei.Timeout = DEFAULT_TIMEOUT
 	}
 
+	vei.Timeout = DEFAULT_TIMEOUT
 	// need to set InstanceType here because default is a AWS machine type
 	vei.InstanceType = DEFAULT_INSTANCE_TYPE
 
