@@ -19,6 +19,13 @@ if echo ${USERDATA_END} > /dev/ttyS0 ; then : ; else
     exit 255
 fi
 EOF
+cat <<EOF > /etc/systemd/system/after-multi.target
+[Unit]
+Description=After multi-user.target
+Requires=multi-user.target
+After=multi-user.target
+AllowIsolate=yes
+EOF
 
 cat <<EOF > /etc/systemd/system/silence.service
 [Unit]
@@ -29,6 +36,7 @@ Type=oneshot
 ExecStart=systemctl mask --now serial-getty@ttyS0.service
 ExecStart=systemctl disable --now syslog.socket rsyslog.service
 ExecStart=sysctl -w kernel.printk="0 4 0 7"
+ExecStart=kill -SIGRTMIN+21 1
 Restart=on-failure
 
 [Install]
@@ -39,6 +47,7 @@ EOF
 cat <<EOF > /etc/systemd/system/curl.service
 [Unit]
 Description=Service to run curl
+After=after-multi.target
 
 [Service]
 Type=oneshot
@@ -47,7 +56,7 @@ Restart=on-failure
 RemainAfterExit=true
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=after-multi.target
 EOF
 
 cat <<EOF > /etc/systemd/system/terminate.service
@@ -66,11 +75,15 @@ Description=Timer to terminate instance
 OnBootSec=${DELAY}min
 Unit=terminate.service
 [Install]
-WantedBy=multi-user.target
+WantedBy=after-multi.target
 EOF
 
 chmod 777 /usr/bin/curl.sh /usr/bin/terminate.sh
+mkdir /etc/systemd/system/after-multi.target.wants
+ln -s /etc/systemd/system/curl.service /etc/systemd/system/after-multi.target.wants/curl.service
 systemctl daemon-reload
+systemctl stop kdump
+systemctl set-default after-multi.target
 systemctl start silence
 systemctl start curl
 systemctl start terminate.timer

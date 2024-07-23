@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strconv"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes/gcp_curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
@@ -41,23 +42,47 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return g.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
 
-	// Fetch the egress URL list as two strings (one for normal URLs, the other
-	// for TLS disabled URLs); note that this is TOTALLY IGNORED by LegacyProbe,
+	// Fetch the egress URL list from github, falling back to local lists in the event of a failure.
+	// Note that this is TOTALLY IGNORED by LegacyProbe,
 	// as that probe only knows how to use the egress URL lists baked into its
 	// AMIs/container images
-	// egressListStr, tlsDisabledEgressListStr, err := egress_lists.GetEgressListAsString(vei.PlatformType, a.AwsClient.Region)
-	// if err != nil {
-	// 	return a.Output.AddError(err)
-	// }
+	egressListYaml := vei.EgressListYaml
+	var egressListStr, tlsDisabledEgressListStr string
+	if egressListYaml == "" {
+		githubEgressList, githubListErr := egress_lists.GetGithubEgressList(vei.PlatformType)
+		if githubListErr == nil {
+			egressListYaml, githubListErr = githubEgressList.GetContent()
+			if githubListErr == nil {
+				g.Logger.Debug(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
+				egressListStr, tlsDisabledEgressListStr, githubListErr = egress_lists.EgressListToString(egressListYaml, map[string]string{})
+			}
+		}
+		var err error
+		if githubListErr != nil {
+			g.Output.AddError(fmt.Errorf("failed to get egress list from GitHub, falling back to local list: %v", githubListErr))
+			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
+			if err != nil {
+				return g.Output.AddError(err)
+			}
+			egressListStr, tlsDisabledEgressListStr, err = egress_lists.EgressListToString(egressListYaml, map[string]string{})
+			if err != nil {
+				return g.Output.AddError(err)
+			}
+		}
+	}
+
+	// Generate the userData file
+	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
 	userDataVariables := map[string]string{
-		"AWS_REGION":  "us-east-2", // Not sure if this is the correct data
-		"TIMEOUT":     vei.Timeout.String(),
-		"HTTP_PROXY":  vei.Proxy.HttpProxy,
-		"HTTPS_PROXY": vei.Proxy.HttpsProxy,
-		"CACERT":      base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
-		"NOTLS":       strconv.FormatBool(vei.Proxy.NoTls),
-		"DELAY":       "5",
-		"URLS":        "quay.io",
+		"AWS_REGION":       "us-east-2", // Not sure if this is the correct data
+		"TIMEOUT":          vei.Timeout.String(),
+		"HTTP_PROXY":       vei.Proxy.HttpProxy,
+		"HTTPS_PROXY":      vei.Proxy.HttpsProxy,
+		"CACERT":           base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NOTLS":            strconv.FormatBool(vei.Proxy.NoTls),
+		"DELAY":            "5",
+		"URLS":             egressListStr,
+		"TLSDISABLED_URLS": tlsDisabledEgressListStr,
 	}
 	// set probe
 	vei.Probe = gcp_curl.Probe{}
