@@ -146,6 +146,12 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 		)
 	}
 
+	// "escape" characters in expand userdata
+	userDataVariables["ret"] = "${ret}"
+	userDataVariables["?"] = "$?"
+	userDataVariables["array[@]"] = "${array[@]}"
+	userDataVariables["value"] = "$value"
+
 	// Expand template
 	return os.Expand(directivelessUserDataTemplate, func(userDataVar string) string {
 		if presetVal, isPreset := presetUserDataVariables[userDataVar]; isPreset {
