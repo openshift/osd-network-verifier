@@ -1,5 +1,7 @@
 #!/bin/sh
+# GCP compute engine copies startup script to VM and runs script as root when the VM boots
 
+# get name and zone needed for instance deletion from compute metadata server
 cat <<EOF > /usr/bin/terminate.sh
 #! /bin/sh
 if gcloud --quiet compute instances delete $(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google') --zone=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google'); then : ; else
@@ -7,6 +9,7 @@ if gcloud --quiet compute instances delete $(curl -X GET http://metadata.google.
 fi
 EOF
 
+# print curl output and tokens to serial output for client
 cat <<'EOF' > /usr/bin/curl.sh
 #! /bin/sh
 array=(1 2 3 4 27 41 42 43 45)
@@ -24,9 +27,10 @@ if echo ${USERDATA_END} > /dev/ttyS0 ; then : ; else
 fi
 EOF
 
+# create systemd units for silencing serial console, running curl and deleting instance
 cat <<EOF > /etc/systemd/system/silence.service
 [Unit]
-Description=Service that silences logging to serial console
+Description=Serial Console Silencing Service
 [Service]
 Type=oneshot
 ExecStart=systemctl mask --now serial-getty@ttyS0.service
@@ -37,12 +41,9 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
-
-
 cat <<EOF > /etc/systemd/system/curl.service
 [Unit]
-Description=Service to run curl
-
+Description=Curl Output Service
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/curl.sh
@@ -51,19 +52,17 @@ RemainAfterExit=true
 [Install]
 WantedBy=multi-user.target
 EOF
-
 cat <<EOF > /etc/systemd/system/terminate.service
 [Unit]
-Description=Service to terminate instance
+Description=Compute Instance Deletion Service
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/terminate.sh
 Restart=on-failure
 EOF
-
 cat <<EOF > /etc/systemd/system/terminate.timer
 [Unit]
-Description=Timer to terminate instance
+Description=Instance Deletion Timer
 [Timer]
 OnBootSec=${DELAY}min
 Unit=terminate.service
@@ -71,6 +70,7 @@ Unit=terminate.service
 WantedBy=multi-user.target
 EOF
 
+# make script executable and start systemd services 
 chmod 777 /usr/bin/curl.sh /usr/bin/terminate.sh
 systemctl daemon-reload
 systemctl start silence

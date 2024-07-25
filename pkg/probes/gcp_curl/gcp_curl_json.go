@@ -146,7 +146,7 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 		)
 	}
 
-	// "escape" characters in expand userdata
+	// os.Expand() deletes unknown variables, so we need to add them back in
 	userDataVariables["ret"] = "${ret}"
 	userDataVariables["?"] = "$?"
 	userDataVariables["array[@]"] = "${array[@]}"
