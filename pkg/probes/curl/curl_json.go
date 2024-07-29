@@ -1,7 +1,6 @@
 package curl
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"strconv"
@@ -22,9 +21,6 @@ import (
 // be provided to curl via the CURLOPT userdataVariable. This probe has been confirmed to support X86
 // instances on AWS. In theory, it should also support GCP and any CPU architecture supported by RHEL.
 type Probe struct{}
-
-//go:embed userdata-template.yaml
-var userDataTemplate string
 
 const startingToken = "NV_CURLJSON_BEGIN"
 const endingToken = "NV_CURLJSON_END"
@@ -81,8 +77,8 @@ func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 // variables listed in the template's "network-verifier-required-variables" directive, or if
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
-func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
-	// Extract required variables specified in template (if any)
+func (clp Probe) GetExpandedUserData(userDataVariables map[string]string, userDataTemplate string) (string, error) {
+	// Extract required variables specified in template (if any) based off platformType
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 
 	// Ensure userDataVariables complies with requiredVariables and presetUserDataVariables. See

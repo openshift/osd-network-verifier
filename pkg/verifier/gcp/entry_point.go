@@ -1,6 +1,7 @@
 package gcpverifier
 
 import (
+	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"math/rand"
@@ -8,9 +9,12 @@ import (
 
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	"github.com/openshift/osd-network-verifier/pkg/probes/gcp_curl"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
+
+//go:embed startup-script.sh
+var startupScript string
 
 const (
 	cloudImageIDDefault   = "rhel-9-v20240703"
@@ -25,6 +29,11 @@ const (
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `g.output` which stores the execution results
 func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
+	// Default to curl.Probe if no Probe specified
+	if vei.Probe == nil {
+		vei.Probe = curl.Probe{}
+		g.Logger.Debug(vei.Ctx, "defaulted to curl probe")
+	}
 	g.Logger.Debug(vei.Ctx, "Using configured timeout of %s for each egress request", vei.Timeout.String())
 	//default gcp machine e2
 	if vei.InstanceType == "" {
@@ -73,6 +82,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
+	// os.Expand() deletes unknown variables, so we need to add them back in
 	userDataVariables := map[string]string{
 		"AWS_REGION":       "us-east-2", // Not sure if this is the correct data
 		"TIMEOUT":          vei.Timeout.String(),
@@ -83,10 +93,13 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"DELAY":            "5",
 		"URLS":             egressListStr,
 		"TLSDISABLED_URLS": tlsDisabledEgressListStr,
+		"ret":              "${ret}",
+		"?":                "$?",
+		"array[@]":         "${array[@]}",
+		"value":            "$value",
 	}
-	// set probe
-	vei.Probe = gcp_curl.Probe{}
-	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
+
+	userData, err := vei.Probe.GetExpandedUserData(userDataVariables, startupScript)
 	if err != nil {
 		return g.Output.AddError(err)
 	}

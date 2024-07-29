@@ -79,7 +79,7 @@ func (lgp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 // variables listed in the template's "network-verifier-required-variables" directive, or if
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
-func (lgp Probe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
+func (lgp Probe) GetExpandedUserData(userDataVariables map[string]string, template string) (string, error) {
 	// Extract required variables specified in template (if any)
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 

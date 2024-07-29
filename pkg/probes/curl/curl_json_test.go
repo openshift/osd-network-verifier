@@ -12,6 +12,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+//go:embed userdata-template.yaml
+var userDataTemplate string
+
 // TestCurlJSONProbe_ImplementsProbeInterface simply forces the compiler
 // to confirm that the CurlJSONProbe type and its Probe alias properly
 // implement the Probe interface. If not (e.g, because a required method
@@ -143,7 +146,7 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 
 			prb := Probe{}
 			// First check if function is returning an error
-			got, err := prb.GetExpandedUserData(tt.userDataVariables)
+			got, err := prb.GetExpandedUserData(tt.userDataVariables, userDataTemplate)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("curl.Probe.GetExpandedUserData() error = %v, wantErr %v", err, tt.wantErr)
 				return
