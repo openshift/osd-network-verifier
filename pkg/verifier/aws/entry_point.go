@@ -19,7 +19,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
-//go:embedd userdata-template.yaml
+//go:embed userdata-template.yaml
 var userDataTemplate string
 
 const (
