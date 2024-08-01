@@ -155,9 +155,13 @@ func (c *Client) TerminateEC2Instance(ctx context.Context, instanceID string) er
 		return handledErrors.NewGenericError(err)
 	}
 
-	// Wait up to 5 minutes for the instance to be terminated
+	// Wait up to 5 minutes for the instance to be terminated, using a lower
+	// MinDelay than the default 15s so that we don't wait unnecessarily
+	reduceMinDelay := func(i *ec2.InstanceTerminatedWaiterOptions) {
+		i.MinDelay = 3 * time.Second
+	}
 	waiter := ec2.NewInstanceTerminatedWaiter(c)
-	if err := waiter.Wait(ctx, &ec2.DescribeInstancesInput{InstanceIds: []string{instanceID}}, 5*time.Minute); err != nil {
+	if err := waiter.Wait(ctx, &ec2.DescribeInstancesInput{InstanceIds: []string{instanceID}}, 5*time.Minute, reduceMinDelay); err != nil {
 		return handledErrors.NewGenericError(err)
 	}
 
