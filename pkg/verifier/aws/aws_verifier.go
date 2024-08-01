@@ -353,7 +353,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 	a.writeDebugLogs(ctx, "Scraping console output and waiting for user data script to complete...")
 
 	// Periodically scrape console output and analyze the logs for any errors or a successful completion
-	err := helpers.PollImmediate(30*time.Second, 4*time.Minute, func() (bool, error) {
+	err := helpers.PollImmediate(10*time.Second, 270*time.Second, func() (bool, error) {
 		b64EncodedConsoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
 			InstanceId: awsTools.String(instanceID),
 			Latest:     awsTools.Bool(true),
