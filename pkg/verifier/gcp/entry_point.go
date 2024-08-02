@@ -85,7 +85,6 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	// Expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in startup-script.sh
 	// Must add fake userDatavariables to replace parts of startup-script.sh that are not env variables but start with $
 	userDataVariables := map[string]string{
-		"AWS_REGION":       "us-east-2", // Not sure if this is the correct data
 		"TIMEOUT":          vei.Timeout.String(),
 		"HTTP_PROXY":       vei.Proxy.HttpProxy,
 		"HTTPS_PROXY":      vei.Proxy.HttpsProxy,
@@ -110,8 +109,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		vei.CloudImageID = DEFAULT_CLOUDIMAGEID
 	}
 
-	// Create ComputeService instance
-	// Image list https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel
+	//image list https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel
 	instance, err := g.createComputeServiceInstance(createComputeServiceInstanceInput{
 		projectID:        vei.GCP.ProjectID,
 		zone:             vei.GCP.Zone,
@@ -131,9 +129,8 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	g.Logger.Debug(vei.Ctx, "Waiting for ComputeService instance %s to be running", instance.Name)
-
 	if instanceReadyErr := g.waitForComputeServiceInstanceCompletion(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name); instanceReadyErr != nil {
-		// try to terminate instance if instance not running
+		// try to terminate instance if instance is not running
 		err = g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
 		if err != nil {
 			g.Output.AddError(err)

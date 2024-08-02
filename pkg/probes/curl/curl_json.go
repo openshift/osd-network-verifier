@@ -78,7 +78,7 @@ func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
 func (clp Probe) GetExpandedUserData(userDataVariables map[string]string, userDataTemplate string) (string, error) {
-	// Extract required variables specified in template (if any) based off platformType
+	// Extract required variables specified in template (if any)
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 
 	// Ensure userDataVariables complies with requiredVariables and presetUserDataVariables. See

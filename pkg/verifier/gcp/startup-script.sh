@@ -70,7 +70,12 @@ Unit=terminate.service
 WantedBy=multi-user.target
 EOF
 
-# make script executable and start systemd services 
+# if cacert is provided, curl probe adds CURLOPT to use the provided cacert
+echo "${CACERT}" | base64 > /proxy.pem
+chmod 0755 /proxy.pem
+
+# set proxy environment variables, make script executable and start systemd services 
+export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY}
 chmod 777 /usr/bin/curl.sh /usr/bin/terminate.sh
 systemctl daemon-reload
 systemctl start silence
