@@ -28,7 +28,7 @@ type Architecture struct {
 
 // If adding a new Arch, be sure to add it to Architecture.IsValid() and cpu.ArchitectureByName()
 var (
-	// ArchX86 represents a 64-bit CPU using an ARM-based instruction set
+	// ArchX86 represents a 64-bit CPU using an x86-based instruction set
 	ArchX86 = Architecture{
 		names:                  [3]string{"x86", "x86_64", "amd64"},
 		defaultAWSInstanceType: "t3.micro",
