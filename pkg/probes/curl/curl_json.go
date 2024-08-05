@@ -2,7 +2,9 @@ package curl
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"os"
 	"strconv"
 	"strings"
@@ -104,17 +106,36 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 		return "", fmt.Errorf("invalid userdata variable DELAY: %w", err)
 	}
 
-	// For compatibility reasons, we expect CACERT to be either empty or a base64-encoded
-	// PEM-formatted CA certicate. When one is provided, we "render" it with a cloud-init
-	// preamble that writes the file to disk, and we tell curl about the cert file via flag
-	if userDataVariables["CACERT"] != "" {
-		cloudInitPreamble := `write_files:
-- path: /proxy.pem
-  permissions: '0755'
-  encoding: b64
-  content: `
-		userDataVariables["CACERT_RENDERED"] = cloudInitPreamble + userDataVariables["CACERT"]
-		userDataVariables["CURLOPT"] += " --cacert /proxy.pem "
+	// We expect CACERT to be either empty or a base64 encoded PEM-formatted CA certificate string.
+	// When a CA certificate is provided, we add it to the system's CA store via cloud-init.
+	// Docs: https://cloudinit.readthedocs.io/en/latest/reference/modules.html#ca-certificates
+	if cacert := userDataVariables["CACERT"]; cacert != "" {
+		type CaCert struct {
+			Trusted []string `yaml:"trusted"`
+		}
+		type CloudConfig struct {
+			CaCerts CaCert `yaml:"ca_certs"`
+		}
+
+		decodedCert, err := base64.StdEncoding.DecodeString(cacert)
+		if err != nil {
+			return "", fmt.Errorf("failed to base64 decode provided CA certificate: %w", err)
+		}
+
+		cloudInit := CloudConfig{
+			CaCerts: CaCert{
+				Trusted: []string{
+					strings.TrimSpace(string(decodedCert)),
+				},
+			},
+		}
+
+		cloudInitYamlBytes, cloudInitMarshalErr := yaml.Marshal(&cloudInit)
+		if cloudInitMarshalErr != nil {
+			return "", fmt.Errorf("unable to create cloud init config: %w", cloudInitMarshalErr)
+		}
+
+		userDataVariables["CACERT_RENDERED"] = strings.TrimSpace(string(cloudInitYamlBytes))
 	}
 
 	// Also for compatibility reasons, we map the NOTLS variable to curl's "insecure" flag
