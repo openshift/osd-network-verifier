@@ -58,24 +58,3 @@ func Test_get_tokens(t *testing.T) {
 		})
 	}
 }
-
-func Test_get_unreachable_endpoints(t *testing.T) {
-	type args struct {
-		consoleOutput string
-		probe         probes.Probe
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := get_unreachable_endpoints(tt.args.consoleOutput, tt.args.probe); (err != nil) != tt.wantErr {
-				t.Errorf("get_unreachable_endpoints() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}

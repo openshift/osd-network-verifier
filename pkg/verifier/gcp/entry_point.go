@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"strconv"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -14,11 +15,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
-//go:embed startup-script.sh
-var startupScript string
-
 const (
-	DEFAULT_CLOUDIMAGEID  = "rhel-9-v20240703"
 	DEFAULT_INSTANCE_TYPE = "e2-micro"
 	DEFAULT_TIMEOUT       = 5
 )
@@ -34,7 +31,9 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	if vei.PlatformType == "" {
 		vei.PlatformType = helpers.PlatformGCP
 	}
-
+	if !vei.CPUArchitecture.IsValid() {
+		vei.CPUArchitecture = cpu.ArchX86
+	}
 	// Default to curl.Probe if no Probe specified
 	if vei.Probe == nil {
 		vei.Probe = curl.Probe{}
@@ -51,6 +50,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	if vei.InstanceType == "" {
 		vei.InstanceType = DEFAULT_INSTANCE_TYPE
 	}
+
 	if err := g.validateMachineType(vei.GCP.ProjectID, vei.GCP.Zone, vei.InstanceType); err != nil {
 		return g.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
@@ -83,7 +83,6 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Generate the userData file
 	// Expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in startup-script.sh
-	// Must add fake userDatavariables to replace parts of startup-script.sh that are not env variables but start with $
 	userDataVariables := map[string]string{
 		"TIMEOUT":          vei.Timeout.String(),
 		"HTTP_PROXY":       vei.Proxy.HttpProxy,
@@ -93,20 +92,25 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"DELAY":            "5",
 		"URLS":             egressListStr,
 		"TLSDISABLED_URLS": tlsDisabledEgressListStr,
-		"ret":              "${ret}",
-		"?":                "$?",
-		"array[@]":         "${array[@]}",
-		"value":            "$value",
+		// Add fake userDatavariables to replace normal shell variables in startup-script.sh which will otherwise be erased by os.Expand
+		"ret":                   "${ret}",
+		"?":                     "$?",
+		"array[@]":              "${array[@]}",
+		"value":                 "$value",
+		"USE_GCP_STARTUPSCRIPT": "true",
 	}
 
-	userData, err := vei.Probe.GetExpandedUserData(userDataVariables, startupScript)
+	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)
 	}
 	g.Logger.Debug(vei.Ctx, "Generated userdata script:\n---\n%s\n---", userData)
 
 	if vei.CloudImageID == "" {
-		vei.CloudImageID = DEFAULT_CLOUDIMAGEID
+		vei.CloudImageID, err = vei.Probe.GetMachineImageID(vei.PlatformType, vei.CPUArchitecture, vei.GCP.Region)
+		if err != nil {
+			return g.Output.AddError(err)
+		}
 	}
 
 	//image list https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel

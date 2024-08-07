@@ -19,9 +19,6 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
-//go:embed userdata-template.yaml
-var userDataTemplate string
-
 const (
 	// Base path of the config file
 	CONFIG_PATH_FSTRING = "/app/build/config/%s.yaml"
@@ -181,7 +178,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		userDataVariables["DELAY"] = "60"
 	}
 
-	unencodedUserData, err := vei.Probe.GetExpandedUserData(userDataVariables, userDataTemplate)
+	unencodedUserData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return a.Output.AddError(err)
 	}

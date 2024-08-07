@@ -213,7 +213,7 @@ func TestLegacyProbe_GetExpandedUserData(t *testing.T) {
 
 			prb := Probe{}
 			// First check if function is returning an error
-			got, err := prb.GetExpandedUserData(tt.userDataVariables, userDataTemplate)
+			got, err := prb.GetExpandedUserData(tt.userDataVariables)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("legacy.Probe.GetExpandedUserData() error = %v, wantErr %v", err, tt.wantErr)
 				return
