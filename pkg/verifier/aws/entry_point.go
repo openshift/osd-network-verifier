@@ -1,7 +1,6 @@
 package awsverifier
 
 import (
-	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"os"
