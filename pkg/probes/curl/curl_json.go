@@ -85,9 +85,8 @@ func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
 func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
-	// Check if GCP instance is being used, if so use startup-script instead of userdata-template
-	// Only GCP should have USE_GCP_STARTUPSCRIPT userDataVariable
-	// Serves as a workaround for identifying platform type without a new probe interface
+	// Use systemd to run curl (instead of cloud-init) if requested. Useful for
+	// platforms that don't include cloud-init in their OS images (e.g., GCP)
 	if userDataVariables["USE_SYSTEMD"] == "true" {
 		userDataTemplate = systemdTemplate
 	}
