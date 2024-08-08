@@ -71,6 +71,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			}
 		}
 		if githubListErr != nil {
+			var err error
 			g.Output.AddError(fmt.Errorf("failed to get egress list from GitHub, falling back to local list: %v", githubListErr))
 			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
 			if err != nil {
