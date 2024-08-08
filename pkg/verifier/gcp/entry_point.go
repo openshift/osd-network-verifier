@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	DEFAULT_TIMEOUT = 5
+	DEFAULT_TIMEOUT = 5 * time.Second
 )
 
 // validateEgress performs validation process for egress
