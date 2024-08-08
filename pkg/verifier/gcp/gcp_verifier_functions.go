@@ -8,6 +8,9 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/probes"
 )
 
+// function that tests probe order logic that is part of findUnreachableEndpoints in gcp_verifier.go
+// get_tokens checks for the presence of startingToken and endingToken in the consoleOutput
+// probe outsput should be between startingToken and endingToken
 func get_tokens(consoleOutput string, probe probes.Probe) bool {
 	// Check for startingToken and endingToken
 	startingTokenSeen := strings.Contains(consoleOutput, probe.GetStartingToken())

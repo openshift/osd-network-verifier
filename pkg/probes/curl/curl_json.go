@@ -26,8 +26,8 @@ type Probe struct{}
 //go:embed userdata-template.yaml
 var userDataTemplate string
 
-//go:embed startup-script.sh
-var startupScript string
+//go:embed systemd-template.sh
+var systemdTemplate string
 
 const startingToken = "NV_CURLJSON_BEGIN"
 const endingToken = "NV_CURLJSON_END"
@@ -88,8 +88,8 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 	// Check if GCP instance is being used, if so use startup-script instead of userdata-template
 	// Only GCP should have USE_GCP_STARTUPSCRIPT userDataVariable
 	// Serves as a workaround for identifying platform type without a new probe interface
-	if userDataVariables["USE_GCP_STARTUPSCRIPT"] == "true" {
-		userDataTemplate = startupScript
+	if userDataVariables["USE_SYSTEMD"] == "true" {
+		userDataTemplate = systemdTemplate
 	}
 
 	// Extract required variables specified in template (if any)

@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	DEFAULT_INSTANCE_TYPE = "e2-micro"
-	DEFAULT_TIMEOUT       = 5
+	DEFAULT_TIMEOUT = 5
 )
 
 // validateEgress performs validation process for egress
@@ -47,7 +46,12 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Set instance type to default if not specified and validate it
 	if vei.InstanceType == "" {
-		vei.InstanceType = DEFAULT_INSTANCE_TYPE
+		var err error
+		vei.InstanceType, err = vei.CPUArchitecture.DefaultInstanceType(helpers.PlatformGCP)
+		if err != nil {
+			return g.Output.AddError(err)
+		}
+		g.Logger.Debug(vei.Ctx, fmt.Sprintf("defaulted to instance type %s", vei.InstanceType))
 	}
 
 	if err := g.validateMachineType(vei.GCP.ProjectID, vei.GCP.Zone, vei.InstanceType); err != nil {
@@ -66,7 +70,6 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 				egressListStr, tlsDisabledEgressListStr, githubListErr = egress_lists.EgressListToString(egressListYaml, map[string]string{})
 			}
 		}
-		var err error
 		if githubListErr != nil {
 			g.Output.AddError(fmt.Errorf("failed to get egress list from GitHub, falling back to local list: %v", githubListErr))
 			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
@@ -92,11 +95,11 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"URLS":             egressListStr,
 		"TLSDISABLED_URLS": tlsDisabledEgressListStr,
 		// Add fake userDatavariables to replace normal shell variables in startup-script.sh which will otherwise be erased by os.Expand
-		"ret":                   "${ret}",
-		"?":                     "$?",
-		"array[@]":              "${array[@]}",
-		"value":                 "$value",
-		"USE_GCP_STARTUPSCRIPT": "true",
+		"ret":         "${ret}",
+		"?":           "$?",
+		"array[@]":    "${array[@]}",
+		"value":       "$value",
+		"USE_SYSTEMD": "true",
 	}
 
 	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)

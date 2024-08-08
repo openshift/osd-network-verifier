@@ -92,6 +92,8 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 			{
 				Name:       input.networkName,
 				Subnetwork: input.vpcSubnetID,
+				// Only one accessConfigs exist which is ONE_TO_ONE_NAT
+				// needed for external internet access including egress
 				AccessConfigs: []*computev1.AccessConfig{
 					{
 						Name: "External NAT",
