@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
+	"time"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
+	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
-	"github.com/openshift/osd-network-verifier/pkg/probes/dummy"
+	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 )
 
 const (
-	cloudImageIDDefault   = "rhel-9-v20240703"
-	DEFAULT_INSTANCE_TYPE = "e2-micro"
+	DEFAULT_TIMEOUT = 5 * time.Second
 )
 
 // validateEgress performs validation process for egress
@@ -23,52 +26,98 @@ const (
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `g.output` which stores the execution results
 func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
-	g.Logger.Debug(vei.Ctx, "Using configured timeout of %s for each egress request", vei.Timeout.String())
-	//default gcp machine e2
-	if vei.InstanceType == "" {
-		vei.InstanceType = DEFAULT_INSTANCE_TYPE
+	// Validate cloud platform type and default to PlatformGCP if not specified
+	if vei.PlatformType == "" {
+		vei.PlatformType = helpers.PlatformGCP
+	}
+	if !vei.CPUArchitecture.IsValid() {
+		vei.CPUArchitecture = cpu.ArchX86
+	}
+	// Default to curl.Probe if no Probe specified
+	if vei.Probe == nil {
+		vei.Probe = curl.Probe{}
+		g.Logger.Debug(vei.Ctx, "defaulted to curl probe")
 	}
 
-	// need to set InstanceType here because default is a AWS machine type
-	vei.InstanceType = DEFAULT_INSTANCE_TYPE
+	// Set timeout to default if not specified
+	if vei.Timeout <= 0 {
+		vei.Timeout = DEFAULT_TIMEOUT
+	}
+	g.Logger.Debug(vei.Ctx, "configured a %s timeout for each egress request", vei.Timeout)
+
+	// Set instance type to default if not specified and validate it
+	if vei.InstanceType == "" {
+		var err error
+		vei.InstanceType, err = vei.CPUArchitecture.DefaultInstanceType(helpers.PlatformGCP)
+		if err != nil {
+			return g.Output.AddError(err)
+		}
+		g.Logger.Debug(vei.Ctx, fmt.Sprintf("defaulted to instance type %s", vei.InstanceType))
+	}
 
 	if err := g.validateMachineType(vei.GCP.ProjectID, vei.GCP.Zone, vei.InstanceType); err != nil {
 		return g.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
 
-	// Fetch the egress URL list as two strings (one for normal URLs, the other
-	// for TLS disabled URLs); note that this is TOTALLY IGNORED by LegacyProbe,
-	// as that probe only knows how to use the egress URL lists baked into its
-	// AMIs/container images
-	// egressListStr, tlsDisabledEgressListStr, err := egress_lists.GetEgressListAsString(vei.PlatformType, a.AwsClient.Region)
-	// if err != nil {
-	// 	return a.Output.AddError(err)
-	// }
-	userDataVariables := map[string]string{
-		"AWS_REGION":  "us-east-2", // Not sure if this is the correct data
-		"TIMEOUT":     vei.Timeout.String(),
-		"HTTP_PROXY":  vei.Proxy.HttpProxy,
-		"HTTPS_PROXY": vei.Proxy.HttpsProxy,
-		"CACERT":      base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
-		"NOTLS":       strconv.FormatBool(vei.Proxy.NoTls),
-		"DELAY":       "5",
-		"URLS":        "quay.io",
+	// Fetch the egress URL list from github, falling back to local lists in the event of a failure.
+	egressListYaml := vei.EgressListYaml
+	var egressListStr, tlsDisabledEgressListStr string
+	if egressListYaml == "" {
+		githubEgressList, githubListErr := egress_lists.GetGithubEgressList(vei.PlatformType)
+		if githubListErr == nil {
+			egressListYaml, githubListErr = githubEgressList.GetContent()
+			if githubListErr == nil {
+				g.Logger.Debug(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
+				egressListStr, tlsDisabledEgressListStr, githubListErr = egress_lists.EgressListToString(egressListYaml, map[string]string{})
+			}
+		}
+		if githubListErr != nil {
+			var err error
+			g.Output.AddError(fmt.Errorf("failed to get egress list from GitHub, falling back to local list: %v", githubListErr))
+			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
+			if err != nil {
+				return g.Output.AddError(err)
+			}
+			egressListStr, tlsDisabledEgressListStr, err = egress_lists.EgressListToString(egressListYaml, map[string]string{})
+			if err != nil {
+				return g.Output.AddError(err)
+			}
+		}
 	}
-	// set probe
-	vei.Probe = dummy.Probe{}
+
+	// Generate the userData file
+	// Expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in startup-script.sh
+	userDataVariables := map[string]string{
+		"TIMEOUT":          vei.Timeout.String(),
+		"HTTP_PROXY":       vei.Proxy.HttpProxy,
+		"HTTPS_PROXY":      vei.Proxy.HttpsProxy,
+		"CACERT":           base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NOTLS":            strconv.FormatBool(vei.Proxy.NoTls),
+		"DELAY":            "5",
+		"URLS":             egressListStr,
+		"TLSDISABLED_URLS": tlsDisabledEgressListStr,
+		// Add fake userDatavariables to replace normal shell variables in startup-script.sh which will otherwise be erased by os.Expand
+		"ret":         "${ret}",
+		"?":           "$?",
+		"array[@]":    "${array[@]}",
+		"value":       "$value",
+		"USE_SYSTEMD": "true",
+	}
+
 	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)
 	}
-
 	g.Logger.Debug(vei.Ctx, "Generated userdata script:\n---\n%s\n---", userData)
 
 	if vei.CloudImageID == "" {
-		vei.CloudImageID = cloudImageIDDefault
+		vei.CloudImageID, err = vei.Probe.GetMachineImageID(vei.PlatformType, vei.CPUArchitecture, vei.GCP.Region)
+		if err != nil {
+			return g.Output.AddError(err)
+		}
 	}
 
 	//image list https://cloud.google.com/compute/docs/images/os-details#red_hat_enterprise_linux_rhel
-
 	instance, err := g.createComputeServiceInstance(createComputeServiceInstanceInput{
 		projectID:        vei.GCP.ProjectID,
 		zone:             vei.GCP.Zone,
@@ -89,7 +138,8 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	g.Logger.Debug(vei.Ctx, "Waiting for ComputeService instance %s to be running", instance.Name)
 	if instanceReadyErr := g.waitForComputeServiceInstanceCompletion(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name); instanceReadyErr != nil {
-		err = g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name) // try to terminate the created instanc
+		// try to terminate instance if instance is not running
+		err = g.GcpClient.TerminateComputeServiceInstance(vei.GCP.ProjectID, vei.GCP.Zone, instance.Name)
 		if err != nil {
 			g.Output.AddError(err)
 		}

@@ -75,10 +75,10 @@ var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
 	// See function docstring's note on GCP; tl;dr: deepest key should be "*"
 	helpers.PlatformGCP: {
 		cpu.ArchX86: {
-			"*": "rhel-9",
+			"*": "rhel-9-v20240709",
 		},
 		cpu.ArchARM: {
-			"*": "rhel-9-arm64",
+			"*": "rhel-9-arm64-v20240709",
 		},
 	},
 }

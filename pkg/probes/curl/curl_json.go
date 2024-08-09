@@ -26,6 +26,9 @@ type Probe struct{}
 //go:embed userdata-template.yaml
 var userDataTemplate string
 
+//go:embed systemd-template.sh
+var systemdTemplate string
+
 const startingToken = "NV_CURLJSON_BEGIN"
 const endingToken = "NV_CURLJSON_END"
 const outputLinePrefix = "@NV@"
@@ -82,6 +85,12 @@ func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture
 // values *are* provided for variables that must be set to a certain value for the probe to
 // function correctly (presetUserDataVariables) -- this function will fill-in those values for you.
 func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (string, error) {
+	// Use systemd to run curl (instead of cloud-init) if requested. Useful for
+	// platforms that don't include cloud-init in their OS images (e.g., GCP)
+	if userDataVariables["USE_SYSTEMD"] == "true" {
+		userDataTemplate = systemdTemplate
+	}
+
 	// Extract required variables specified in template (if any)
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 
