@@ -7,7 +7,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 )
 
-func Test_get_tokens(t *testing.T) {
+func TestGetTokens(t *testing.T) {
 	type args struct {
 		consoleOutput string
 		probe         probes.Probe
@@ -52,7 +52,7 @@ func Test_get_tokens(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := get_tokens(tt.args.consoleOutput, tt.args.probe); got != tt.want {
+			if got := getTokens(tt.args.consoleOutput, tt.args.probe); got != tt.want {
 				t.Errorf("get_tokens() = %v, want %v", got, tt.want)
 			}
 		})
