@@ -11,6 +11,8 @@ resource "google_compute_network" "vpc_network" {
   name                    = var.vpc_name
   auto_create_subnetworks = var.auto_create_subnetworks
   routing_mode = var.routing_mode 
+  # maximum transmission unit in bytes
+  # default is 1460 but ranges from 1300 to 8896
   mtu = var.mtu
 }
 
@@ -38,18 +40,14 @@ resource "google_compute_router" "router" {
   name = var.router_name
   network = google_compute_network.vpc_network.name
   region = var.region
-  bgp {
-    asn = var.asn
-  }
 }
 resource "google_compute_router_nat" "nat" {
   name = var.cloud_nat_name
   router = google_compute_router.router.name
   region = google_compute_router.router.region
-  nat_ip_allocate_option = var.nat_ip_allocate_option
+  # how NAT should be configured per Subnetwork
   source_subnetwork_ip_ranges_to_nat = var.source_subnetwork_ip_ranges_to_nat
 }
-
 # create firewall policy
 resource "google_compute_network_firewall_policy" "fw-policy" {
   name = var.firewall_policy_name

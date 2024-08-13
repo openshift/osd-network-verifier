@@ -58,17 +58,9 @@ variable "router_name" {
   type = string
   default = "my-router"
 }
-variable "asn" {
-  type = number
-  default = 64514
-}
 variable "cloud_nat_name" {
   type = string
   default = "my-cloud-nat"
-}
-variable "nat_ip_allocate_option" {
-  type = string
-  default = "AUTO_ONLY"
 }
 variable "source_subnetwork_ip_ranges_to_nat" {
   type = string
