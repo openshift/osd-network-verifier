@@ -24,7 +24,7 @@ cp terraform.tfvars.example terraform.tfvars
 2. Use a text editor to set `project` and `credentials_file` in `terraform.tfvars`
 - `project`: name of your GCP project
 - `credentials_file`: path to your GCP credentials file you generated
-3. Set any other variables you wish to configure
+3. Set and uncomment any other variables you wish to configure
 - `region`: GCP region where resources will be created
 - `zone`: GCP zone where resources will be created
 - `public_ip_cidr_range`: CIDR block for public subnet within VPC
