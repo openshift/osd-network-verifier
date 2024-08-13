@@ -30,6 +30,7 @@ cp terraform.tfvars.example terraform.tfvars
 - `public_ip_cidr_range`: CIDR block for public subnet within VPC
 - `private_ip_cidr_range`: CIDR block for private subnet within VPC
 - `dest_fqdns`: list of domains you wish to block
+
 Note: The default value for these variables are defined in `variables.tf`
 
 ### Running the scripts
