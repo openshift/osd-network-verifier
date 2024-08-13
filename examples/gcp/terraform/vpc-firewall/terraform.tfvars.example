@@ -1,0 +1,20 @@
+### necessary variables
+project          = <YOUR_PROJECT_NAME>
+credentials_file = <YOUR_CREDENTIALS_FILE>
+
+### configure other variables if needed
+## GCP region where resources will be created
+# region = "us-east1"
+
+## GCP zone where resources will be created
+# zone = "us-east1a-a"
+
+## CIDR block for public subnet within VPC
+# public_ip_cidr_range = "10.0.1.0/24"
+
+## CIDR block for private subnet within VPC
+#  private_ip_cidr_range = "10.0.2.0/24"
+
+## domains to block
+# dest_fqdns = ["quay.io"]
+ 
