@@ -16,12 +16,12 @@ gcloud auth application-default login
 Note the location of the credentials file. The default location and file is `$HOME/.config/gcloud/application_default_credentials.json`.
 
 ### Configuration
-Before running the script, you need to configure the variables. A `terraform.tfvars.example` file is provided as a template. Here are the steps to configure the variables:
+Before running the script, you need to configure script variables. A `terraform.tfvars.example` file is provided as a template. Here are the steps to configure the variables:
 1. Copy the example file:
 ```
 cp terraform.tfvars.example terraform.tfvars
 ```
-2. Use a text editor to set `project` and `credentials_file in `terraform.tfvars`
+2. Use a text editor to set `project` and `credentials_file` in `terraform.tfvars`
 - `project`: name of your GCP project
 - `credentials_file`: path to your GCP credentials file you generated
 3. Set any other variables you wish to configure
@@ -50,9 +50,11 @@ terraform destroy
 ```
 ## Outputs
 The script outputs the IDs of the created VPC and subnets.
-`private_subnet_id`
-`public_subnet_id`
-`vpc_name `
+```
+private_subnet_id = "my-private-subnet"
+public_subnet_id = "my-public-subnet"
+vpc_name  = "my-vpc"
+```
 
 ## Test OSD Network Verifier
 ```
@@ -62,7 +64,7 @@ Replace `$subnet_id` with `private_subnet_id` or `public_subnet_id` and `$vpc_na
 
 Example:
 ```
-/osd-network-verifier/osd-network-verifier egress --platform gcp-classic --subnet-id my-private-subnet --vpc-name my-vpc
+./osd-network-verifier/osd-network-verifier egress --platform gcp-classic --subnet-id my-private-subnet --vpc-name my-vpc
 Using Project ID emhammon-test
 Created instance with ID: verifier-4624
 Applying labels
@@ -78,6 +80,7 @@ printing out exceptions preventing the verifier from running the specific test:
 printing out errors faced during the execution:
 Failure!
 ```
+Because we have configured the firewall rules to block `cdn01.quay.io` and `quay.io`, we can determine the network verifier is working correctly by identifying these domains have been blocked.
 
 
 
