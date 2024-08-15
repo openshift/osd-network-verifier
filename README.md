@@ -44,16 +44,17 @@ See the Terraform `README.md` for detailed instructions.
 ## Contributing and Maintenance
 If interested, please fork this repo and create pull requests to the `main` branch.
 
-### Golden AMI
-osd-network-verifier depends on these publicly available [AMIs](pkg/verifier/aws/aws_verifier.go#L24-L45) built from the [osd-network-verifier-golden-ami](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami) repo.
-
-Golden AMI provides the following:
-- runtime environment setup (such as container engine, configurations, etc.)
-- building and embedding the validator binary which performs the individual checks to the endpoints
-
 ### Egress Lists
 
-This lists of essential domains for egress verification should be maintained in the [GitLab repo](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami/-/blob/master/build/config/). Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L94) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
+This lists of essential domains for egress verification should be maintained in [pkg/data/egress_lists](https://github.com/openshift/osd-network-verifier/tree/main/pkg/data/egress_lists). The network verifier will dynamically pull down the list of endpoints from the most recent commit. This means that egress lists can be updated quickly without the need of a new osd-network-verifier release.
+
+It is also possible to pass in a custom list of egress endpoints by using the `--egress-list-location` flag.
+
+Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L94) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
+
+### Image Selection
+
+The list of images (RHEL base images) that osd-network-verifier selects from to run in is maintained in [pkg/probes/curl/machine_images.go](https://github.com/openshift/osd-network-verifier/tree/main/pkg/probes/curl/machine_images.go). Which image is selected is based on the platform, region and cpu architecture type. By default, "X86" is used unless manually overriden by the `--cpu-arch` flag.
 
 ### IAM Permission Requirement List
 
