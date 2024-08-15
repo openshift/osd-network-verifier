@@ -145,7 +145,9 @@ repeat the verification process for each subnet ID.
         ```shell
         --cacert string               (optional) path to cacert file to be used upon https requests being made by verifier
         --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [])
+        --cpu-arch string             (optional) compute instance CPU architecture. Ignored if valid instance-type specified
         --debug                       (optional) if true, enable additional debug-level logging
+        --egress-list-location string (optional) the location of the egress URL list to use. Can either be a local file path or an external URL starting with http(s). This value is ignored for the legacy probe.
         --force-temp-security-group   (optional) Enforces creation of Temporary SG creation even if --security-group-ids flag is used
         --http-proxy string           (optional) http-proxy to be used upon http requests being made by verifier, format: http://user:pass@x.x.x.x:8978
         --https-proxy string          (optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978
@@ -154,7 +156,8 @@ repeat the verification process for each subnet ID.
         --instance-type string        (optional) compute instance type
         --kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
         --no-tls                      (optional) if true, skip client-side SSL certificate validation
-        --platform string              (optional) infra platform type, which determines which endpoints to test. Either 'aws-classic', 'gcp-classic', or 'hosted-cp' (hypershift) (default "aws-hcp")
+        --platform string             (optional) infra platform type, which determines which endpoints to test. Either 'aws-classic', 'gcp-classic', or 'hosted-cp' (hypershift) (default "aws-hcp")
+        --probe string                (optional) select the probe to be used for egress testing. Either 'Curl' (default) or 'Legacy' (default "Curl")
         --profile string              (optional) AWS profile. If present, any credentials passed with CLI will be ignored
         --region string               (optional) compute instance region. If absent, environment var AWS_REGION = us-east-2 and GCP_REGION = us-east1 will be used
         --security-group-ids strings  (optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created
