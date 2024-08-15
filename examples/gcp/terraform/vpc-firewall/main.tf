@@ -40,14 +40,23 @@ resource "google_compute_router" "router" {
   name = var.router_name
   network = google_compute_network.vpc_network.name
   region = var.region
+  bgp {
+    asn = var.asn
+  }
 }
 resource "google_compute_router_nat" "nat" {
   name = var.cloud_nat_name
   router = google_compute_router.router.name
   region = google_compute_router.router.region
+  nat_ip_allocate_option = var.nat_ip_allocate_option
   # how NAT should be configured per Subnetwork
   source_subnetwork_ip_ranges_to_nat = var.source_subnetwork_ip_ranges_to_nat
+  subnetwork {
+    name = google_compute_subnetwork.private_subnet.id
+    source_ip_ranges_to_nat = [var.source_ip_ranges_to_nat]
+  }
 }
+
 # create firewall policy
 resource "google_compute_network_firewall_policy" "fw-policy" {
   name = var.firewall_policy_name
@@ -61,7 +70,7 @@ resource "google_compute_network_firewall_policy_rule" "rules" {
   rule_name      = var.rule_name
   firewall_policy = google_compute_network_firewall_policy.fw-policy.name
   match {
-    dest_fqdns                = var.dest_fqdns
+    dest_fqdns = var.dest_fqdns
       layer4_configs {
           ip_protocol = var.ip_protocol
       }
@@ -74,7 +83,7 @@ resource "google_compute_network_firewall_policy_association" "primary" {
   project     = var.project
 }
 
-# outputs for network verifier
+# create outputs for network verifier
 output "vpc_name" {
   value = google_compute_network.vpc_network.name
 }
