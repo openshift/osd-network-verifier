@@ -70,6 +70,18 @@ variable "nat_ip_allocate_option" {
   type = string
   default = "AUTO_ONLY"
 }
+variable "enable_endpoint_independent_mapping" {
+  type = string
+  default = "false"
+}
+variable "enable_dynamic_port_allocation" {
+  type = string
+  default = "true"
+}
+variable "min_ports_per_vm" {
+  type = number
+  default = 2048
+}
 variable "source_subnetwork_ip_ranges_to_nat" {
   type = string
   default = "LIST_OF_SUBNETWORKS"

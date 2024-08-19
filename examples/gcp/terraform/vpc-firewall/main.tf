@@ -49,6 +49,9 @@ resource "google_compute_router_nat" "nat" {
   router = google_compute_router.router.name
   region = google_compute_router.router.region
   nat_ip_allocate_option = var.nat_ip_allocate_option
+  enable_endpoint_independent_mapping = var.enable_endpoint_independent_mapping
+  enable_dynamic_port_allocation      = var.enable_dynamic_port_allocation
+  min_ports_per_vm = var.min_ports_per_vm
   # how NAT should be configured per Subnetwork
   source_subnetwork_ip_ranges_to_nat = var.source_subnetwork_ip_ranges_to_nat
   subnetwork {
