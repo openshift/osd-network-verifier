@@ -40,7 +40,7 @@ The Terraform scripts in this repository allow you to set up a secure and scalab
 See the Terraform `README.md` for detailed instructions.
 - [VPC with no Firewall](examples/aws/terraform/vpc/README.md)
 - [VPC with Firewall](examples/aws/terraform/vpc-firewall/README.md)
-- [VPC with a mitmproxy-based Transparent Proxy](examples/aws/terraform/transparent-proxy-setup/README.md)
+- [VPC with mitmproxy-based Transparent Proxy](examples/aws/terraform/transparent-proxy-setup/README.md)
 
 ## Contributing and Maintenance
 If interested, please fork this repo and create pull requests to the `main` branch.
