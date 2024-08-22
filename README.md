@@ -27,7 +27,7 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 
 ## Terraform Scripts (AWS)
 
-The Terraform scripts in this repository allow you to set up a secure and scalable network infrastructure in AWS for testing. It will create a VPC with public, private, and firewall(optinal) subnets, an Internet Gateway, a NAT Gateway, and a network firewall(optinal).
+The Terraform scripts in this repository allow you to set up a secure and scalable network infrastructure in AWS for testing. It will create a VPC with public, private, and firewall(optinal) subnets, an Internet Gateway, a NAT Gateway, a network firewall(optinal), and a mitm-based transparent proxy(optinal).
 
 ### Getting Started
 
@@ -40,6 +40,7 @@ The Terraform scripts in this repository allow you to set up a secure and scalab
 See the Terraform `README.md` for detailed instructions.
 - [VPC with no Firewall](examples/aws/terraform/vpc/README.md)
 - [VPC with Firewall](examples/aws/terraform/vpc-firewall/README.md)
+- [VPC with a mitmproxy-based Transparent Proxy](examples/aws/terraform/transparent-proxy-setup/README.md)
 
 ## Contributing and Maintenance
 If interested, please fork this repo and create pull requests to the `main` branch.
