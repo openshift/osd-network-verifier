@@ -27,7 +27,10 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 
 ## Terraform Scripts (AWS)
 
-The Terraform scripts in this repository allow you to set up a secure and scalable network infrastructure in AWS for testing. It will create a VPC with public, private, and firewall(optinal) subnets, an Internet Gateway, a NAT Gateway, and a network firewall(optinal).
+The Terraform scripts in this repository allow you
+to set up a secure and scalable network infrastructure in AWS for testing.
+It will create a VPC with public, private, and firewall (optional) subnets,
+an Internet Gateway, a NAT Gateway, and a network firewall(optional).
 
 ### Getting Started
 
@@ -52,13 +55,29 @@ It is also possible to pass in a custom list of egress endpoints by using the `-
 
 Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L94) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
 
-### Image Selection
+### Probes
+Probes within the verifier are responsible for a number of important tasks.
+These include the following:
+- determining which machine images are to be used
+- parsing cloud instance console output
+- configuring instructions to the cloud instance
 
-The list of images (RHEL base images) that osd-network-verifier selects from to run in is maintained in [pkg/probes/curl/machine_images.go](https://github.com/openshift/osd-network-verifier/tree/main/pkg/probes/curl/machine_images.go). Which image is selected is based on the platform, region and cpu architecture type. By default, "X86" is used unless manually overriden by the `--cpu-arch` flag.
+Probes are cloud-platform-agnostic by design,
+meaning that their implementations are not specific to any one cloud provider.
+All probes must honor the contract defined by the [base probe interface](./pkg/probes/package_probes.go).
+By default, the verifier uses the [curl probe](./pkg/probes/curl/curl_json.go).
+
+#### Image Selection
+
+Each probe is responsible for determining its list of approved machine images.
+The list of images (RHEL base images) that osd-network-verifier selects
+from to run in is maintained in `pkg/probes/<probe_name>/machine_images.go`.
+Which image is selected is based on the platform, region and cpu architecture type.
+By default, "X86" is used unless manually overridden by the `--cpu-arch` flag.
 
 ### IAM Permission Requirement List
 
-Version ID [required for IAM support role](docs/aws/aws.md#iam-support-role) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html).
+Version ID [required for IAM permissions](https://github.com/openshift/osd-network-verifier/blob/main/docs/aws/aws.md#iam-permissions) may need update to match specification in [AWS docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html).
 
 ## Release Process
 
