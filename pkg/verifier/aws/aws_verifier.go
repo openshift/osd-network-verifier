@@ -17,6 +17,7 @@ import (
 	"github.com/go-playground/validator"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
+	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -88,7 +89,7 @@ type AwsVerifier struct {
 // other than X86, or probes other than CurlJSONProbe. It also doesn't return detailed errors. Instead, use:
 // [probe_package].[ProbeName].GetMachineImageID(platformType, cpuArch, region)
 func GetAMIForRegion(region string) string {
-	ami, err := curl.Probe{}.GetMachineImageID(helpers.PlatformAWS, cpu.ArchX86, region)
+	ami, err := curl.Probe{}.GetMachineImageID(platform.AWSClassic.String(), cpu.ArchX86, region)
 	if err != nil {
 		return ""
 	}
@@ -232,7 +233,7 @@ func (a *AwsVerifier) selectInstanceType(ctx context.Context, instanceType strin
 			a.writeDebugLogs(ctx, fmt.Sprintf("ignoring requested instance type %s because it uses a non-Nitro hypervisor", instanceType))
 		}
 
-		instanceType, err = cpuArchitecture.DefaultInstanceType(helpers.PlatformAWS)
+		instanceType, err = cpuArchitecture.DefaultInstanceType(platform.AWSClassic.String())
 		if err != nil {
 			return "", cpu.Architecture{}, fmt.Errorf("failed to determine default instance type for CPU architecture %s: %w", cpuArchitecture, err)
 		}

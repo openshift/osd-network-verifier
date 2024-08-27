@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 
+	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -48,14 +49,16 @@ func (lgp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
 func (lgp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
-	// Validate/normalize platformType
-	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
+	platformTypeStruct, err := platform.PlatformByName(platformType)
 	if err != nil {
 		return "", err
 	}
-	if normalizedPlatformType == helpers.PlatformHostedCluster {
+	// Validate/normalize platformType
+	normalizedPlatformType := platformTypeStruct.String()
+
+	if normalizedPlatformType == platform.AWSHCP.String() {
 		// HCP uses the same AMIs as Classic
-		normalizedPlatformType = helpers.PlatformAWS
+		normalizedPlatformType = platform.AWSClassic.String()
 	}
 
 	// Access lookup table

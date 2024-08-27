@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
+	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 )
 
 // Architecture type represents specific CPU architectures and stores information on how they
@@ -54,15 +54,17 @@ func (arch Architecture) DefaultInstanceType(platformType string) (string, error
 		return "", fmt.Errorf("invalid Architecture")
 	}
 
-	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
+	platformTypeStruct, err := platform.PlatformByName(platformType)
 	if err != nil {
 		return "", err
 	}
 
+	normalizedPlatformType := platformTypeStruct.String()
+
 	switch normalizedPlatformType {
-	case helpers.PlatformAWS, helpers.PlatformHostedCluster:
+	case platform.AWSClassic.String(), platform.AWSHCP.String():
 		return arch.defaultAWSInstanceType, nil
-	case helpers.PlatformGCP:
+	case platform.GCPClassic.String():
 		return arch.defaultGCPInstanceType, nil
 	default:
 		return "", fmt.Errorf("no default instance type for %s", normalizedPlatformType)

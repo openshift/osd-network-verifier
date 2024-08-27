@@ -4,11 +4,13 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"strconv"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
+	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -49,19 +51,22 @@ func (clp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
 func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
-	// Validate/normalize platformType
-	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
+	//Validate platformType
+	platformStruct, err := platform.PlatformByName(platformType)
 	if err != nil {
 		return "", err
 	}
-	if normalizedPlatformType == helpers.PlatformHostedCluster {
+	// Normalize platformType
+	normalizedPlatformType := platformStruct.String()
+
+	if normalizedPlatformType == platform.AWSHCP.String() {
 		// HCP uses the same AMIs as Classic
-		normalizedPlatformType = helpers.PlatformAWS
+		normalizedPlatformType = platform.AWSClassic.String()
 	}
 
 	// Normalize region key (GCP images are global/not region-scoped)
 	normalizedRegion := region
-	if normalizedPlatformType == helpers.PlatformGCP {
+	if normalizedPlatformType == platform.GCPClassic.String() {
 		normalizedRegion = "*"
 	}
 

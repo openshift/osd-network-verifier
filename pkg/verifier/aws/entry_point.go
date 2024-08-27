@@ -10,9 +10,9 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
@@ -33,12 +33,13 @@ const (
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	// Validate cloud platform type and default to PlatformAWS if necessary
 	if vei.PlatformType == "" {
-		vei.PlatformType = helpers.PlatformAWS
+		vei.PlatformType = platform.AWSClassic.String()
 	}
-	normalizedPlatformType, err := helpers.GetPlatformType(vei.PlatformType)
+	platformTypeStruct, err := platform.PlatformByName(vei.PlatformType)
 	if err != nil {
 		return a.Output.AddError(fmt.Errorf("cannot use platform type %s: %w", vei.PlatformType, err))
 	}
+	normalizedPlatformType := platformTypeStruct.String()
 	vei.PlatformType = normalizedPlatformType
 
 	// Default to curl.Probe if no Probe specified

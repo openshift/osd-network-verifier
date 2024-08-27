@@ -11,10 +11,11 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/google/go-github/v63/github"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
-	"gopkg.in/yaml.v3"
 	"os"
+
+	"github.com/google/go-github/v63/github"
+	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed aws-classic.yaml
@@ -27,12 +28,18 @@ var templateAWSHCP string
 var templateGCPClassic string
 
 func GetLocalEgressList(platformType string) (string, error) {
+	platformTypeStruct, err := platform.PlatformByName(platformType)
+	if err != nil {
+		return "", err
+	}
+	platformType = platformTypeStruct.String()
+
 	switch platformType {
-	case helpers.PlatformGCPClassic, helpers.PlatformGCP:
+	case platform.GCPClassic.String():
 		return templateGCPClassic, nil
-	case helpers.PlatformAWSHCP, helpers.PlatformHostedCluster:
+	case platform.AWSHCP.String():
 		return templateAWSHCP, nil
-	case helpers.PlatformAWSClassic, helpers.PlatformAWS:
+	case platform.AWSClassic.String():
 		return templateAWSClassic, nil
 	default:
 		return "", fmt.Errorf("no egress list registered for platform '%s'", platformType)
@@ -42,13 +49,19 @@ func GetLocalEgressList(platformType string) (string, error) {
 func GetGithubEgressList(platformType string) (*github.RepositoryContent, error) {
 	ghClient := github.NewClient(nil)
 	path := "/pkg/data/egress_lists/"
+	platformTypeStruct, err := platform.PlatformByName(platformType)
+	if err != nil {
+		return nil, err
+	}
+	platformType = platformTypeStruct.String()
+
 	switch platformType {
-	case helpers.PlatformGCPClassic, helpers.PlatformGCP:
-		path += helpers.PlatformGCPClassic
-	case helpers.PlatformAWSHCP, helpers.PlatformHostedCluster:
-		path += helpers.PlatformAWSHCP
-	case helpers.PlatformAWSClassic, helpers.PlatformAWS:
-		path += helpers.PlatformAWSClassic
+	case platform.GCPClassic.String():
+		path += platform.GCPClassic.String()
+	case platform.AWSHCP.String():
+		path += platform.AWSHCP.String()
+	case platform.AWSClassic.String():
+		path += platform.AWSClassic.String()
 	default:
 		return nil, fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}
