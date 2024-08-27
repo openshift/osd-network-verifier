@@ -28,11 +28,11 @@ var templateAWSHCP string
 var templateGCPClassic string
 
 func GetLocalEgressList(platformType string) (string, error) {
-	platformTypeStruct, err := platform.PlatformByName(platformType)
+	platformTypeName, err := platform.PlatformByName(platformType)
 	if err != nil {
 		return "", err
 	}
-	platformType = platformTypeStruct.String()
+	platformType = platformTypeName.String()
 
 	switch platformType {
 	case platform.GCPClassic.String():
@@ -49,11 +49,11 @@ func GetLocalEgressList(platformType string) (string, error) {
 func GetGithubEgressList(platformType string) (*github.RepositoryContent, error) {
 	ghClient := github.NewClient(nil)
 	path := "/pkg/data/egress_lists/"
-	platformTypeStruct, err := platform.PlatformByName(platformType)
+	platformTypeName, err := platform.PlatformByName(platformType)
 	if err != nil {
 		return nil, err
 	}
-	platformType = platformTypeStruct.String()
+	platformType = platformTypeName.String()
 
 	switch platformType {
 	case platform.GCPClassic.String():

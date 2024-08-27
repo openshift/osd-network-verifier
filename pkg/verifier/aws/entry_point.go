@@ -35,11 +35,11 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	if vei.PlatformType == "" {
 		vei.PlatformType = platform.AWSClassic.String()
 	}
-	platformTypeStruct, err := platform.PlatformByName(vei.PlatformType)
+	platformTypeName, err := platform.PlatformByName(vei.PlatformType)
 	if err != nil {
 		return a.Output.AddError(fmt.Errorf("cannot use platform type %s: %w", vei.PlatformType, err))
 	}
-	normalizedPlatformType := platformTypeStruct.String()
+	normalizedPlatformType := platformTypeName.String()
 	vei.PlatformType = normalizedPlatformType
 
 	// Default to curl.Probe if no Probe specified

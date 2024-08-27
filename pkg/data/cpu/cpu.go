@@ -54,12 +54,12 @@ func (arch Architecture) DefaultInstanceType(platformType string) (string, error
 		return "", fmt.Errorf("invalid Architecture")
 	}
 
-	platformTypeStruct, err := platform.PlatformByName(platformType)
+	platformTypeName, err := platform.PlatformByName(platformType)
 	if err != nil {
 		return "", err
 	}
 
-	normalizedPlatformType := platformTypeStruct.String()
+	normalizedPlatformType := platformTypeName.String()
 
 	switch normalizedPlatformType {
 	case platform.AWSClassic.String(), platform.AWSHCP.String():

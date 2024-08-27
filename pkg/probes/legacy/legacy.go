@@ -49,12 +49,12 @@ func (lgp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
 func (lgp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
-	platformTypeStruct, err := platform.PlatformByName(platformType)
+	platformTypeName, err := platform.PlatformByName(platformType)
 	if err != nil {
 		return "", err
 	}
 	// Validate/normalize platformType
-	normalizedPlatformType := platformTypeStruct.String()
+	normalizedPlatformType := platformTypeName.String()
 
 	if normalizedPlatformType == platform.AWSHCP.String() {
 		// HCP uses the same AMIs as Classic
