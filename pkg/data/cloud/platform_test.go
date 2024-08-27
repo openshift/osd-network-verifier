@@ -5,7 +5,7 @@ import (
 )
 
 func TestPlatform_Comparable(t *testing.T) {
-	if AWSClassic != AWSClassic {
+	if AWSClassic != AWSHCP {
 		return
 	}
 }
