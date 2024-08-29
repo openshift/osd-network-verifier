@@ -49,7 +49,7 @@ func (lgp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
 func (lgp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
-	platformTypeName, err := platform.PlatformByName(platformType)
+	platformTypeName, err := platform.ByName(platformType)
 	if err != nil {
 		return "", err
 	}

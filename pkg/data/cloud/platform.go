@@ -10,7 +10,7 @@ import (
 type Platform struct {
 	// names holds 2 unique lowercase names of the Platform (e.g., "aws"). We use a fixed-
 	// size array so that this struct remains comparable. Any of the 2 values can be used to refer
-	// to this specific Platform via Platform.PlatformByName(), but only the first (element
+	// to this specific Platform via Platform.ByName(), but only the first (element
 	// 0) element will be the "preferred name" returned by Platform.String()
 	names [2]string
 }
@@ -32,10 +32,10 @@ func (plat Platform) String() string {
 	return plat.names[0]
 }
 
-// PlatformByName returns a Platform supported by the verifier if the given name
+// ByName returns a Platform supported by the verifier if the given name
 // matches any known common names for a supported Platform. It returns an empty/invalid
 // platform if the provided name isn't supported
-func PlatformByName(name string) (Platform, error) {
+func ByName(name string) (Platform, error) {
 	normalizedName := strings.TrimSpace(strings.ToLower(name))
 	if slices.Contains(AWSClassic.names[:], normalizedName) {
 		return AWSClassic, nil

@@ -54,7 +54,7 @@ func (arch Architecture) DefaultInstanceType(platformType string) (string, error
 		return "", fmt.Errorf("invalid Architecture")
 	}
 
-	platformTypeName, err := platform.PlatformByName(platformType)
+	platformTypeName, err := platform.ByName(platformType)
 	if err != nil {
 		return "", err
 	}

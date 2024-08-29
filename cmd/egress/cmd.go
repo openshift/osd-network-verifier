@@ -92,7 +92,7 @@ are set correctly before execution.
 # Verify that essential OpenShift domains are reachable from a given SUBNET_ID/SECURITY_GROUP association
 ./osd-network-verifier egress --subnet-id ${SUBNET_ID} --security-group-ids ${SECURITY_GROUP}`,
 		Run: func(cmd *cobra.Command, args []string) {
-			platformType, err := platform.PlatformByName(config.platformType)
+			platformType, err := platform.ByName(config.platformType)
 			if err != nil {
 				//Unknown platformType specified
 				fmt.Println(err)

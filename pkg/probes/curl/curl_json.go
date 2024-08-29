@@ -52,7 +52,7 @@ func (clp Probe) GetEndingToken() string { return endingToken }
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
 func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
 	//Validate platformType
-	platformStruct, err := platform.PlatformByName(platformType)
+	platformStruct, err := platform.ByName(platformType)
 	if err != nil {
 		return "", err
 	}

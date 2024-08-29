@@ -35,7 +35,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	if vei.PlatformType == "" {
 		vei.PlatformType = platform.AWSClassic.String()
 	}
-	platformTypeName, err := platform.PlatformByName(vei.PlatformType)
+	platformTypeName, err := platform.ByName(vei.PlatformType)
 	if err != nil {
 		return a.Output.AddError(fmt.Errorf("cannot use platform type %s: %w", vei.PlatformType, err))
 	}

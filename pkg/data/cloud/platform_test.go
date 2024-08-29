@@ -19,32 +19,32 @@ func TestPlatform_String(t *testing.T) {
 		{
 			name:     "aws",
 			platfrom: AWSClassic,
-			want:     "aws",
+			want:     "aws-classic",
 		},
 		{
 			name:     "aws-classic",
 			platfrom: AWSClassic,
-			want:     "aws",
+			want:     "aws-classic",
 		},
 		{
 			name:     "hosted-cluster",
 			platfrom: AWSHCP,
-			want:     "hostedcluster",
+			want:     "aws-hcp",
 		},
 		{
 			name:     "aws-hcp",
 			platfrom: AWSHCP,
-			want:     "hostedcluster",
+			want:     "aws-hcp",
 		},
 		{
 			name:     "gcp",
 			platfrom: GCPClassic,
-			want:     "gcp",
+			want:     "gcp-classic",
 		},
 		{
 			name:     "gcp-classic",
 			platfrom: GCPClassic,
-			want:     "gcp",
+			want:     "gcp-classic",
 		},
 	}
 	for _, tt := range tests {
@@ -106,7 +106,7 @@ func TestPlatform_IsValid(t *testing.T) {
 	}
 }
 
-func TestPlatformByName(t *testing.T) {
+func TestByName(t *testing.T) {
 	tests := []struct {
 		name string
 		want Platform
@@ -142,7 +142,7 @@ func TestPlatformByName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, err := PlatformByName(tt.name); got != tt.want {
+			if got, err := ByName(tt.name); got != tt.want {
 				if err != nil {
 					t.Errorf("Error, %s", err)
 				}
