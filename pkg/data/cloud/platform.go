@@ -17,13 +17,13 @@ type Platform struct {
 
 var (
 	AWSClassic = Platform{
-		names: [2]string{"aws", "aws-classic"},
+		names: [2]string{"aws-classic", "aws"},
 	}
 	AWSHCP = Platform{
-		names: [2]string{"hostedcluster", "aws-hcp"},
+		names: [2]string{"aws-hcp", "hostedcluster"},
 	}
 	GCPClassic = Platform{
-		names: [2]string{"gcp", "gcp-classic"},
+		names: [2]string{"gcp-classic", "gcp"},
 	}
 )
 
