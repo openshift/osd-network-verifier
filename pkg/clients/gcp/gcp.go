@@ -13,11 +13,11 @@ type Client struct {
 }
 
 func NewClient(credentials *google.Credentials) (*Client, error) {
-	//use oauth2 token in credentials struct to create a client,
+	// Use oauth2 token in credentials struct to create a client,
 	// https://pkg.go.dev/golang.org/x/oauth2/google#Credentials
 
 	// https://cloud.google.com/docs/authentication/production
-	//service account credentials order/priority - env variable, service account attached to resource, error
+	// Service account credentials order/priority - env variable, service account attached to resource, error
 
 	computeService, err := computev1.NewService(context.TODO())
 	if err != nil {
@@ -27,14 +27,14 @@ func NewClient(credentials *google.Credentials) (*Client, error) {
 	return &Client{computeService: computeService}, nil
 }
 
-// terminateComputeServiceInstance terminates target ComputeService instance
-// uses c.output to store result of the execution
+// Terminates target ComputeService instance
+// Uses c.output to store result of the execution
 func (c *Client) TerminateComputeServiceInstance(projectID, zone, instanceName string) error {
 	_, err := c.computeService.Instances.Delete(projectID, zone, instanceName).Context(context.TODO()).Do()
 	return err
 }
 
-// returns a map of all machineTypes with the machinetype string as the key and bool true if found
+// Returns a map of all machineTypes with the machinetype string as the key and bool true if found
 func (c *Client) ListMachineTypes(projectID, zone string) (map[string]bool, error) {
 	machineTypesMap := map[string]bool{}
 	req := c.computeService.MachineTypes.List(projectID, zone)
@@ -59,7 +59,7 @@ func (c *Client) CreateInstance(projectID, zone string, instance *computev1.Inst
 	return nil
 }
 
-// gets instance given an ID , zone , and instance name
+// Gets instance given an ID , zone , and instance name
 func (c *Client) GetInstance(projectID, zone, instanceName string) (computev1.Instance, error) {
 	instance, err := c.computeService.Instances.Get(projectID, zone, instanceName).Do()
 	if err != nil {
@@ -68,7 +68,7 @@ func (c *Client) GetInstance(projectID, zone, instanceName string) (computev1.In
 	return *instance, nil
 }
 
-// send request to apply tags, return error if tags are invalid
+// Send request to apply tags, return error if tags are invalid
 func (c *Client) SetInstanceLabels(projectID, zone, instanceName string, labelReq *computev1.InstancesSetLabelsRequest) error {
 	_, err := c.computeService.Instances.SetLabels(projectID, zone, instanceName, labelReq).Do()
 	if err != nil {
@@ -77,6 +77,7 @@ func (c *Client) SetInstanceLabels(projectID, zone, instanceName string, labelRe
 	return nil
 }
 
+// Gets serial port output for the specified instance
 func (c *Client) GetInstancePorts(projectID, zone, instanceName string) (*computev1.SerialPortOutput, error) {
 	resp, err := c.computeService.Instances.GetSerialPortOutput(projectID, zone, instanceName).Do()
 	if err != nil {

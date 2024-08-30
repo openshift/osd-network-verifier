@@ -14,16 +14,14 @@
 ### GCP Environment ###
 Set up your environment to use the correct VPC name, project ID, credentials of the GCP account for the target cluster.
 - Make sure to have a Service Account with the permissions required within your GCP account (in that project). This can be done in the following ways:
-  -  Follow the steps to use a script as prescibed in [this document.](https://github.com/openshift/ops-sop/blob/master/gcp/create-ccs-project.md) or create a service account manually [this] (https://cloud.google.com/iam/docs/creating-managing-service-accounts#iam-service-accounts-create-gcloud)
-  - Export these GCP environment variables:
+  -  Follow the steps to use a script as prescibed in [this document.](https://github.com/openshift/ops-sop/blob/master/v4/howto/gcp/create-ccs-project.md) or create a service account manually [this] (https://cloud.google.com/iam/docs/creating-managing-service-accounts#iam-service-accounts-create-gcloud)
+  - Export GCP project id environment variable:
      ```shell
-     export GCP_VPC_NAME=<YOUR_GCP_VPC_NAME)>
      export GCP_PROJECT_ID=<YOUR_GCP_PROJECT_ID>
      ```
-    Export any other GCP environment vars:
+    Export GCP region environment variable or use `--region` flag:
       ```shell
       export GCP_REGION=<VPC_GCP_REGION>
-      export GOOGLE_APPLICATION_CREDENTIALS=<PATH_TO_CREDENTIALS_JSON_FILE>
       ````
   
 ### IAM permissions ###
@@ -52,25 +50,25 @@ repeat the verification process for each subnet ID.
       This generates `osd-network-verifier` executable in project root directory. 
 
    4. Obtain params:
-      1. subnet_id: Obtain the subnet id to be verified. 
+      1. subnet-id: Obtain the subnet id to be verified. 
+      2. vpc-name: Obtain the VPC name that the subnet belongs to
 
    5. Execute:
 
        ```shell        
       # GCP
-      ./osd-network-verifier egress --platform gcp-classic --subnet-id $SUBNET_ID 
+      ./osd-network-verifier egress --platform gcp-classic --subnet-id $SUBNET_ID --vpc-name $VPC_NAME
       
         Additional optional flags for overriding defaults (image-id, kms-key will be added in the future):
       ```shell
       --cloud-tags stringToString   (optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2 (default [osd-network-verifier=owned,red-hat-managed=true,Name=osd-network-verifier])
       --debug                       (optional) if true, enable additional debug-level logging
       -- TODO image-id string             (optional) cloud image for the compute instance
-      --instance-type string        (optional) compute instance type (default "e2-standard-2")
+      --instance-type string        (optional) compute instance type (default "e2-micro")
       -- TODO kms-key-id string           (optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key
       --region string               (optional) compute instance region. If absent, environment var GCP_REGION will be used, if set (default "us-east1")
-      
       --subnet-id string            source subnet ID
-      --timeout duration            (optional) timeout for individual egress verification requests (default 2s). If timeout is less than 2s, it would likely cause false negatives test results.
+      --timeout duration            (optional) timeout for individual egress verification requests (default 5s). 
          ```
    
        Get cli help:

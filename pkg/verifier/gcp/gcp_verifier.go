@@ -22,6 +22,20 @@ type GcpVerifier struct {
 	Output    output.Output
 }
 
+type createComputeServiceInstanceInput struct {
+	projectID        string
+	zone             string
+	vpcSubnetID      string
+	userdata         string
+	machineType      string
+	instanceName     string
+	sourceImage      string
+	networkName      string
+	tags             map[string]string
+	serialportenable string
+}
+
+// Creates new GCP verifier with ocm logger
 func NewGcpVerifier(creds *google.Credentials, debug bool) (*GcpVerifier, error) {
 	// Create logger
 	builder := ocmlog.NewStdLoggerBuilder()
@@ -39,6 +53,7 @@ func NewGcpVerifier(creds *google.Credentials, debug bool) (*GcpVerifier, error)
 	return &GcpVerifier{*gcpClient, logger, output.Output{}}, nil
 }
 
+// Check that instance type is supported in zone
 func (g *GcpVerifier) validateMachineType(projectID, zone, instanceType string) error {
 	g.Logger.Debug(context.TODO(), "Gathering description of instance type %s from ComputeService API in zone %s", instanceType, zone)
 
@@ -56,20 +71,7 @@ func (g *GcpVerifier) validateMachineType(projectID, zone, instanceType string) 
 	return nil
 }
 
-type createComputeServiceInstanceInput struct {
-	projectID        string
-	zone             string
-	vpcSubnetID      string
-	userdata         string
-	machineType      string
-	instanceName     string
-	sourceImage      string
-	networkName      string
-	tags             map[string]string
-	serialportenable string
-}
-
-// this fuciton is a logic function that lieves some where else
+// This function is a logic function that lives somewhere else
 func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceInstanceInput) (computev1.Instance, error) {
 
 	req := &computev1.Instance{
@@ -93,7 +95,7 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 				Name:       input.networkName,
 				Subnetwork: input.vpcSubnetID,
 				// Only one accessConfigs exist which is ONE_TO_ONE_NAT
-				// needed for external internet access including egress
+				// Needed for external internet access including egress
 				AccessConfigs: []*computev1.AccessConfig{
 					{
 						Name: "External NAT",
@@ -123,41 +125,38 @@ func (g *GcpVerifier) createComputeServiceInstance(input createComputeServiceIns
 		},
 	}
 
-	//send request to computeService
-
+	// Send request to create instance
 	err := g.GcpClient.CreateInstance(input.projectID, input.zone, req)
 	if err != nil {
 		return computev1.Instance{}, fmt.Errorf("unable to create instance: %v", err)
 	}
-
 	g.Logger.Info(context.TODO(), "Created instance with ID: %s", input.instanceName)
 
-	//get fingerprint from instance
+	// Get fingerprint from instance
 	inst, err := g.GcpClient.GetInstance(input.projectID, input.zone, input.instanceName)
 	if err != nil {
 		g.Logger.Debug(context.TODO(), "Failed to get fingerprint to apply tags to instance %v", err)
 	}
 
-	//Add tags - known as labels in gcp
+	// Add tags - known as labels in gcp
 	g.Logger.Info(context.TODO(), "Applying labels")
-
 	labelReq := &computev1.InstancesSetLabelsRequest{
 		LabelFingerprint: inst.LabelFingerprint,
 		Labels:           input.tags,
 	}
 
-	//send request to apply tags, return error if tags are invalid
+	// Send request to apply tags, return error if tags are invalid
 	err = g.GcpClient.SetInstanceLabels(input.projectID, input.zone, input.instanceName, labelReq)
 	if err != nil {
 		return computev1.Instance{}, fmt.Errorf("unable to create labels: %v", err)
 	}
-
 	g.Logger.Info(context.TODO(), "Successfully applied labels ")
 
 	return inst, nil
 
 }
 
+// Get the console output from the ComputeService instance and scrape it for the probe's output and parse
 func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName string, probe probes.Probe) error {
 	var consoleOutput string
 	g.Logger.Debug(context.TODO(), "Scraping console output and waiting for user data script to complete...")
@@ -170,10 +169,12 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 			return false, err
 		}
 
+		// Return and resume waiting if console output is still nil
 		if output == nil {
 			return false, nil
 		}
 
+		// In the early stages, an ComputeService instance may be running but the console is not populated with any data
 		if len(output.Contents) == 0 {
 			g.Logger.Debug(context.TODO(), "ComputeService console output not yet populated with data, continuing to wait...")
 			return false, nil
@@ -196,7 +197,6 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 			g.Logger.Debug(context.TODO(), "consoleOutput contains data, but probe has not yet printed endingToken, continuing to wait...")
 			return false, nil
 		}
-
 		// If we make it this far, we know that both startingTokenSeen and endingTokenSeen are true
 
 		// Separate the probe's output from the rest of the console output (using startingToken and endingToken)
@@ -206,6 +206,7 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 			g.Output.AddException(handledErrors.NewGenericError(fmt.Errorf("probe output corrupted: no data between startingToken and endingToken")))
 			return false, nil
 		}
+
 		// Send probe's output off to the Probe interface for parsing
 		g.Logger.Debug(context.TODO(), "probe output:\n---\n%s\n---", rawProbeOutput)
 		probe.ParseProbeOutput(rawProbeOutput, &g.Output)
@@ -216,13 +217,11 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 	return err
 }
 
+// Describes the instance status
+// States: PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, TERMINATED, SUSPENDED
+// https://cloud.google.com/compute/docs/instances/instance-life-cycle
+// Error Codes: https://cloud.google.com/apis/design/errors
 func (c *GcpVerifier) describeComputeServiceInstances(projectID, zone, instanceName string) (string, error) {
-	// States
-	//PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, TERMINATED, SUSPENDED
-	// https://cloud.google.com/compute/docs/instances/instance-life-cycle
-
-	//Error Codes https://cloud.google.com/apis/design/errors
-
 	resp, err := c.GcpClient.GetInstance(projectID, zone, instanceName)
 	if err != nil {
 		c.Logger.Error(context.TODO(), "Errors while describing the instance status: %v", err.Error())
@@ -243,13 +242,13 @@ func (c *GcpVerifier) describeComputeServiceInstances(projectID, zone, instanceN
 	return resp.Status, nil
 }
 
+// Waits for the ComputeService instance to be in a RUNNING state
 func (c *GcpVerifier) waitForComputeServiceInstanceCompletion(projectID, zone, instanceName string) error {
-	//wait for the instance to run
 	err := helpers.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
 		code, descError := c.describeComputeServiceInstances(projectID, zone, instanceName)
 		switch code {
 		case "RUNNING":
-			//instance is running, break
+			// Instance is running, break
 			c.Logger.Info(context.TODO(), "ComputeService Instance: %s %s", instanceName, code)
 			return true, nil
 

@@ -5,6 +5,9 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/output"
 )
 
+// dummy.Probe is an implementation of the probes.Probe interface for testing / building the verifier client.
+// MachineID and UserData are hardcoded for testing purposes.
+
 type Probe struct{}
 
 const (
@@ -20,7 +23,7 @@ func (prb Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
 func (prb Probe) GetMachineImageID(string, cpu.Architecture, string) (string, error) {
-	return "rhel-9", nil
+	return "rhel-9-v20240709", nil
 }
 
 // GetExpandedUserData returns a bash-formatted userdata string
@@ -28,7 +31,7 @@ func (prb Probe) GetExpandedUserData(map[string]string) (string, error) {
 	return `#!/bin/sh
 	systemctl mask --now serial-getty@ttyS0.service
 	systemctl disable --now syslog.socket rsyslog.service
-	sysctl -w kernel.printk="0 4 0 7"ss
+	sysctl -w kernel.printk="0 4 0 7"
 	echo DUMMY_START > /dev/ttyS0
 	echo "hello world" > /dev/ttyS0
 	echo DUMMY_END > /dev/ttyS0`, nil
