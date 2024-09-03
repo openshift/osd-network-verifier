@@ -1,5 +1,4 @@
 reviewers:
-  - AlexVulaj
   - abyrne55
   - reedcort
   - dakotalongRH
@@ -9,12 +8,13 @@ approvers:
   - abyrne55
   - rafael-azevedo
   - fahlmant
-  - AlexVulaj
+  - luis-falcon
 emeritus_approvers:
   - bng0y
   - boranx
   - bdematte
   - mjlshen
+  - AlexVulaj
 maintainers:
   - abyrne55
   - fahlmant
