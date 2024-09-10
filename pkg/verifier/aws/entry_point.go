@@ -297,7 +297,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			})
 			if err != nil {
 				a.Logger.Info(vei.Ctx, "Unable to detach instance from security group. Falling back to slower cloud resource cleanup method.")
-				a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Error encountered while trying to detach instance: %s.", err))
+				a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Fell back to slower cloud resource cleanup because faster method (network interface detatchment) blocked by AWS: %s.", err))
 			}
 		}
 
