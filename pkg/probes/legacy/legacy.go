@@ -55,7 +55,7 @@ func (lgp Probe) GetMachineImageID(platformType cloud.Platform, cpuArch cpu.Arch
 		os.Exit(1)
 	}
 
-	if platformType == cloud.AWSHCP {
+	if platformType == cloud.AWSHCP || platformType == cloud.AWSHCPZeroEgress {
 		// HCP uses the same AMIs as Classic
 		platformType = cloud.AWSClassic
 	}
@@ -104,7 +104,7 @@ func (lgp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 // ParseProbeOutput accepts a string containing all probe output that appeared between
 // the startingToken and the endingToken and a pointer to an Output object. outputDestination
 // will be filled with the results from the egress check
-func (lgp Probe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
+func (lgp Probe) ParseProbeOutput(ensurePrivate bool, probeOutput string, outputDestination *output.Output) {
 	// reSuccess indicates that network validation was successful
 	reSuccess := regexp.MustCompile(`Success!`)
 

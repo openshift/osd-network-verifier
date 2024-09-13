@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/oauth2/google"
+
 	"github.com/openshift/osd-network-verifier/cmd/utils"
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
@@ -20,7 +22,6 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	gcpverifier "github.com/openshift/osd-network-verifier/pkg/verifier/gcp"
-	"golang.org/x/oauth2/google"
 
 	"github.com/spf13/cobra"
 )
@@ -137,7 +138,7 @@ are set correctly before execution.
 			}
 
 			// AWS workflow
-			if platformType == cloud.AWSClassic || platformType == cloud.AWSHCP {
+			if platformType == cloud.AWSClassic || platformType == cloud.AWSHCP || platformType == cloud.AWSHCPZeroEgress {
 
 				if len(vei.Tags) == 0 {
 					vei.Tags = awsDefaultTags
@@ -253,7 +254,8 @@ are set correctly before execution.
 		},
 	}
 
-	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%s', '%s', or '%s' (hypershift)", cloud.AWSClassic, cloud.GCPClassic, cloud.AWSHCP))
+	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. "+
+		"Either '%s', '%s', '%s', or '%s' (hypershift)", cloud.AWSClassic, cloud.GCPClassic, cloud.AWSHCP, cloud.AWSHCPZeroEgress))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "target subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")

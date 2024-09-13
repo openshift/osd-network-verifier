@@ -10,7 +10,9 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
+
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -244,7 +246,12 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// findUnreachableEndpoints will call Probe.ParseProbeOutput(), which will store egress failures in a.Output.failures
-	err = a.findUnreachableEndpoints(vei.Ctx, instanceID, vei.Probe)
+	ensurePrivate := false
+	if vei.PlatformType == cloud.AWSHCPZeroEgress {
+		ensurePrivate = true
+	}
+	err = a.findUnreachableEndpoints(vei.Ctx, instanceID, vei.Probe, ensurePrivate)
+
 	if err != nil {
 		a.Output.AddError(err)
 		// Don't return yet; still need to terminate instance

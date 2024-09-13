@@ -11,5 +11,5 @@ type Probe interface {
 	GetStartingToken() string
 	GetEndingToken() string
 	GetExpandedUserData(map[string]string) (string, error)
-	ParseProbeOutput(string, *output.Output)
+	ParseProbeOutput(bool, string, *output.Output)
 }

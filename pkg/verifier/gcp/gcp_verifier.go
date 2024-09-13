@@ -7,13 +7,14 @@ import (
 	"time"
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+	"golang.org/x/oauth2/google"
+	computev1 "google.golang.org/api/compute/v1"
+
 	"github.com/openshift/osd-network-verifier/pkg/clients/gcp"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
-	"golang.org/x/oauth2/google"
-	computev1 "google.golang.org/api/compute/v1"
 )
 
 type GcpVerifier struct {
@@ -209,7 +210,7 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 
 		// Send probe's output off to the Probe interface for parsing
 		g.Logger.Debug(context.TODO(), "probe output:\n---\n%s\n---", rawProbeOutput)
-		probe.ParseProbeOutput(rawProbeOutput, &g.Output)
+		probe.ParseProbeOutput(false, rawProbeOutput, &g.Output)
 
 		return true, nil
 	})

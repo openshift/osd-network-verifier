@@ -1,0 +1,10 @@
+endpoints:
+- host: sts.${AWS_REGION}.amazonaws.com
+  ports:
+    - 443
+- host: example.dkr.ecr.${AWS_REGION}.amazonaws.com
+  ports:
+    - 443
+- host: api.ecr.${AWS_REGION}.amazonaws.com
+  ports:
+    - 443
