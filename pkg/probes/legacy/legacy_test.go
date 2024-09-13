@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
@@ -24,7 +24,7 @@ func TestLegacyProbe_ImplementsProbeInterface(t *testing.T) {
 // TestLegacyProbe_GetMachineImageID tests this probe's cloud VM image lookup table
 func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 	type args struct {
-		platformType string
+		platformType cloud.Platform
 		cpuArch      cpu.Architecture
 		region       string
 	}
@@ -39,7 +39,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 		{
 			name: "AWS happy path",
 			args: args{
-				platformType: platform.AWSClassic.String(),
+				platformType: cloud.AWSClassic,
 				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
@@ -49,7 +49,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 		{
 			name: "AWS HCP",
 			args: args{
-				platformType: platform.AWSHCP.String(),
+				platformType: cloud.AWSHCP,
 				cpuArch:      cpu.ArchX86,
 				region:       "us-east-1",
 			},
@@ -59,7 +59,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 		{
 			name: "GCP must error",
 			args: args{
-				platformType: platform.GCPClassic.String(),
+				platformType: cloud.GCPClassic,
 				cpuArch:      cpu.ArchX86,
 				region:       "europe-west1-c",
 			},
@@ -68,7 +68,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 		{
 			name: "ARM must error",
 			args: args{
-				platformType: platform.AWSClassic.String(),
+				platformType: cloud.AWSClassic,
 				cpuArch:      cpu.ArchARM,
 				region:       "us-east-1",
 			},
@@ -77,7 +77,7 @@ func TestLegacyProbe_GetMachineImageID(t *testing.T) {
 		{
 			name: "bad AWS region",
 			args: args{
-				platformType: platform.AWSClassic.String(),
+				platformType: cloud.AWSClassic,
 				cpuArch:      cpu.ArchX86,
 				region:       "foobar",
 			},

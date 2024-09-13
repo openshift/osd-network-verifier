@@ -89,7 +89,7 @@ type AwsVerifier struct {
 // other than X86, or probes other than CurlJSONProbe. It also doesn't return detailed errors. Instead, use:
 // [probe_package].[ProbeName].GetMachineImageID(platformType, cpuArch, region)
 func GetAMIForRegion(region string) string {
-	ami, err := curl.Probe{}.GetMachineImageID(platform.AWSClassic.String(), cpu.ArchX86, region)
+	ami, err := curl.Probe{}.GetMachineImageID(platform.AWSClassic, cpu.ArchX86, region)
 	if err != nil {
 		return ""
 	}

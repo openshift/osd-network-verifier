@@ -1,7 +1,7 @@
 package curl
 
 import (
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 )
 
@@ -11,8 +11,8 @@ import (
 // e.g., cloudMachineImageMap[helpers.PlatformAWS][cpu.ArchX86]["us-east-1"]
 // Note that GCP images are global/not region-scoped, so the region key will
 // always be "*"
-var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
-	platform.AWSClassic.String(): {
+var cloudMachineImageMap = map[cloud.Platform]map[cpu.Architecture]map[string]string{
+	cloud.AWSClassic: {
 		cpu.ArchX86: {
 			"af-south-1":     "ami-0974db472280394e1",
 			"ap-east-1":      "ami-03a4cbb657e8ea739",
@@ -73,7 +73,7 @@ var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
 		},
 	},
 	// See function docstring's note on GCP; tl;dr: deepest key should be "*"
-	platform.GCPClassic.String(): {
+	cloud.GCPClassic: {
 		cpu.ArchX86: {
 			"*": "rhel-9-v20240709",
 		},

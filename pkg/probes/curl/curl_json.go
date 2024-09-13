@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -50,34 +50,32 @@ func (clp Probe) GetStartingToken() string { return startingToken }
 func (clp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
-func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
+func (clp Probe) GetMachineImageID(platformType cloud.Platform, cpuArch cpu.Architecture, region string) (string, error) {
 	//Validate platformType
-	platformStruct, err := platform.ByName(platformType)
-	if err != nil {
-		return "", err
+	if !platformType.IsValid() {
+		fmt.Printf("Invalid platform type specified %s", platformType)
+		os.Exit(1)
 	}
-	// Normalize platformType
-	normalizedPlatformType := platformStruct.String()
 
-	if normalizedPlatformType == platform.AWSHCP.String() {
+	if platformType == cloud.AWSHCP {
 		// HCP uses the same AMIs as Classic
-		normalizedPlatformType = platform.AWSClassic.String()
+		platformType = cloud.AWSClassic
 	}
 
 	// Normalize region key (GCP images are global/not region-scoped)
 	normalizedRegion := region
-	if normalizedPlatformType == platform.GCPClassic.String() {
+	if platformType == cloud.GCPClassic {
 		normalizedRegion = "*"
 	}
 
 	// Access lookup table
-	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][normalizedRegion]
+	imageID, keyExists := cloudMachineImageMap[platformType][cpuArch][normalizedRegion]
 	if !keyExists {
 		return "", fmt.Errorf(
 			"no default curl probe machine image for arch %s in region %s of platform %s",
 			cpuArch,
 			normalizedRegion,
-			normalizedPlatformType,
+			platformType,
 		)
 	}
 

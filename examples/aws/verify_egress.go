@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
@@ -64,7 +64,7 @@ func extendValidateEgress() {
 			KmsKeyID:         "kmskeyID",
 			SecurityGroupIDs: []string{"SecurityGroupID1", "OptionalSecurityGroupID2"},
 		},
-		PlatformType:    platform.AWSClassic.String(),
+		PlatformType:    cloud.AWSClassic,
 		Probe:           curl.Probe{},
 		CPUArchitecture: cpu.ArchX86,
 	}

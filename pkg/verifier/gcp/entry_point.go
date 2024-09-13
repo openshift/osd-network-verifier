@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -27,8 +27,8 @@ const (
 // - return `g.output` which stores the execution results
 func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	// Validate cloud platform type and default to PlatformGCP if not specified
-	if vei.PlatformType == "" {
-		vei.PlatformType = platform.GCPClassic.String()
+	if !vei.PlatformType.IsValid() {
+		vei.PlatformType = cloud.AWSClassic
 	}
 	if !vei.CPUArchitecture.IsValid() {
 		vei.CPUArchitecture = cpu.ArchX86
@@ -48,7 +48,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	// Set instance type to default if not specified and validate it
 	if vei.InstanceType == "" {
 		var err error
-		vei.InstanceType, err = vei.CPUArchitecture.DefaultInstanceType(platform.GCPClassic.String())
+		vei.InstanceType, err = vei.CPUArchitecture.DefaultInstanceType(cloud.GCPClassic)
 		if err != nil {
 			return g.Output.AddError(err)
 		}

@@ -11,7 +11,7 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
@@ -396,8 +396,8 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 // TestAwsVerifier_selectInstanceType uses a mock EC2 API client to test the logic used for selecting
 // an instance type and CPU architecture based on user inputs and programmed defaults
 func TestAwsVerifier_selectInstanceType(t *testing.T) {
-	x86DefaultInstanceType, _ := cpu.ArchX86.DefaultInstanceType(platform.AWSClassic.String())
-	armDefaultInstanceType, _ := cpu.ArchARM.DefaultInstanceType(platform.AWSClassic.String())
+	x86DefaultInstanceType, _ := cpu.ArchX86.DefaultInstanceType(cloud.AWSClassic)
+	armDefaultInstanceType, _ := cpu.ArchARM.DefaultInstanceType(cloud.AWSClassic)
 
 	type MockInstanceInfo struct {
 		CPUArchitecture ec2Types.ArchitectureType

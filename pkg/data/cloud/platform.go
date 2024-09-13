@@ -1,4 +1,4 @@
-package platform
+package cloud
 
 import (
 	"fmt"
@@ -53,7 +53,7 @@ func ByName(name string) (Platform, error) {
 }
 
 // IsValid returns true if the Platform is non-empty and supported by the network verifier
-func (plat Platform) isValid() bool {
+func (plat Platform) IsValid() bool {
 	switch plat {
 	case AWSClassic, AWSHCP, GCPClassic:
 		return true

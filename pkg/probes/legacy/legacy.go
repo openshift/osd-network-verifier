@@ -7,7 +7,7 @@ import (
 	"os"
 	"regexp"
 
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -48,27 +48,26 @@ func (lgp Probe) GetStartingToken() string { return startingToken }
 func (lgp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
-func (lgp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
-	platformTypeName, err := platform.ByName(platformType)
-	if err != nil {
-		return "", err
+func (lgp Probe) GetMachineImageID(platformType cloud.Platform, cpuArch cpu.Architecture, region string) (string, error) {
+	//Validate platformType
+	if !platformType.IsValid() {
+		fmt.Printf("Invalid platform type specified %s", platformType)
+		os.Exit(1)
 	}
-	// Validate/normalize platformType
-	normalizedPlatformType := platformTypeName.String()
 
-	if normalizedPlatformType == platform.AWSHCP.String() {
+	if platformType == cloud.AWSHCP {
 		// HCP uses the same AMIs as Classic
-		normalizedPlatformType = platform.AWSClassic.String()
+		platformType = cloud.AWSClassic
 	}
 
 	// Access lookup table
-	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][region]
+	imageID, keyExists := cloudMachineImageMap[platformType][cpuArch][region]
 	if !keyExists {
 		return "", fmt.Errorf(
 			"no default legacy probe machine image for arch %s in region %s of platform %s",
 			cpuArch,
 			region,
-			normalizedPlatformType,
+			platformType,
 		)
 	}
 

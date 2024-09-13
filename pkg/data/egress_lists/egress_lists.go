@@ -14,7 +14,7 @@ import (
 	"os"
 
 	"github.com/google/go-github/v63/github"
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,41 +27,37 @@ var templateAWSHCP string
 //go:embed gcp-classic.yaml
 var templateGCPClassic string
 
-func GetLocalEgressList(platformType string) (string, error) {
-	platformTypeName, err := platform.ByName(platformType)
-	if err != nil {
-		return "", err
+func GetLocalEgressList(platformType cloud.Platform) (string, error) {
+	if !platformType.IsValid() {
+		fmt.Printf("platform type %s is invalid", platformType)
 	}
-	platformType = platformTypeName.String()
 
 	switch platformType {
-	case platform.GCPClassic.String():
+	case cloud.GCPClassic:
 		return templateGCPClassic, nil
-	case platform.AWSHCP.String():
+	case cloud.AWSHCP:
 		return templateAWSHCP, nil
-	case platform.AWSClassic.String():
+	case cloud.AWSClassic:
 		return templateAWSClassic, nil
 	default:
 		return "", fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}
 }
 
-func GetGithubEgressList(platformType string) (*github.RepositoryContent, error) {
+func GetGithubEgressList(platformType cloud.Platform) (*github.RepositoryContent, error) {
 	ghClient := github.NewClient(nil)
 	path := "/pkg/data/egress_lists/"
-	platformTypeName, err := platform.ByName(platformType)
-	if err != nil {
-		return nil, err
+	if !platformType.IsValid() {
+		fmt.Printf("Platform type %s is invalid", platformType)
 	}
-	platformType = platformTypeName.String()
 
 	switch platformType {
-	case platform.GCPClassic.String():
-		path += platform.GCPClassic.String()
-	case platform.AWSHCP.String():
-		path += platform.AWSHCP.String()
-	case platform.AWSClassic.String():
-		path += platform.AWSClassic.String()
+	case cloud.GCPClassic:
+		path += cloud.GCPClassic.String()
+	case cloud.AWSHCP:
+		path += cloud.AWSHCP.String()
+	case cloud.AWSClassic:
+		path += cloud.AWSClassic.String()
 	default:
 		return nil, fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}

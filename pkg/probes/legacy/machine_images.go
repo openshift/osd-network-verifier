@@ -1,7 +1,7 @@
 package legacy
 
 import (
-	platform "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 )
 
@@ -10,8 +10,8 @@ import (
 // access, reference cloudMachineImageMap[$CLOUD_PLATFORM][$CPU_ARCH][$REGION];
 // e.g., cloudMachineImageMap[platform.AWSClassic][cpu.ArchX86]["us-east-1"]
 // Note that the legacy probe only has ever supported X86 on AWS
-var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
-	platform.AWSClassic.String(): {
+var cloudMachineImageMap = map[cloud.Platform]map[cpu.Architecture]map[string]string{
+	cloud.AWSClassic: {
 		cpu.ArchX86: {
 			"af-south-1":     "ami-082888538e0d5ab6f",
 			"ap-east-1":      "ami-0e8a82f83fd6c4671",

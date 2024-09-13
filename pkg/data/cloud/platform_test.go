@@ -1,4 +1,4 @@
-package platform
+package cloud
 
 import (
 	"testing"
@@ -99,7 +99,7 @@ func TestPlatform_IsValid(t *testing.T) {
 			platform := Platform{
 				names: tt.fields.names,
 			}
-			if got := platform.isValid(); got != tt.want {
+			if got := platform.IsValid(); got != tt.want {
 				t.Errorf("Platform.IsValid() = %v, want %v", got, tt.want)
 			}
 		})
