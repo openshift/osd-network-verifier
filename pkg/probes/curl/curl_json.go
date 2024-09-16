@@ -53,8 +53,7 @@ func (clp Probe) GetEndingToken() string { return endingToken }
 func (clp Probe) GetMachineImageID(platformType cloud.Platform, cpuArch cpu.Architecture, region string) (string, error) {
 	//Validate platformType
 	if !platformType.IsValid() {
-		fmt.Printf("Invalid platform type specified %s", platformType)
-		os.Exit(1)
+		return "", handledErrors.NewGenericError(fmt.Errorf("invalid platform type specified %s", platformType))
 	}
 
 	if platformType == cloud.AWSHCP {
