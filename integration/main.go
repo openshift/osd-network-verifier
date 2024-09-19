@@ -11,6 +11,7 @@ import (
 
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	inttestaws "github.com/openshift/osd-network-verifier/integration/pkg/aws"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
@@ -25,7 +26,7 @@ func main() {
 	f := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	region := f.String("region", "us-east-1", "AWS Region")
 	profile := f.String("profile", "", "AWS Profile")
-	platform := f.String("platform", "aws", "(Optional) Platform type to validate, defaults to `aws`")
+	platformStr := f.String("platform", "aws", "(Optional) Platform type to validate, defaults to `aws`")
 	probeStr := f.String("probe", "curl", "(Optional) Probe to validate, defaults to `curl`")
 	createOnly := f.Bool("create-only", false, "When specified, only create infrastructure and do not delete")
 	deleteOnly := f.Bool("delete-only", false, "When specified, delete infrastructure in an idempotent fashion")
@@ -40,6 +41,11 @@ func main() {
 	)
 
 	probe, err := GetProbeByName(*probeStr)
+	if err != nil {
+		panic(err)
+	}
+
+	platform, err := cloud.ByName(*platformStr)
 	if err != nil {
 		panic(err)
 	}
@@ -77,7 +83,7 @@ func main() {
 		return
 	}
 
-	if err := onvEgressCheck(cfg, *platform, probe, *data.GetPrivateSubnetId(), *debug); err != nil {
+	if err := onvEgressCheck(cfg, platform, probe, *data.GetPrivateSubnetId(), *debug); err != nil {
 		panic(err)
 	}
 
@@ -86,7 +92,7 @@ func main() {
 	}
 }
 
-func onvEgressCheck(cfg aws.Config, platform string, probe probes.Probe, subnetId string, debug bool) error {
+func onvEgressCheck(cfg aws.Config, platform cloud.Platform, probe probes.Probe, subnetId string, debug bool) error {
 	builder := ocmlog.NewStdLoggerBuilder()
 	logger, err := builder.Build()
 	if err != nil {
