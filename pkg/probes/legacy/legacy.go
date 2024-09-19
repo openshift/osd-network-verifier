@@ -7,7 +7,7 @@ import (
 	"os"
 	"regexp"
 
-	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"

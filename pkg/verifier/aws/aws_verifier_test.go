@@ -11,7 +11,7 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
-	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/mocks"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"

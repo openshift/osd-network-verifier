@@ -32,7 +32,6 @@ type ValidateEgressInput struct {
 	Timeout                 time.Duration
 	Ctx                     context.Context
 	SubnetID, CloudImageID  string
-	PlatformType            cloud.Platform
 	EgressListYaml          string
 	Proxy                   proxy.ProxyConfig
 	Tags                    map[string]string
@@ -60,6 +59,10 @@ type ValidateEgressInput struct {
 	// CPUArchitecture controls the CPU architecture of the default/fallback cloud instance type.
 	// Has no effect if a supported value of InstanceType is provided.
 	CPUArchitecture cpu.Architecture
+
+	// PlatformType controls the platform of the default/fallback cloud platform type.
+	// Defaults to cloud.AWSClassic if no PlatformType is provided.
+	PlatformType cloud.Platform
 }
 type AwsEgressConfig struct {
 	KmsKeyID          string

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/probes"

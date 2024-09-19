@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/openshift/osd-network-verifier/cmd/utils"
-	cloud "github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
