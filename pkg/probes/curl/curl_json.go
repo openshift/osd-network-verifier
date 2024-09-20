@@ -4,11 +4,13 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"strconv"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -48,31 +50,31 @@ func (clp Probe) GetStartingToken() string { return startingToken }
 func (clp Probe) GetEndingToken() string { return endingToken }
 
 // GetMachineImageID returns the string ID of the VM image to be used for the probe instance
-func (clp Probe) GetMachineImageID(platformType string, cpuArch cpu.Architecture, region string) (string, error) {
-	// Validate/normalize platformType
-	normalizedPlatformType, err := helpers.GetPlatformType(platformType)
-	if err != nil {
-		return "", err
+func (clp Probe) GetMachineImageID(platformType cloud.Platform, cpuArch cpu.Architecture, region string) (string, error) {
+	//Validate platformType
+	if !platformType.IsValid() {
+		return "", handledErrors.NewGenericError(fmt.Errorf("invalid platform type specified %s", platformType))
 	}
-	if normalizedPlatformType == helpers.PlatformHostedCluster {
+
+	if platformType == cloud.AWSHCP {
 		// HCP uses the same AMIs as Classic
-		normalizedPlatformType = helpers.PlatformAWS
+		platformType = cloud.AWSClassic
 	}
 
 	// Normalize region key (GCP images are global/not region-scoped)
 	normalizedRegion := region
-	if normalizedPlatformType == helpers.PlatformGCP {
+	if platformType == cloud.GCPClassic {
 		normalizedRegion = "*"
 	}
 
 	// Access lookup table
-	imageID, keyExists := cloudMachineImageMap[normalizedPlatformType][cpuArch][normalizedRegion]
+	imageID, keyExists := cloudMachineImageMap[platformType][cpuArch][normalizedRegion]
 	if !keyExists {
 		return "", fmt.Errorf(
 			"no default curl probe machine image for arch %s in region %s of platform %s",
 			cpuArch,
 			normalizedRegion,
-			normalizedPlatformType,
+			platformType,
 		)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes"
@@ -28,18 +29,18 @@ type verifierService interface {
 type ValidateEgressInput struct {
 	// Timeout sets the maximum duration an egress endpoint request can take before it aborts and
 	// is retried or marked as blocked
-	Timeout                              time.Duration
-	Ctx                                  context.Context
-	SubnetID, CloudImageID, PlatformType string
-	EgressListYaml                       string
-	Proxy                                proxy.ProxyConfig
-	Tags                                 map[string]string
-	AWS                                  AwsEgressConfig
-	GCP                                  GcpEgressConfig
-	SkipInstanceTermination              bool
-	TerminateDebugInstance               string
-	ImportKeyPair                        string
-	ForceTempSecurityGroup               bool
+	Timeout                 time.Duration
+	Ctx                     context.Context
+	SubnetID, CloudImageID  string
+	EgressListYaml          string
+	Proxy                   proxy.ProxyConfig
+	Tags                    map[string]string
+	AWS                     AwsEgressConfig
+	GCP                     GcpEgressConfig
+	SkipInstanceTermination bool
+	TerminateDebugInstance  string
+	ImportKeyPair           string
+	ForceTempSecurityGroup  bool
 
 	// InstanceType sets the type or size of the instance (VM) launched into the target subnet. Only
 	// instance types using 64-bit X86 or ARM CPUs are supported. For AWS, only instance types using
@@ -58,6 +59,10 @@ type ValidateEgressInput struct {
 	// CPUArchitecture controls the CPU architecture of the default/fallback cloud instance type.
 	// Has no effect if a supported value of InstanceType is provided.
 	CPUArchitecture cpu.Architecture
+
+	// PlatformType controls the platform of the default/fallback cloud platform type.
+	// Defaults to cloud.AWSClassic if no PlatformType is provided.
+	PlatformType cloud.Platform
 }
 type AwsEgressConfig struct {
 	KmsKeyID          string

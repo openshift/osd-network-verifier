@@ -1,17 +1,17 @@
 package legacy
 
 import (
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
 )
 
 // cloudMachineImageMap is a lookup table mapping VM image IDs to their
 // respective cloud platforms, CPU architectures, and cloud regions. To
 // access, reference cloudMachineImageMap[$CLOUD_PLATFORM][$CPU_ARCH][$REGION];
-// e.g., cloudMachineImageMap[helpers.PlatformAWS][cpu.ArchX86]["us-east-1"]
+// e.g., cloudMachineImageMap[cloud.AWSClassic][cpu.ArchX86]["us-east-1"]
 // Note that the legacy probe only has ever supported X86 on AWS
-var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
-	helpers.PlatformAWS: {
+var cloudMachineImageMap = map[cloud.Platform]map[cpu.Architecture]map[string]string{
+	cloud.AWSClassic: {
 		cpu.ArchX86: {
 			"af-south-1":     "ami-082888538e0d5ab6f",
 			"ap-east-1":      "ami-0e8a82f83fd6c4671",

@@ -10,9 +10,9 @@ import (
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
@@ -31,16 +31,10 @@ const (
 // - find unreachable endpoints & parse output, then terminate instance
 // - return `a.output` which stores the execution results
 func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
-	// Validate cloud platform type and default to PlatformAWS if necessary
-	if vei.PlatformType == "" {
-		vei.PlatformType = helpers.PlatformAWS
+	// Validate cloud platform type
+	if !vei.PlatformType.IsValid() {
+		vei.PlatformType = cloud.AWSClassic
 	}
-	normalizedPlatformType, err := helpers.GetPlatformType(vei.PlatformType)
-	if err != nil {
-		return a.Output.AddError(fmt.Errorf("cannot use platform type %s: %w", vei.PlatformType, err))
-	}
-	vei.PlatformType = normalizedPlatformType
-
 	// Default to curl.Probe if no Probe specified
 	if vei.Probe == nil {
 		vei.Probe = curl.Probe{}
@@ -53,6 +47,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
+	var err error
 	// Determine instance type and CPUArchitecture
 	vei.InstanceType, vei.CPUArchitecture, err = a.selectInstanceType(vei.Ctx, vei.InstanceType, vei.CPUArchitecture)
 	if err != nil {

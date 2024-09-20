@@ -1,18 +1,18 @@
 package curl
 
 import (
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
 )
 
 // cloudMachineImageMap is a lookup table mapping VM image IDs to their
 // respective cloud platforms, CPU architectures, and cloud regions. To
 // access, reference cloudMachineImageMap[$CLOUD_PLATFORM][$CPU_ARCH][$REGION];
-// e.g., cloudMachineImageMap[helpers.PlatformAWS][cpu.ArchX86]["us-east-1"]
+// e.g., cloudMachineImageMap[cloud.PlatformAWS][cpu.ArchX86]["us-east-1"]
 // Note that GCP images are global/not region-scoped, so the region key will
 // always be "*"
-var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
-	helpers.PlatformAWS: {
+var cloudMachineImageMap = map[cloud.Platform]map[cpu.Architecture]map[string]string{
+	cloud.AWSClassic: {
 		cpu.ArchX86: {
 			"af-south-1":     "ami-0974db472280394e1",
 			"ap-east-1":      "ami-03a4cbb657e8ea739",
@@ -73,7 +73,7 @@ var cloudMachineImageMap = map[string]map[cpu.Architecture]map[string]string{
 		},
 	},
 	// See function docstring's note on GCP; tl;dr: deepest key should be "*"
-	helpers.PlatformGCP: {
+	cloud.GCPClassic: {
 		cpu.ArchX86: {
 			"*": "rhel-9-v20240709",
 		},

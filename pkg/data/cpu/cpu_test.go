@@ -3,7 +3,7 @@ package cpu
 import (
 	"testing"
 
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 )
 
 // TestArchitecture_Comparable simply forces the compiler to confirm that the Architecture type
@@ -19,48 +19,48 @@ func TestArchitecture_DefaultInstanceType(t *testing.T) {
 	tests := []struct {
 		name         string
 		arch         Architecture
-		platformType string
+		platformType cloud.Platform
 		want         string
 		wantErr      bool
 	}{
 		{
 			name:         "happy path",
 			arch:         ArchX86,
-			platformType: helpers.PlatformAWS,
+			platformType: cloud.AWSClassic,
 			want:         "t3.micro",
 			wantErr:      false,
 		},
 		{
 			name:         "alt platform name",
 			arch:         ArchARM,
-			platformType: helpers.PlatformAWSClassic,
+			platformType: cloud.AWSClassic,
 			want:         "t4g.micro",
 			wantErr:      false,
 		},
 		{
 			name:         "HCP",
 			arch:         ArchX86,
-			platformType: helpers.PlatformAWSHCP,
+			platformType: cloud.AWSHCP,
 			want:         "t3.micro",
 			wantErr:      false,
 		},
 		{
 			name:         "GCP",
 			arch:         ArchARM,
-			platformType: helpers.PlatformGCPClassic,
+			platformType: cloud.GCPClassic,
 			want:         "t2a-standard-1",
 			wantErr:      false,
 		},
 		{
 			name:         "invalid platform",
 			arch:         ArchARM,
-			platformType: "foobar",
+			platformType: cloud.Platform{},
 			wantErr:      true,
 		},
 		{
 			name:         "invalid arch",
 			arch:         Architecture{},
-			platformType: helpers.PlatformAWS,
+			platformType: cloud.AWSClassic,
 			wantErr:      true,
 		},
 	}

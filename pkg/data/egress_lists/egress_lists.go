@@ -11,10 +11,11 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/google/go-github/v63/github"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
-	"gopkg.in/yaml.v3"
 	"os"
+
+	"github.com/google/go-github/v63/github"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"gopkg.in/yaml.v3"
 )
 
 //go:embed aws-classic.yaml
@@ -26,29 +27,37 @@ var templateAWSHCP string
 //go:embed gcp-classic.yaml
 var templateGCPClassic string
 
-func GetLocalEgressList(platformType string) (string, error) {
+func GetLocalEgressList(platformType cloud.Platform) (string, error) {
+	if !platformType.IsValid() {
+		fmt.Printf("platform type %s is invalid", platformType)
+	}
+
 	switch platformType {
-	case helpers.PlatformGCPClassic, helpers.PlatformGCP:
+	case cloud.GCPClassic:
 		return templateGCPClassic, nil
-	case helpers.PlatformAWSHCP, helpers.PlatformHostedCluster:
+	case cloud.AWSHCP:
 		return templateAWSHCP, nil
-	case helpers.PlatformAWSClassic, helpers.PlatformAWS:
+	case cloud.AWSClassic:
 		return templateAWSClassic, nil
 	default:
 		return "", fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}
 }
 
-func GetGithubEgressList(platformType string) (*github.RepositoryContent, error) {
+func GetGithubEgressList(platformType cloud.Platform) (*github.RepositoryContent, error) {
 	ghClient := github.NewClient(nil)
 	path := "/pkg/data/egress_lists/"
+	if !platformType.IsValid() {
+		fmt.Printf("Platform type %s is invalid", platformType)
+	}
+
 	switch platformType {
-	case helpers.PlatformGCPClassic, helpers.PlatformGCP:
-		path += helpers.PlatformGCPClassic
-	case helpers.PlatformAWSHCP, helpers.PlatformHostedCluster:
-		path += helpers.PlatformAWSHCP
-	case helpers.PlatformAWSClassic, helpers.PlatformAWS:
-		path += helpers.PlatformAWSClassic
+	case cloud.GCPClassic:
+		path += cloud.GCPClassic.String()
+	case cloud.AWSHCP:
+		path += cloud.AWSHCP.String()
+	case cloud.AWSClassic:
+		path += cloud.AWSClassic.String()
 	default:
 		return nil, fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}

@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/openshift/osd-network-verifier/cmd/utils"
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/probes/legacy"
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
@@ -32,7 +32,7 @@ var (
 	awsRegionDefault    = "us-east-2"
 	gcpRegionEnvVarStr  = "GCP_REGION"
 	gcpRegionDefault    = "us-east1"
-	platformTypeDefault = helpers.PlatformAWSClassic
+	platformTypeDefault = cloud.AWSClassic.String()
 )
 
 type egressConfig struct {
@@ -61,9 +61,8 @@ type egressConfig struct {
 	probeName                  string
 }
 
-func getDefaultRegion(platformType string) string {
-
-	if platformType == helpers.PlatformGCP {
+func getDefaultRegion(platformType cloud.Platform) string {
+	if platformType == cloud.GCPClassic {
 		//gcp region
 		dRegion, ok := os.LookupEnv(gcpRegionEnvVarStr)
 		if !ok {
@@ -93,11 +92,10 @@ are set correctly before execution.
 # Verify that essential OpenShift domains are reachable from a given SUBNET_ID/SECURITY_GROUP association
 ./osd-network-verifier egress --subnet-id ${SUBNET_ID} --security-group-ids ${SECURITY_GROUP}`,
 		Run: func(cmd *cobra.Command, args []string) {
-			// OSD-20380 - remapping for backwards compatibility
-			platformType, err := helpers.GetPlatformType(config.platformType)
+			platformType, err := cloud.ByName(config.platformType)
 			if err != nil {
-				// Unknown platformType specified
-				fmt.Printf("unknown platform type '%v'\n", config.platformType)
+				//Unknown platformType specified
+				fmt.Println(err)
 				os.Exit(1)
 			}
 
@@ -139,7 +137,7 @@ are set correctly before execution.
 			}
 
 			// AWS workflow
-			if platformType == helpers.PlatformAWS || platformType == helpers.PlatformHostedCluster {
+			if platformType == cloud.AWSClassic || platformType == cloud.AWSHCP {
 
 				if len(vei.Tags) == 0 {
 					vei.Tags = awsDefaultTags
@@ -200,7 +198,7 @@ are set correctly before execution.
 			}
 
 			// GCP workflow
-			if platformType == helpers.PlatformGCP {
+			if platformType == cloud.GCPClassic {
 
 				if len(vei.Tags) == 0 {
 					vei.Tags = gcpDefaultTags
@@ -255,7 +253,7 @@ are set correctly before execution.
 		},
 	}
 
-	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%v', '%v', or '%v' (hypershift)", helpers.PlatformAWSClassic, helpers.PlatformGCPClassic, helpers.PlatformAWSHCP))
+	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. Either '%s', '%s', or '%s' (hypershift)", cloud.AWSClassic, cloud.GCPClassic, cloud.AWSHCP))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "target subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
