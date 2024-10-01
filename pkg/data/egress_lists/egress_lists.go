@@ -14,8 +14,9 @@ import (
 	"os"
 
 	"github.com/google/go-github/v63/github"
-	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"gopkg.in/yaml.v3"
+
+	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 )
 
 //go:embed aws-classic.yaml
@@ -26,6 +27,9 @@ var templateAWSHCP string
 
 //go:embed gcp-classic.yaml
 var templateGCPClassic string
+
+//go:embed aws-hcp-zeroegress.yaml
+var templateAWSHCPZeroEgress string
 
 func GetLocalEgressList(platformType cloud.Platform) (string, error) {
 	if !platformType.IsValid() {
@@ -39,6 +43,8 @@ func GetLocalEgressList(platformType cloud.Platform) (string, error) {
 		return templateAWSHCP, nil
 	case cloud.AWSClassic:
 		return templateAWSClassic, nil
+	case cloud.AWSHCPZeroEgress:
+		return templateAWSHCPZeroEgress, nil
 	default:
 		return "", fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}
@@ -58,6 +64,8 @@ func GetGithubEgressList(platformType cloud.Platform) (*github.RepositoryContent
 		path += cloud.AWSHCP.String()
 	case cloud.AWSClassic:
 		path += cloud.AWSClassic.String()
+	case cloud.AWSHCPZeroEgress:
+		path += cloud.AWSHCPZeroEgress.String()
 	default:
 		return nil, fmt.Errorf("no egress list registered for platform '%s'", platformType)
 	}

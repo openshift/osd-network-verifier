@@ -22,6 +22,9 @@ var (
 	AWSHCP = Platform{
 		names: [2]string{"aws-hcp", "hostedcluster"},
 	}
+	AWSHCPZeroEgress = Platform{
+		names: [2]string{"aws-hcp-zeroegress"},
+	}
 	GCPClassic = Platform{
 		names: [2]string{"gcp-classic", "gcp"},
 	}
@@ -49,13 +52,17 @@ func ByName(name string) (Platform, error) {
 		return GCPClassic, nil
 	}
 
+	if slices.Contains(AWSHCPZeroEgress.names[:], normalizedName) {
+		return AWSHCPZeroEgress, nil
+	}
+
 	return Platform{}, fmt.Errorf("no platform with name %s", name)
 }
 
 // IsValid returns true if the Platform is non-empty and supported by the network verifier
 func (plat Platform) IsValid() bool {
 	switch plat {
-	case AWSClassic, AWSHCP, GCPClassic:
+	case AWSClassic, AWSHCP, GCPClassic, AWSHCPZeroEgress:
 		return true
 	default:
 		return false

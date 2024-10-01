@@ -59,7 +59,7 @@ func (arch Architecture) DefaultInstanceType(platformType cloud.Platform) (strin
 	}
 
 	switch platformType {
-	case cloud.AWSClassic, cloud.AWSHCP:
+	case cloud.AWSClassic, cloud.AWSHCP, cloud.AWSHCPZeroEgress:
 		return arch.defaultAWSInstanceType, nil
 	case cloud.GCPClassic:
 		return arch.defaultGCPInstanceType, nil

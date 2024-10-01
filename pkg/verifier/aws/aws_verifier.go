@@ -16,6 +16,7 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/go-playground/validator"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
+
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
@@ -348,7 +349,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	return instanceID, nil
 }
 
-func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID string, probe probes.Probe) error {
+func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID string, probe probes.Probe, ensurePrivate bool) error {
 	var consoleOutput string
 
 	a.writeDebugLogs(ctx, "Scraping console output and waiting for user data script to complete...")
@@ -409,8 +410,7 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 
 		// Send probe's output off to the Probe interface for parsing
 		a.writeDebugLogs(ctx, fmt.Sprintf("probe output:\n---\n%s\n---", rawProbeOutput))
-		probe.ParseProbeOutput(rawProbeOutput, &a.Output)
-
+		probe.ParseProbeOutput(ensurePrivate, rawProbeOutput, &a.Output)
 		return true, nil
 	})
 

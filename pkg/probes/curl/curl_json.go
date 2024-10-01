@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
+
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/helpers"
@@ -33,8 +35,8 @@ var userDataTemplate string
 //go:embed systemd-template.sh
 var systemdTemplate string
 
-const startingToken = "NV_CURLJSON_BEGIN"
-const endingToken = "NV_CURLJSON_END"
+const startingToken = "NV_CURLJSON_BEGIN" //nolint:gosec
+const endingToken = "NV_CURLJSON_END"     //nolint:gosec
 const outputLinePrefix = "@NV@"
 
 var presetUserDataVariables = map[string]string{
@@ -56,7 +58,7 @@ func (clp Probe) GetMachineImageID(platformType cloud.Platform, cpuArch cpu.Arch
 		return "", handledErrors.NewGenericError(fmt.Errorf("invalid platform type specified %s", platformType))
 	}
 
-	if platformType == cloud.AWSHCP {
+	if platformType == cloud.AWSHCP || platformType == cloud.AWSHCPZeroEgress {
 		// HCP uses the same AMIs as Classic
 		platformType = cloud.AWSClassic
 	}
@@ -190,7 +192,7 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 // ParseProbeOutput accepts a string containing all probe output that appeared between
 // the startingToken and the endingToken and a pointer to an Output object. outputDestination
 // will be filled with the results from the egress check
-func (clp Probe) ParseProbeOutput(probeOutput string, outputDestination *output.Output) {
+func (clp Probe) ParseProbeOutput(ensurePrivate bool, probeOutput string, outputDestination *output.Output) {
 	// probeOutput first needs to be "repaired" due to curl and AWS bugs
 	repairedProbeOutput := helpers.FixLeadingZerosInJSON(helpers.RemoveTimestamps(probeOutput))
 	probeResults, errMap := bulkDeserializeCurlJSONProbeResult(repairedProbeOutput)
@@ -203,6 +205,15 @@ func (clp Probe) ParseProbeOutput(probeOutput string, outputDestination *output.
 			outputDestination.SetEgressFailures(
 				[]string{fmt.Sprintf("%s (%s)", url, probeResult.ErrorMsg)},
 			)
+		}
+		if ensurePrivate {
+			remoteIP := net.ParseIP(probeResult.RemoteIP)
+			if !remoteIP.IsPrivate() {
+				probeResult.ErrorMsg = "The endpoint is non private"
+				url := strings.Replace(probeResult.URL, "telnet", "tcp", 1)
+				outputDestination.SetEgressFailures(
+					[]string{fmt.Sprintf("%s (%s)", url, probeResult.ErrorMsg)})
+			}
 		}
 	}
 	for lineNum, err := range errMap {
