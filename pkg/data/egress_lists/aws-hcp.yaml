@@ -26,9 +26,6 @@ endpoints:
   - host: registry.access.redhat.com
     ports:
       - 443
-  - host: quayio-production-s3.s3.amazonaws.com
-    ports:
-      - 443
   - host: sts.amazonaws.com
     ports:
       - 443

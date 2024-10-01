@@ -57,9 +57,6 @@ endpoints:
   - host: api.openshift.com
     ports:
       - 443
-  - host: cart-rhcos-ci.s3.amazonaws.com
-    ports:
-      - 443
   - host: registry.access.redhat.com
     ports:
       - 443
@@ -73,9 +70,6 @@ endpoints:
     ports:
       - 443
   - host: ocm-quay-production-s3.s3.amazonaws.com
-    ports:
-      - 443
-  - host: quayio-production-s3.s3.amazonaws.com
     ports:
       - 443
   - host: aws.amazon.com
