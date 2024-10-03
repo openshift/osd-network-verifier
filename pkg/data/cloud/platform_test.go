@@ -59,7 +59,7 @@ func TestPlatform_String(t *testing.T) {
 
 func TestPlatform_IsValid(t *testing.T) {
 	type fields struct {
-		names [2]string
+		names [3]string
 	}
 	tests := []struct {
 		name   string
@@ -84,7 +84,7 @@ func TestPlatform_IsValid(t *testing.T) {
 		{
 			name: "fake platform",
 			fields: fields{
-				names: [2]string{"foo", "bar"},
+				names: [3]string{"foo", "bar"},
 			},
 			want: false,
 		},
@@ -121,6 +121,10 @@ func TestByName(t *testing.T) {
 		},
 		{
 			name: "aws-hcp",
+			want: AWSHCP,
+		},
+		{
+			name: "aws-hosted-cp",
 			want: AWSHCP,
 		},
 		{
