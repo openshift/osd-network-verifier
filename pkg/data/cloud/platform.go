@@ -8,25 +8,25 @@ import (
 
 // Platform type represents specific Platform types and how they map to their respective platforms.
 type Platform struct {
-	// names holds 2 unique lowercase names of the Platform (e.g., "aws"). We use a fixed-
-	// size array so that this struct remains comparable. Any of the 2 values can be used to refer
+	// names holds 3 unique lowercase names of the Platform (e.g., "aws"). We use a fixed-
+	// size array so that this struct remains comparable. Any of the 3 values can be used to refer
 	// to this specific Platform via Platform.ByName(), but only the first (element
 	// 0) element will be the "preferred name" returned by Platform.String()
-	names [2]string
+	names [3]string
 }
 
 var (
 	AWSClassic = Platform{
-		names: [2]string{"aws-classic", "aws"},
+		names: [3]string{"aws-classic", "aws"},
 	}
 	AWSHCP = Platform{
-		names: [2]string{"aws-hcp", "hostedcluster"},
+		names: [3]string{"aws-hcp", "aws-hosted-cp", "hostedcluster"},
 	}
 	AWSHCPZeroEgress = Platform{
-		names: [2]string{"aws-hcp-zeroegress"},
+		names: [3]string{"aws-hcp-zeroegress"},
 	}
 	GCPClassic = Platform{
-		names: [2]string{"gcp-classic", "gcp"},
+		names: [3]string{"gcp-classic", "gcp"},
 	}
 )
 
@@ -40,6 +40,11 @@ func (plat Platform) String() string {
 // platform if the provided name isn't supported
 func ByName(name string) (Platform, error) {
 	normalizedName := strings.TrimSpace(strings.ToLower(name))
+
+	if normalizedName == "" {
+		return Platform{}, fmt.Errorf("attempted to lookup Platform with empty string")
+	}
+
 	if slices.Contains(AWSClassic.names[:], normalizedName) {
 		return AWSClassic, nil
 	}
