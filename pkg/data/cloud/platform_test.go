@@ -143,6 +143,10 @@ func TestByName(t *testing.T) {
 			name: "invalid name",
 			want: Platform{},
 		},
+		{
+			name: "",
+			want: Platform{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

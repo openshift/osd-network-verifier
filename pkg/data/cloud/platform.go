@@ -40,6 +40,11 @@ func (plat Platform) String() string {
 // platform if the provided name isn't supported
 func ByName(name string) (Platform, error) {
 	normalizedName := strings.TrimSpace(strings.ToLower(name))
+
+	if normalizedName == "" {
+		return Platform{}, fmt.Errorf("attempted to lookup Platform with empty string")
+	}
+
 	if slices.Contains(AWSClassic.names[:], normalizedName) {
 		return AWSClassic, nil
 	}
