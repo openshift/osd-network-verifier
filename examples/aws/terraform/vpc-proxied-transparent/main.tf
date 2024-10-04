@@ -189,10 +189,6 @@ output "proxied_subnet_id" {
   description = "Proxied subnet ID (launch your test/'captive' instances here)"
   value       = aws_subnet.proxied.id
 }
-# output "public_subnet_id" {
-#   description = "The ID of the Public Subnet"
-#   value       = aws_subnet.public.id
-# }
 
 ## DATA
 # Get the current AWS region

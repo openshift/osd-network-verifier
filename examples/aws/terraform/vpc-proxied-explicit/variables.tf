@@ -57,7 +57,7 @@ variable "proxy_webui_username" {
 variable "name_prefix" {
   description = "prefix to add to the Name tag associated with most of the resources created by these scripts"
   type        = string
-  default     = "transparent-proxy-"
+  default     = "explicit-proxy-"
 }
 
 # SSH public key to use for ec2-user@proxy-machine

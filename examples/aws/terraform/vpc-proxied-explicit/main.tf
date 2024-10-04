@@ -197,10 +197,6 @@ output "https_proxy_var" {
   description = "value for HTTPS_PROXY environmental variable"
   value       = "https://${aws_instance.proxy_machine.private_ip}:443"
 }
-# output "public_subnet_id" {
-#   description = "The ID of the Public Subnet"
-#   value       = aws_subnet.public.id
-# }
 
 ## DATA
 # Get the current AWS region
