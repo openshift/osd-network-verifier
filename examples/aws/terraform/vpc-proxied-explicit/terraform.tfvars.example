@@ -1,0 +1,37 @@
+## Sample Variables 
+## Fill in the values below and rename me to "terraform.tfvars" 
+
+# Your AWS Profile
+# This profile should be configured in your AWS credentials file, typically located at ~/.aws/credentials on Unix-based systems and C:\Users\USERNAME\.aws\credentials on Windows. 
+# The profile configuration should look something like this:
+# 
+# [default]
+# aws_access_key_id = YOUR_ACCESS_KEY
+# aws_secret_access_key = YOUR_SECRET_KEY
+#
+profile = "default"
+
+# The AWS region where you want to create your resources
+region = "us-east-1"
+
+# The availability zone within the region where you want to create your subnets
+availability_zone = "us-east-1a"
+
+# The CIDR block for your VPC
+vpc_cidr_block = "10.0.0.0/16"
+
+# The CIDR block for your public subnet within your VPC
+public_subnet_cidr_block = "10.0.0.0/24"
+
+# The CIDR block for your proxied subnet within your VPC
+proxied_subnet_cidr_block = "10.0.1.0/24"
+
+# A prefix to add to the Name tag associated with most of the resources created by these scripts
+name_prefix = "transparent-proxy"
+
+# SSH public key to use for ec2-user@proxy-machine
+proxy_machine_ssh_pubkey = "ssh-rsa AAAAB3N...SrbX8ZbabVohBK41 replaceme@example.com"
+
+# A CIDR block containing your workstation's IP, for SSH/webUI access to the proxy machine for debugging. 
+# Running "echo $(curl -s ipv4.icanhazip.com)/32' should produce a sane default value
+developer_cidr_block = "123.123.123.123/32"
