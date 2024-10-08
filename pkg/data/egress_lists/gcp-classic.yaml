@@ -52,7 +52,7 @@ endpoints:
   - host: registry.access.redhat.com
     ports:
       - 443
-  - host: ocm-quay-production-s3.s3.amazonaws.com
+  - host: quayio-production-s3.s3.amazonaws.com
     ports:
       - 443
   - host: ec2.amazonaws.com
