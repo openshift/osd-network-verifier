@@ -192,6 +192,7 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 // ParseProbeOutput accepts a string containing all probe output that appeared between
 // the startingToken and the endingToken and a pointer to an Output object. outputDestination
 // will be filled with the results from the egress check
+// When ensurePrivate is set to true, will not only check the endpoint is accessible, but also ensure the endpoint is private
 func (clp Probe) ParseProbeOutput(ensurePrivate bool, probeOutput string, outputDestination *output.Output) {
 	// probeOutput first needs to be "repaired" due to curl and AWS bugs
 	repairedProbeOutput := helpers.FixLeadingZerosInJSON(helpers.RemoveTimestamps(probeOutput))
@@ -206,6 +207,7 @@ func (clp Probe) ParseProbeOutput(ensurePrivate bool, probeOutput string, output
 				[]string{fmt.Sprintf("%s (%s)", url, probeResult.ErrorMsg)},
 			)
 		}
+		// when ensurePrivate is set to true, we need to make sure the returned IP address is private
 		if ensurePrivate {
 			remoteIP := net.ParseIP(probeResult.RemoteIP)
 			if !remoteIP.IsPrivate() {

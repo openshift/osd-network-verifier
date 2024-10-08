@@ -245,11 +245,14 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(err)
 	}
 
-	// findUnreachableEndpoints will call Probe.ParseProbeOutput(), which will store egress failures in a.Output.failures
+	// ensurePrivate is a flag to ensure the return IP address from the given hosts are private defined in RFC1918
+	// Currently, it will be used the Zero Egress cluster check only
 	ensurePrivate := false
 	if vei.PlatformType == cloud.AWSHCPZeroEgress {
 		ensurePrivate = true
 	}
+	// findUnreachableEndpoints will call Probe.ParseProbeOutput(), which will store egress failures in a.Output.failures
+	// when ensurePrivate is true, it will also check if the returned IP is private
 	err = a.findUnreachableEndpoints(vei.Ctx, instanceID, vei.Probe, ensurePrivate)
 
 	if err != nil {
