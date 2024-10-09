@@ -68,6 +68,28 @@ The Terraform scripts in this repository's (under `/examples/aws/terraform/`) al
 - [VPC with an explicit proxy server](examples/aws/terraform/vpc-proxied-explicit/README.md)
 - [VPC with a transparent proxy server](examples/aws/terraform/vpc-proxied-transparent/README.md)
 
+## Interface ##
+
+### Platform ###
+The [platform struct type](./pkg/data/cloud/platform.go) is used to inform network-verifier of the platform type it is running on (AWSClassic, GCPClassic, etc) and can be referred to by supported aliases. For example, "aws" and "aws-classic" are both mapped to "AWSClassic". These platform types are used to determine information such as which egress verification list, machine type, and cpu type to use.
+```
+type Platform struct {
+	// names holds 3 unique lowercase names of the Platform (e.g., "aws"). We use a fixed-
+	// size array so that this struct remains comparable. Any of the 3 values can be used to refer
+	// to this specific Platform via Platform.ByName(), but only the first (element
+	// 0) element will be the "preferred name" returned by Platform.String()
+	names [3]string
+}
+```
+
+Currently network-verifier supports four implementations for Platform types.
+- AWSClassic
+- AWSHCP
+- AWSHCPZeroEgress
+- GCPClassic
+
+Network-verifier uses these supported platform types to determine information such as which egress verification list, machine type, and cpu type to use.
+
 ## Release Process
 
 See [RELEASE.md](./RELEASE.md)

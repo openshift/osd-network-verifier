@@ -76,22 +76,3 @@ repeat the verification process for each subnet ID.
         ```shell
         ./osd-network-verifier egress --help
         ```
-
-## Interface ##
-
-### Platform ###
-The platform interface is used to inform network-verifier of the platform type it is running on. It is used to represent specific Platform types and how they map to their respective platform. It contains an array of length containing valid names for each platform type.
-```
-type Platform struct {
-	// names holds 3 unique lowercase names of the Platform (e.g., "aws"). We use a fixed-
-	// size array so that this struct remains comparable. Any of the 3 values can be used to refer
-	// to this specific Platform via Platform.ByName(), but only the first (element
-	// 0) element will be the "preferred name" returned by Platform.String()
-	names [3]string
-}
-```
-
-Currently network-verifier supports one implementations for GCP.
-- GCPClassic
-
-Network-verifier uses these supported platform types to determine information such as which egress verification list, machine type, and cpu type to use.
