@@ -32,9 +32,9 @@ If interested, please fork this repo and create pull requests to the `main` bran
 
 This lists of essential domains for egress verification should be maintained in [pkg/data/egress_lists](https://github.com/openshift/osd-network-verifier/tree/main/pkg/data/egress_lists). The network verifier will dynamically pull down the list of endpoints from the most recent commit. This means that egress lists can be updated quickly without the need of a new osd-network-verifier release.
 
-It is also possible to pass in a custom list of egress endpoints by using the `--egress-list-location` flag.
+Network-verifier knows which list to pull from by using the [platform interface](./pkg/data/cloud/platform.go). For example, if the AWSClassic platform type is used, network-verifier will pull down the egress list associated with that platform type.
 
-Newly-added lists should be registered as "platform types" in [`helpers.go`](pkg/helpers/helpers.go#L94) using the list file's extensionless name as the value (e.g., abc.yaml should be registered as `PlatformABC     string = "abc"`). Finally, the `--platform` help message and value handling logic in [`cmd.go`](cmd/egress/cmd.go) should also be updated.
+It is also possible to pass in a custom list of egress endpoints by using the `--egress-list-location` flag.
 
 ### Probes
 Probes within the verifier are responsible for a number of important tasks.
@@ -67,6 +67,28 @@ The Terraform scripts in this repository's (under `/examples/aws/terraform/`) al
 - [VPC with an egress firewall](examples/aws/terraform/vpc-firewall/README.md)
 - [VPC with an explicit proxy server](examples/aws/terraform/vpc-proxied-explicit/README.md)
 - [VPC with a transparent proxy server](examples/aws/terraform/vpc-proxied-transparent/README.md)
+
+## Interface ##
+
+### Platform ###
+The [platform struct type](./pkg/data/cloud/platform.go) is used to inform network-verifier of the platform type it is running on (AWSClassic, GCPClassic, etc) and can be referred to by supported aliases. For example, "aws" and "aws-classic" are both mapped to "AWSClassic". These platform types are used to determine information such as which egress verification list, machine type, and cpu type to use.
+```
+type Platform struct {
+	// names holds 3 unique lowercase names of the Platform (e.g., "aws"). We use a fixed-
+	// size array so that this struct remains comparable. Any of the 3 values can be used to refer
+	// to this specific Platform via Platform.ByName(), but only the first (element
+	// 0) element will be the "preferred name" returned by Platform.String()
+	names [3]string
+}
+```
+
+Currently network-verifier supports four implementations for Platform types.
+- AWSClassic
+- AWSHCP
+- AWSHCPZeroEgress
+- GCPClassic
+
+Network-verifier uses these supported platform types to determine information such as which egress verification list, machine type, and cpu type to use.
 
 ## Release Process
 
