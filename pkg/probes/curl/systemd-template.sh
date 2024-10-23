@@ -16,7 +16,7 @@ array=(1 2 3 4 27 41 42 43 45)
 if echo ${USERDATA_BEGIN} > /dev/ttyS0 ; then : ; else
     exit 255
 fi
-curl ${NOPROXY_RENDERED} --retry 3 --retry-connrefused -t B -Z -s -I -m ${TIMEOUT} -w "%{stderr}${LINE_PREFIX}%{json}\n" ${CURLOPT} ${URLS} --proto =http,https,telnet ${TLSDISABLED_URLS_RENDERED} 2>/dev/ttyS0
+curl --retry 3 --retry-connrefused -t B -Z -s -I -m ${TIMEOUT} -w "%{stderr}${LINE_PREFIX}%{json}\n" ${CURLOPT} ${URLS} --proto =http,https,telnet ${TLSDISABLED_URLS_RENDERED} 2>/dev/ttyS0
 ret=$?
 value="\<${ret}\>"
 if [[ " ${array[@]} " =~ $value ]]; then
@@ -75,7 +75,7 @@ echo "${CACERT}" | base64 > /proxy.pem
 chmod 0755 /proxy.pem
 
 # set proxy environment variables, make script executable and start systemd services 
-export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY}
+export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY} no_proxy=${NO_PROXY}
 chmod 777 /usr/bin/curl.sh /usr/bin/terminate.sh
 systemctl daemon-reload
 systemctl start silence

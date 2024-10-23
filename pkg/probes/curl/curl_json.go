@@ -180,10 +180,6 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 		)
 	}
 
-	if userDataVariables["NOPROXY"] != "" {
-		userDataVariables["NOPROXY_RENDERED"] = fmt.Sprintf("--noproxy %s", userDataVariables["NOPROXY"])
-	}
-
 	// Expand template
 	return os.Expand(directivelessUserDataTemplate, func(userDataVar string) string {
 		if presetVal, isPreset := presetUserDataVariables[userDataVar]; isPreset {
