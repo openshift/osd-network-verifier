@@ -95,6 +95,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"HTTP_PROXY":       vei.Proxy.HttpProxy,
 		"HTTPS_PROXY":      vei.Proxy.HttpsProxy,
 		"CACERT":           base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NOPROXY":          vei.Proxy.NoProxyAsString(),
 		"NOTLS":            strconv.FormatBool(vei.Proxy.NoTls),
 		"DELAY":            "5",
 		"URLS":             egressListStr,
@@ -106,6 +107,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"value":       "$value",
 		"USE_SYSTEMD": "true",
 	}
+
 	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)

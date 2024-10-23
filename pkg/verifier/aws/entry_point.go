@@ -163,6 +163,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"HTTP_PROXY":       vei.Proxy.HttpProxy,
 		"HTTPS_PROXY":      vei.Proxy.HttpsProxy,
 		"CACERT":           base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NOPROXY":          vei.Proxy.NoProxyAsString(),
 		"NOTLS":            strconv.FormatBool(vei.Proxy.NoTls),
 		"CONFIG_PATH":      configPath,
 		"DELAY":            "5",

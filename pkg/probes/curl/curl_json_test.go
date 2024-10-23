@@ -61,6 +61,16 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 			wantRegex: `#cloud-config[\s\S]*ca_certs[\s\S]*trusted:[\s\S]*BEGIN CERTIFICATE[\s\S]*END CERTIFICATE`,
 		},
 		{
+			name: "set NOPROXY",
+			userDataVariables: map[string]string{
+				"TIMEOUT": "1",
+				"DELAY":   "2",
+				"URLS":    "http://example.com:80 https://example.org:443 https://foo.com",
+				"NOPROXY": "foo.com",
+			},
+			wantRegex: `#cloud-config[\s\S]* --noproxy foo.com`,
+		},
+		{
 			name: "set NOTLS",
 			userDataVariables: map[string]string{
 				"TIMEOUT": "1",
