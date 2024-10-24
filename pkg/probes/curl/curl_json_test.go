@@ -68,7 +68,7 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 				"URLS":     "http://example.com:80 https://example.org:443 https://foo.com",
 				"NO_PROXY": "foo.com,192.168.0.0/24",
 			},
-			wantRegex: `#cloud-config[\s\S]* no_proxy=foo.com,192.168.0.0/24`,
+			wantRegex: `#cloud-config[\s\S]* no_proxy="foo.com,192.168.0.0/24"`,
 		},
 		{
 			name: "set NOTLS",

@@ -75,7 +75,7 @@ echo "${CACERT}" | base64 > /proxy.pem
 chmod 0755 /proxy.pem
 
 # set proxy environment variables, make script executable and start systemd services 
-export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY} no_proxy=${NO_PROXY}
+export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY} no_proxy="${NO_PROXY}"
 chmod 777 /usr/bin/curl.sh /usr/bin/terminate.sh
 systemctl daemon-reload
 systemctl start silence
