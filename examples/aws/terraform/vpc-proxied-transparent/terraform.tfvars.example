@@ -26,6 +26,14 @@ public_subnet_cidr_block = "10.0.0.0/24"
 # The CIDR block for your proxied subnet within your VPC
 proxied_subnet_cidr_block = "10.0.1.0/24"
 
+# (optional) A list of CIDR blocks for which you'd like to create "proxy escape routes", 
+# i.e., routes that cause clients in your proxied subnet to connect to certain websites 
+# directly without going through the proxy. If you're interested in allowing direct connection
+# to a list of numbered domain names, for example, try using the following bash one-liner to 
+# generate a list of CIDRs that cover all of the domain names
+# echo -n \[; for IP in $(dig +short $(seq -f"inputs%g.osdsecuritylogs.splunkcloud.com" -s" " 1 15) | sort -u); do echo -n "\"$IP/32\", "; done; echo -e "\b\b]"
+proxied_subnet_escape_routes = []
+
 # A prefix to add to the Name tag associated with most of the resources created by these scripts
 name_prefix = "transparent-proxy"
 
