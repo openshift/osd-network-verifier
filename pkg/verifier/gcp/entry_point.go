@@ -66,26 +66,27 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	egressListYaml := vei.EgressListYaml
 	var egressListStr, tlsDisabledEgressListStr string
 	if egressListYaml == "" {
-		githubEgressList, githubListErr := egress_lists.GetGithubEgressList(vei.PlatformType)
-		if githubListErr == nil {
-			egressListYaml, githubListErr = githubEgressList.GetContent()
-			if githubListErr == nil {
-				g.Logger.Debug(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
-				egressListStr, tlsDisabledEgressListStr, githubListErr = egress_lists.EgressListToString(egressListYaml, map[string]string{})
-			}
-		}
-		if githubListErr != nil {
-			var err error
-			g.Output.AddError(fmt.Errorf("failed to get egress list from GitHub, falling back to local list: %v", githubListErr))
+		githubEgressList, err := egress_lists.GetGithubEgressList(vei.PlatformType)
+		if err != nil {
+			g.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+
 			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
 			if err != nil {
 				return g.Output.AddError(err)
 			}
-			egressListStr, tlsDisabledEgressListStr, err = egress_lists.EgressListToString(egressListYaml, map[string]string{})
+		} else {
+			egressListYaml, err = githubEgressList.GetContent()
 			if err != nil {
 				return g.Output.AddError(err)
 			}
+
+			g.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
 		}
+	}
+
+	egressListStr, tlsDisabledEgressListStr, err := egress_lists.EgressListToString(egressListYaml, map[string]string{})
+	if err != nil {
+		return g.Output.AddError(err)
 	}
 
 	// Generate the userData file
