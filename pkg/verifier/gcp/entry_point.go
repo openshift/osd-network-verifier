@@ -28,7 +28,7 @@ const (
 func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	// Validate cloud platform type and default to PlatformGCP if not specified
 	if !vei.PlatformType.IsValid() {
-		vei.PlatformType = cloud.AWSClassic
+		vei.PlatformType = cloud.GCPClassic
 	}
 	// Validate CPUArchitecture and default to ArchX86 if not specified
 	if !vei.CPUArchitecture.IsValid() {
