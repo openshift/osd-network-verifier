@@ -131,26 +131,27 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	egressListYaml := vei.EgressListYaml
 	var egressListStr, tlsDisabledEgressListStr string
 	if egressListYaml == "" {
-		githubEgressList, githubListErr := egress_lists.GetGithubEgressList(vei.PlatformType)
-		if githubListErr == nil {
-			egressListYaml, githubListErr = githubEgressList.GetContent()
-			if githubListErr == nil {
-				a.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
-				egressListStr, tlsDisabledEgressListStr, githubListErr = egress_lists.EgressListToString(egressListYaml, map[string]string{"AWS_REGION": a.AwsClient.Region})
-			}
-		}
+		githubEgressList, err := egress_lists.GetGithubEgressList(vei.PlatformType)
+		if err != nil {
+			a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
 
-		if githubListErr != nil {
-			a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", githubListErr)
 			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
 			if err != nil {
 				return a.Output.AddError(err)
 			}
-			egressListStr, tlsDisabledEgressListStr, err = egress_lists.EgressListToString(egressListYaml, map[string]string{"AWS_REGION": a.AwsClient.Region})
+		} else {
+			egressListYaml, err = githubEgressList.GetContent()
 			if err != nil {
 				return a.Output.AddError(err)
 			}
+
+			a.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
 		}
+	}
+
+	egressListStr, tlsDisabledEgressListStr, err = egress_lists.EgressListToString(egressListYaml, map[string]string{"AWS_REGION": a.AwsClient.Region})
+	if err != nil {
+		return a.Output.AddError(err)
 	}
 
 	// Generate the userData file
