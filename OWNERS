@@ -7,8 +7,9 @@ reviewers:
   - joshbranham
 approvers:
   - abyrne55
-  - rafael-azevedo
   - fahlmant
+  - joshbranham
+  - rafael-azevedo
 emeritus_approvers:
   - AlexVulaj
   - bng0y
