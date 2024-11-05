@@ -156,6 +156,11 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Generate the userData file
 	// As expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in userdata.yaml
+	if vei.Proxy.NoTls {
+		a.Logger.Info(vei.Ctx, "NoTls enabled; ignoring any provided CA certs")
+		vei.Proxy.Cacert = ""
+	}
+
 	userDataVariables := map[string]string{
 		"AWS_REGION":       a.AwsClient.Region,
 		"VALIDATOR_IMAGE":  networkValidatorImage,

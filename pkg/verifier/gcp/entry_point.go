@@ -91,6 +91,10 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Generate the userData file
 	// Expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in startup-script.sh
+	if vei.Proxy.NoTls {
+		g.Logger.Info(vei.Ctx, "NoTls enabled; ignoring any provided CA certs")
+		vei.Proxy.Cacert = ""
+	}
 	userDataVariables := map[string]string{
 		"TIMEOUT":          vei.Timeout.String(),
 		"HTTP_PROXY":       vei.Proxy.HttpProxy,
