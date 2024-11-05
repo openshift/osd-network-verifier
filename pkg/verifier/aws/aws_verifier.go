@@ -318,7 +318,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	if input.keyPair != "" {
-		instanceReq.KeyName = awsTools.String(DEBUG_KEY_NAME)
+		instanceReq.KeyName = awsTools.String(DebugKeyName)
 	}
 	// Finally, we make our request
 	instanceResp, err := a.AwsClient.RunInstances(input.ctx, &instanceReq)

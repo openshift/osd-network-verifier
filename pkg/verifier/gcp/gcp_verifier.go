@@ -222,35 +222,35 @@ func (g *GcpVerifier) findUnreachableEndpoints(projectID, zone, instanceName str
 // States: PROVISIONING, STAGING, RUNNING, STOPPING, STOPPED, TERMINATED, SUSPENDED
 // https://cloud.google.com/compute/docs/instances/instance-life-cycle
 // Error Codes: https://cloud.google.com/apis/design/errors
-func (c *GcpVerifier) describeComputeServiceInstances(projectID, zone, instanceName string) (string, error) {
-	resp, err := c.GcpClient.GetInstance(projectID, zone, instanceName)
+func (g *GcpVerifier) describeComputeServiceInstances(projectID, zone, instanceName string) (string, error) {
+	resp, err := g.GcpClient.GetInstance(projectID, zone, instanceName)
 	if err != nil {
-		c.Logger.Error(context.TODO(), "Errors while describing the instance status: %v", err.Error())
+		g.Logger.Error(context.TODO(), "Errors while describing the instance status: %v", err.Error())
 		return "PERMISSION DENIED", err
 	}
 	switch resp.Status {
 	case "PROVISIONING", "STAGING":
-		c.Logger.Debug(context.TODO(), "Waiting on VM operation: %s", resp.Status)
+		g.Logger.Debug(context.TODO(), "Waiting on VM operation: %s", resp.Status)
 
 	case "STOPPING", "STOPPED", "TERMINATED", "SUSPENDED":
-		c.Logger.Debug(context.TODO(), "Fatal - Instance status: ", instanceName)
+		g.Logger.Debug(context.TODO(), "Fatal - Instance status: ", instanceName)
 		return "FATAL", fmt.Errorf(resp.Status)
 	}
 
 	if len(resp.Status) == 0 {
-		c.Logger.Debug(context.TODO(), "Instance %s has no status yet", instanceName)
+		g.Logger.Debug(context.TODO(), "Instance %s has no status yet", instanceName)
 	}
 	return resp.Status, nil
 }
 
 // Waits for the ComputeService instance to be in a RUNNING state
-func (c *GcpVerifier) waitForComputeServiceInstanceCompletion(projectID, zone, instanceName string) error {
+func (g *GcpVerifier) waitForComputeServiceInstanceCompletion(projectID, zone, instanceName string) error {
 	err := helpers.PollImmediate(5*time.Second, 2*time.Minute, func() (bool, error) {
-		code, descError := c.describeComputeServiceInstances(projectID, zone, instanceName)
+		code, descError := g.describeComputeServiceInstances(projectID, zone, instanceName)
 		switch code {
 		case "RUNNING":
 			// Instance is running, break
-			c.Logger.Info(context.TODO(), "ComputeService Instance: %s %s", instanceName, code)
+			g.Logger.Info(context.TODO(), "ComputeService Instance: %s %s", instanceName, code)
 			return true, nil
 
 		case "FATAL":

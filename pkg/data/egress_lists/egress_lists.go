@@ -1,21 +1,14 @@
 package egress_lists
 
-// TRANSITIONAL IMPLEMENTATION (UNSTABLE API)
-// This module currently provides very basic fetching of egress lists stored within the binary
-// in legacy probe/golden-AMI format. Most of its current logic & structs were borrowed from
-// osd-network-verifier-golden-ami/build/bin/network-validator.go with very little validation.
-// OSD-22628 will significantly change this module. Consider this internal API unstable until
-// that card is complete.
-
 import (
 	"context"
 	_ "embed"
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"os"
 
 	"github.com/google/go-github/v63/github"
-	"gopkg.in/yaml.v3"
-
+	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 )
 
@@ -31,12 +24,65 @@ var templateGCPClassic string
 //go:embed aws-hcp-zeroegress.yaml
 var templateAWSHCPZeroEgress string
 
-func GetLocalEgressList(platformType cloud.Platform) (string, error) {
-	if !platformType.IsValid() {
-		fmt.Printf("platform type %s is invalid", platformType)
+type githubReposClient interface {
+	GetContents(ctx context.Context, owner, repo, path string, opts *github.RepositoryContentGetOptions) (fileContent *github.RepositoryContent, directoryContent []*github.RepositoryContent, resp *github.Response, err error)
+}
+
+// Generator provides a mechanism to generate egress lists for a given platform and set of variables
+type Generator struct {
+	// PlatformType represents the cloud and type of platform we are generating egress lists for
+	PlatformType cloud.Platform
+
+	// Variables is a map of string:string used to replace templated values in canned egress lists
+	Variables map[string]string
+
+	logger            logging.Logger
+	githubReposClient githubReposClient
+}
+
+func NewGenerator(platformType cloud.Platform, variables map[string]string, logger logging.Logger) *Generator {
+	return &Generator{
+		PlatformType:      platformType,
+		Variables:         variables,
+		logger:            logger,
+		githubReposClient: github.NewClient(nil).Repositories,
+	}
+}
+
+// GenerateEgressLists takes an optional egressListYaml as input, and then attempts to return generated EgressLists
+// in the following order:
+// - If a populated egressListYaml is passed, use that
+// - Otherwise, try to get the values from GitHub, and if that fails
+// - Fallback to the local yaml embedded in this package
+func (g *Generator) GenerateEgressLists(ctx context.Context, egressListYaml string) (string, string, error) {
+	if egressListYaml != "" {
+		return g.EgressListToString(egressListYaml, g.Variables)
 	}
 
-	switch platformType {
+	egressResponse, err := g.GetGithubEgressList(ctx)
+	if err != nil {
+		g.logger.Error(ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+
+		egress, err := g.GetLocalEgressList()
+		if err != nil {
+			return "", "", err
+		}
+
+		return g.EgressListToString(egress, g.Variables)
+	}
+
+	egress, err := egressResponse.GetContent()
+	if err != nil {
+		return "", "", err
+	}
+
+	g.logger.Info(ctx, "Using egress URL list from %s at SHA %s", egressResponse.GetURL(), egressResponse.GetSHA())
+
+	return g.EgressListToString(egress, g.Variables)
+}
+
+func (g *Generator) GetLocalEgressList() (string, error) {
+	switch g.PlatformType {
 	case cloud.GCPClassic:
 		return templateGCPClassic, nil
 	case cloud.AWSHCP:
@@ -46,18 +92,14 @@ func GetLocalEgressList(platformType cloud.Platform) (string, error) {
 	case cloud.AWSHCPZeroEgress:
 		return templateAWSHCPZeroEgress, nil
 	default:
-		return "", fmt.Errorf("no egress list registered for platform '%s'", platformType)
+		return "", fmt.Errorf("no egress list registered for platform '%s'", g.PlatformType)
 	}
 }
 
-func GetGithubEgressList(platformType cloud.Platform) (*github.RepositoryContent, error) {
-	ghClient := github.NewClient(nil)
+func (g *Generator) GetGithubEgressList(ctx context.Context) (*github.RepositoryContent, error) {
 	path := "/pkg/data/egress_lists/"
-	if !platformType.IsValid() {
-		fmt.Printf("Platform type %s is invalid", platformType)
-	}
 
-	switch platformType {
+	switch g.PlatformType {
 	case cloud.GCPClassic:
 		path += cloud.GCPClassic.String()
 	case cloud.AWSHCP:
@@ -67,9 +109,9 @@ func GetGithubEgressList(platformType cloud.Platform) (*github.RepositoryContent
 	case cloud.AWSHCPZeroEgress:
 		path += cloud.AWSHCPZeroEgress.String()
 	default:
-		return nil, fmt.Errorf("no egress list registered for platform '%s'", platformType)
+		return nil, fmt.Errorf("no egress list registered for platform '%s'", g.PlatformType)
 	}
-	fileContentResponse, _, _, err := ghClient.Repositories.GetContents(context.TODO(), "openshift", "osd-network-verifier", fmt.Sprintf("%s.yaml", path), nil)
+	fileContentResponse, _, _, err := g.githubReposClient.GetContents(ctx, "openshift", "osd-network-verifier", fmt.Sprintf("%s.yaml", path), nil)
 	return fileContentResponse, err
 }
 
@@ -77,7 +119,7 @@ func GetGithubEgressList(platformType cloud.Platform) (*github.RepositoryContent
 // within a given platformType's egress list.
 // The first string returned contains all the URLs with tlsDisabled=false,
 // while the second string contains all URLs with tlsDisabled=true
-func EgressListToString(egressListYamlStr string, variables map[string]string) (string, string, error) {
+func (g *Generator) EgressListToString(egressListYamlStr string, variables map[string]string) (string, string, error) {
 	variableMapper := func(varName string) string {
 		return variables[varName]
 	}
@@ -114,16 +156,12 @@ func EgressListToString(egressListYamlStr string, variables map[string]string) (
 	return urlListStr, tlsDisabledURLListStr, nil
 }
 
-// endpoint type (as it appears in the current YAML schema)
-// Borrowed from osd-network-verifier-golden-ami/build/bin/network-validator.go
 type endpoint struct {
 	Host        string `yaml:"host"`
 	Ports       []int  `yaml:"ports"`
 	TLSDisabled bool   `yaml:"tlsDisabled"`
 }
 
-// reachabilityConfig list type (as it appears in the current YAML schema)
-// Borrowed from osd-network-verifier-golden-ami/build/bin/network-validator.go
 type reachabilityConfig struct {
 	Endpoints []endpoint `yaml:"endpoints"`
 }

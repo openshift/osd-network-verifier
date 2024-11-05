@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	DEFAULT_TIMEOUT = 5 * time.Second
+	DefaultTimeout = 5 * time.Second
 )
 
-// validateEgress performs validation process for egress
+// ValidateEgress performs validation process for egress
 // Basic workflow is:
 // - prepare for ComputeService instance creation
 // - create instance and wait till it gets ready, wait for startup script execution
@@ -43,7 +43,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Set timeout to default if not specified
 	if vei.Timeout <= 0 {
-		vei.Timeout = DEFAULT_TIMEOUT
+		vei.Timeout = DefaultTimeout
 	}
 	g.Logger.Debug(vei.Ctx, "configured a %s timeout for each egress request", vei.Timeout)
 
@@ -62,29 +62,11 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return g.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
 
-	// Fetch the egress URL list from github, falling back to local lists in the event of a failure.
-	egressListYaml := vei.EgressListYaml
-	var egressListStr, tlsDisabledEgressListStr string
-	if egressListYaml == "" {
-		githubEgressList, err := egress_lists.GetGithubEgressList(vei.PlatformType)
-		if err != nil {
-			g.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+	// Generate both egress lists for the given PlatformType. Note: the result of this is ignored by the Legacy probe.
+	generatorVariables := map[string]string{}
+	generator := egress_lists.NewGenerator(vei.PlatformType, generatorVariables, g.Logger)
 
-			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
-			if err != nil {
-				return g.Output.AddError(err)
-			}
-		} else {
-			egressListYaml, err = githubEgressList.GetContent()
-			if err != nil {
-				return g.Output.AddError(err)
-			}
-
-			g.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
-		}
-	}
-
-	egressListStr, tlsDisabledEgressListStr, err := egress_lists.EgressListToString(egressListYaml, map[string]string{})
+	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.Ctx, vei.EgressListYaml)
 	if err != nil {
 		return g.Output.AddError(err)
 	}
