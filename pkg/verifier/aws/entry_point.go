@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	// Base path of the config file
-	CONFIG_PATH_FSTRING = "/app/build/config/%s.yaml"
-	DEBUG_KEY_NAME      = "onv-debug-key"
+	// ConfigPathFstring is the base path of the config file
+	ConfigPathFstring = "/app/build/config/%s.yaml"
+	DebugKeyName      = "onv-debug-key"
 )
 
 // ValidateEgress performs validation process for egress
@@ -56,7 +56,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return a.Output.AddError(err)
 	}
 
-	// If no AMI specificed, select one based on CPU arch and region
+	// If no AMI specified, select one based on CPU arch and region
 	if vei.CloudImageID == "" {
 		vei.CloudImageID, err = vei.Probe.GetMachineImageID(vei.PlatformType, vei.CPUArchitecture, a.AwsClient.Region)
 		if err != nil {
@@ -66,29 +66,28 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	}
 
 	// Select legacy probe config file based on platform type (ignored unless legacy.Probe in use)
-	configPath := fmt.Sprintf(CONFIG_PATH_FSTRING, vei.PlatformType)
+	configPath := fmt.Sprintf(ConfigPathFstring, vei.PlatformType)
 
 	var debugPubKey []byte
 	// Check if Import-keypair flag has been passed
 	if vei.ImportKeyPair != "" {
-		//Read the pubkey file content into a variable
+		// Read the pubkey file content into a variable
 		PubKey, err := os.ReadFile(vei.ImportKeyPair)
 		debugPubKey = PubKey
 		if err != nil {
 			return a.Output.AddError(err)
 		}
 
-		//Import Keypair into aws keypairs to be attached later to the created debug instance
+		// Import Keypair into aws keypairs to be attached later to the created debug instance
 		_, err = a.AwsClient.ImportKeyPair(vei.Ctx, &ec2.ImportKeyPairInput{
-			KeyName:           awsTools.String(DEBUG_KEY_NAME),
+			KeyName:           awsTools.String(DebugKeyName),
 			PublicKeyMaterial: debugPubKey,
 		})
 		if err != nil {
 			return a.Output.AddError(err)
 		}
 
-		//If we have imported a pubkey for debug we would like debug intance to stay up.
-		//Thus we set SkipInstanceTermination = true
+		// If we have imported a pubkey for debug we would like debug instance to stay up.
 		vei.SkipInstanceTermination = true
 
 	}
@@ -101,55 +100,33 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 			a.Output.AddError(err)
 		}
 
-		//Check if a keypair was uploaded
-		searchKeys := []string{DEBUG_KEY_NAME}
+		// Check if a keypair was uploaded
+		searchKeys := []string{DebugKeyName}
 		_, err := a.AwsClient.DescribeKeyPairs(vei.Ctx, &ec2.DescribeKeyPairsInput{
 			KeyNames: searchKeys,
 		})
 		if err != nil {
-			//if no key was found continue without executing deletion code
-			fmt.Printf("Debug KeyPair %v not found \n", DEBUG_KEY_NAME)
+			// If no key was found continue without executing deletion code
+			fmt.Printf("Debug KeyPair %v not found \n", DebugKeyName)
 		} else {
-			//if there was a key found, then delete it.
+			// If there was a key found, then delete it.
 			_, err = a.AwsClient.DeleteKeyPair(vei.Ctx, &ec2.DeleteKeyPairInput{
-				KeyName: awsTools.String(DEBUG_KEY_NAME),
+				KeyName: awsTools.String(DebugKeyName),
 			})
-			//if there was any issues deleting the keypair.
+			// If there were any issues deleting the keypair.
 			if err != nil {
 				a.Output.AddError(err)
 			}
-
 		}
 
 		return &a.Output
 	}
 
-	// Fetch the egress URL list from github, falling back to local lists in the event of a failure.
-	// Note that this is TOTALLY IGNORED by LegacyProbe,
-	// as that probe only knows how to use the egress URL lists baked into its
-	// AMIs/container images
-	egressListYaml := vei.EgressListYaml
-	var egressListStr, tlsDisabledEgressListStr string
-	if egressListYaml == "" {
-		githubEgressList, err := egress_lists.GetGithubEgressList(vei.PlatformType)
-		if err != nil {
-			a.Logger.Error(vei.Ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
+	// Generate both egress lists for the given PlatformType. Note: the result of this is ignored by the Legacy probe.
+	generatorVariables := map[string]string{"AWS_REGION": a.AwsClient.Region}
+	generator := egress_lists.NewGenerator(vei.PlatformType, generatorVariables, a.Logger)
 
-			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
-			if err != nil {
-				return a.Output.AddError(err)
-			}
-		} else {
-			egressListYaml, err = githubEgressList.GetContent()
-			if err != nil {
-				return a.Output.AddError(err)
-			}
-
-			a.Logger.Info(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
-		}
-	}
-
-	egressListStr, tlsDisabledEgressListStr, err = egress_lists.EgressListToString(egressListYaml, map[string]string{"AWS_REGION": a.AwsClient.Region})
+	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.Ctx, vei.EgressListYaml)
 	if err != nil {
 		return a.Output.AddError(err)
 	}
@@ -264,10 +241,10 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Terminate the EC2 instance (unless user requests otherwise)
 	if !vei.SkipInstanceTermination {
-		//Replaced the SGs attached to the network-verifier-instance by the default SG in order to allow
-		//deletion of temporary SGs created
+		// Replaced the SGs attached to the network-verifier-instance by the default SG in order to allow
+		// deletion of temporary SGs created
 
-		//Getting a list of the SGs for the current VPC of our instance
+		// Getting a list of the SGs for the current VPC of our instance
 		var defaultSecurityGroupID = ""
 		describeSGOutput, err := a.AwsClient.DescribeSecurityGroups(vei.Ctx, &ec2.DescribeSecurityGroupsInput{
 			Filters: []ec2Types.Filter{
@@ -365,7 +342,7 @@ func (a *AwsVerifier) VerifyDns(vdi verifier.VerifyDnsInput) *output.Output {
 	return &a.Output
 }
 
-// Cleans up the security groups created by network-verifier
+// CleanupSecurityGroup cleans up the security groups created by network-verifier
 func CleanupSecurityGroup(vei verifier.ValidateEgressInput, a *AwsVerifier) *output.Output {
 	a.Logger.Info(vei.Ctx, "Deleting security group with ID: %s", vei.AWS.TempSecurityGroup)
 	_, err := a.AwsClient.DeleteSecurityGroup(vei.Ctx, &ec2.DeleteSecurityGroupInput{GroupId: awsTools.String(vei.AWS.TempSecurityGroup)})
