@@ -83,6 +83,11 @@ func (arch Architecture) IsValid() bool {
 // architecture if the provided name isn't supported
 func ArchitectureByName(name string) Architecture {
 	normalizedName := strings.TrimSpace(strings.ToLower(name))
+
+	if normalizedName == "" {
+		return Architecture{}
+	}
+
 	if slices.Contains(ArchX86.names[:], normalizedName) {
 		return ArchX86
 	}

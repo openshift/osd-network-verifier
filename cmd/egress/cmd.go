@@ -90,23 +90,16 @@ are set correctly before execution.
 				config.region = getDefaultRegion(platformType)
 			}
 
-			// Set Up Proxy
-			if config.noTls && config.CaCert != "" {
-				fmt.Println("--cacert value will be ignored since --no-tls was passed")
-			}
-
-			if !config.noTls {
-				if config.CaCert != "" {
-					// Read in the cert file
-					cert, err := os.ReadFile(config.CaCert)
-					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
-					}
-					// store string form of it
-					// this was agreed with sda that they'll be communicating it as a string.
-					config.CaCert = bytes.NewBuffer(cert).String()
+			if config.CaCert != "" {
+				// Read in the cert file
+				cert, err := os.ReadFile(config.CaCert)
+				if err != nil {
+					fmt.Println(err)
+					os.Exit(1)
 				}
+				// store string form of it
+				// this was agreed with sda that they'll be communicating it as a string.
+				config.CaCert = bytes.NewBuffer(cert).String()
 			}
 
 			p := proxy.ProxyConfig{
@@ -275,6 +268,7 @@ are set correctly before execution.
 		validateEgressCmd.PrintErr(err)
 	}
 
+	validateEgressCmd.MarkFlagsMutuallyExclusive("cacert", "no-tls")
 	return validateEgressCmd
 }
 
