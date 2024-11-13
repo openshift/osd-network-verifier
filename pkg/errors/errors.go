@@ -13,6 +13,10 @@ type GenericError struct {
 	message   string
 }
 
+type KmsError struct {
+	message string
+}
+
 func (e *GenericError) Error() string {
 	return e.message
 }
@@ -21,8 +25,13 @@ func (e *GenericError) EgressURL() string {
 	return e.egressURL
 }
 
+func (k *KmsError) Error() string {
+	return k.message
+}
+
 // Ensure GenericError implements the error interface
 var _ error = &GenericError{}
+var _ error = &KmsError{}
 
 // NewGenericError does some preprocessing if the provided error contains an aws-sdk-go-v2 error, otherwise just
 // prepends `network verifier error: `
@@ -59,5 +68,11 @@ func NewEgressURLError(url string) error {
 	return &GenericError{
 		egressURL: url,
 		message:   fmt.Sprintf("egressURL error: %s", url),
+	}
+}
+
+func NewKmsError(msg string) error {
+	return &KmsError{
+		message: msg,
 	}
 }
