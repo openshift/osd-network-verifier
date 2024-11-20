@@ -2,6 +2,7 @@ package helpers
 
 import (
 	_ "embed"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -633,5 +634,23 @@ func TestDurationToBareSeconds(t *testing.T) {
 				t.Errorf("DurationToBareSeconds() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_RandSeq(t *testing.T) {
+	val, err := RandSeq(10)
+	fmt.Print(val)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(val) != 10 {
+		t.Errorf("len(val) = %d, want 10", len(val))
+	}
+}
+
+func Test_RandBigInt(t *testing.T) {
+	_, err := RandBigInt(1000)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

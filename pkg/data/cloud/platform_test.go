@@ -13,43 +13,43 @@ func TestPlatform_Comparable(t *testing.T) {
 func TestPlatform_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		platfrom Platform
+		platform Platform
 		want     string
 	}{
 		{
 			name:     "aws",
-			platfrom: AWSClassic,
+			platform: AWSClassic,
 			want:     "aws-classic",
 		},
 		{
 			name:     "aws-classic",
-			platfrom: AWSClassic,
+			platform: AWSClassic,
 			want:     "aws-classic",
 		},
 		{
 			name:     "hosted-cluster",
-			platfrom: AWSHCP,
+			platform: AWSHCP,
 			want:     "aws-hcp",
 		},
 		{
 			name:     "aws-hcp",
-			platfrom: AWSHCP,
+			platform: AWSHCP,
 			want:     "aws-hcp",
 		},
 		{
 			name:     "gcp",
-			platfrom: GCPClassic,
+			platform: GCPClassic,
 			want:     "gcp-classic",
 		},
 		{
 			name:     "gcp-classic",
-			platfrom: GCPClassic,
+			platform: GCPClassic,
 			want:     "gcp-classic",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			platform := tt.platfrom
+			platform := tt.platform
 			if got := platform.String(); got != tt.want {
 				t.Errorf("Platform.String() = %s, want %s", got, tt.want)
 			}

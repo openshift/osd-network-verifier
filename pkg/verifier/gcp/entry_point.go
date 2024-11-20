@@ -3,7 +3,7 @@ package gcpverifier
 import (
 	"encoding/base64"
 	"fmt"
-	"math/rand"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"strconv"
 	"time"
 
@@ -110,6 +110,12 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		}
 	}
 
+	// Generate a random integer to be used in the instanceName
+	randInt, err := helpers.RandBigInt(10000)
+	if err != nil {
+		return g.Output.AddError(err)
+	}
+
 	// Create the ComputeService instance
 	instance, err := g.createComputeServiceInstance(createComputeServiceInstanceInput{
 		projectID:        vei.GCP.ProjectID,
@@ -117,7 +123,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		vpcSubnetID:      fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", vei.GCP.ProjectID, vei.GCP.Region, vei.SubnetID),
 		userdata:         userData,
 		machineType:      vei.InstanceType,
-		instanceName:     fmt.Sprintf("verifier-%v", rand.Intn(10000)),
+		instanceName:     fmt.Sprintf("verifier-%v", randInt.String()),
 		sourceImage:      fmt.Sprintf("projects/rhel-cloud/global/images/%s", vei.CloudImageID),
 		networkName:      fmt.Sprintf("projects/%s/global/networks/%s", vei.GCP.ProjectID, vei.GCP.VpcName),
 		tags:             vei.Tags,

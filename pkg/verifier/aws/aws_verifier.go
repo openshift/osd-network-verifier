@@ -437,8 +437,13 @@ func (a *AwsVerifier) writeDebugLogs(ctx context.Context, log string) {
 
 // CreateSecurityGroup creates a security group with the specified name and cluster tag key in a specified VPC
 func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]string, name, vpcId string) (*ec2.CreateSecurityGroupOutput, error) {
+	seq, err := helpers.RandSeq(5)
+	if err != nil {
+		return &ec2.CreateSecurityGroupOutput{}, err
+	}
+
 	input := &ec2.CreateSecurityGroupInput{
-		GroupName:   awsTools.String(name + "-" + helpers.RandSeq(5)),
+		GroupName:   awsTools.String(name + "-" + seq),
 		VpcId:       &vpcId,
 		Description: awsTools.String("osd-network-verifier security group"),
 		TagSpecifications: []ec2Types.TagSpecification{
