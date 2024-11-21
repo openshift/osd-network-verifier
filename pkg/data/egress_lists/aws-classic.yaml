@@ -168,6 +168,3 @@ endpoints:
   - host: tagging.${AWS_REGION}.amazonaws.com
     ports:
       - 443
-  - host: servicequotas.${AWS_REGION}.amazonaws.com
-    ports:
-      - 443
