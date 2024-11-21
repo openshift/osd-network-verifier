@@ -69,7 +69,7 @@ func Test_GenerateEgressListsWithoutInput_WhenGitHubFails(t *testing.T) {
 	}
 
 	// In this case we are falling back to the local file, so assert an arbitrary URL we know
-	expected := "https://servicequotas.us-east-1.amazonaws.com:443"
+	expected := "https://console.redhat.com:443"
 	if !strings.Contains(tls, expected) {
 		t.Errorf("expected string to contain %s, got: %s", expected, tls)
 	}
