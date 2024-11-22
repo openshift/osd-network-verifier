@@ -71,7 +71,7 @@ const (
 	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
 	userdataEndVerifier   = "USERDATA END"
 	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
-	invalildKMSCode       = "Client.InvalidKMSKey.InvalidState"
+	invalidKMSCode       = "Client.InvalidKMSKey.InvalidState"
 )
 
 // AwsVerifier holds an aws client and knows how to fulfill the VerifierService which contains all functions needed for verifier
@@ -353,7 +353,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		}
 
 		waiterErr := fmt.Errorf("%s: terminated %s after timing out waiting for instance to be running", err, instanceID)
-		if stateCode == invalildKMSCode {
+		if stateCode == invalidKMSCode {
 			waiterErr = handledErrors.NewKmsError("encountered issue accessing KMS key when launching instance.")
 		}
 
