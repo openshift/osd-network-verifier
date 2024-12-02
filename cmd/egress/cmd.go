@@ -248,7 +248,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringSliceVar(&config.securityGroupIDs, "security-group-ids", []string{}, "(optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created")
 	validateEgressCmd.Flags().StringVar(&config.egressListLocation, "egress-list-location", "", "(optional) the location of the egress URL list to use. Can either be a local file path or an external URL starting with http(s). This value is ignored for the legacy probe.")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-separated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", time.Duration(0), "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
@@ -256,7 +256,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.httpsProxy, "https-proxy", "", "(optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978")
 	validateEgressCmd.Flags().StringVar(&config.CaCert, "cacert", "", "(optional) path to cacert file to be used upon https requests being made by verifier")
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, skip client-side SSL certificate validation")
-	validateEgressCmd.Flags().StringSliceVar(&config.noProxy, "no-proxy", []string{}, "(optional) comma-seperated list of domains or IPs to not pass through the configured http/https proxy e.g. --no-proxy example.com,test.example.com")
+	validateEgressCmd.Flags().StringSliceVar(&config.noProxy, "no-proxy", []string{}, "(optional) comma-separated list of domains or IPs to not pass through the configured http/https proxy e.g. --no-proxy example.com,test.example.com")
 	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored")
 	validateEgressCmd.Flags().StringVar(&config.gcpVpcName, "vpc-name", "", "(optional unless --platform='gcp') VPC name where GCP cluster is installed")
 	validateEgressCmd.Flags().BoolVar(&config.skipAWSInstanceTermination, "skip-termination", false, "(optional) Skip instance termination to allow further debugging")
@@ -321,12 +321,18 @@ func getCustomLocalEgressList(filePath string) (string, error) {
 	return string(file), nil
 }
 
-func getCustomExternalEgressList(url string) (string, error) {
-	response, err := http.Get(url)
+func getCustomExternalEgressList(uri string) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		return "", err
 	}
-	b, err := io.ReadAll(response.Body)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", err
 	}

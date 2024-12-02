@@ -1,9 +1,10 @@
 package helpers
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,13 +14,23 @@ import (
 )
 
 // RandSeq generates random string with n characters.
-func RandSeq(n int) string {
+func RandSeq(n int) (string, error) {
 	b := make([]rune, n)
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = letters[num.Int64()]
 	}
-	return string(b)
+	return string(b), nil
+}
+
+// RandBigInt returns a pointer to a random big integer between 0 and max
+func RandBigInt(max int64) (*big.Int, error) {
+	return rand.Int(rand.Reader, big.NewInt(max))
 }
 
 // PollImmediate calls the condition function at the specified interval up to the specified timeout
@@ -170,7 +181,7 @@ func ValidateProvidedVariables(providedVarMap map[string]string, presetVarMap ma
 
 // CutBetween returns the part of s between startingToken and endingToken. If startingToken and/or
 // endingToken cannot be found in s, or if there are no characters between the two tokens, this
-// returns an empty string (""). If there are multiple occurrances of each token, the largest possible
+// returns an empty string (""). If there are multiple occurrences of each token, the largest possible
 // part of s will be returned (i.e., everything between the leftmost startingToken and the rightmost
 // endingToken, a.k.a. greedy matching)
 func CutBetween(s string, startingToken string, endingToken string) string {
