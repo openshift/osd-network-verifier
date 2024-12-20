@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"golang.org/x/oauth2/google"
 
 	"github.com/openshift/osd-network-verifier/cmd/utils"
@@ -22,18 +23,18 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	gcpverifier "github.com/openshift/osd-network-verifier/pkg/verifier/gcp"
-
-	"github.com/spf13/cobra"
 )
 
 var (
-	awsDefaultTags      = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
-	gcpDefaultTags      = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
-	awsRegionEnvVarStr  = "AWS_REGION"
-	awsRegionDefault    = "us-east-2"
-	gcpRegionEnvVarStr  = "GCP_REGION"
-	gcpRegionDefault    = "us-east1"
-	platformTypeDefault = cloud.AWSClassic.String()
+	awsDefaultTags = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "Name": "osd-network-verifier"}
+	gcpDefaultTags = map[string]string{"osd-network-verifier": "owned", "red-hat-managed": "true", "name": "osd-network-verifier"}
+)
+
+const (
+	awsRegionEnvVarStr = "AWS_REGION"
+	awsRegionDefault   = "us-east-2"
+	gcpRegionEnvVarStr = "GCP_REGION"
+	gcpRegionDefault   = "us-east1"
 )
 
 type egressConfig struct {
@@ -51,6 +52,7 @@ type egressConfig struct {
 	httpProxy                  string
 	httpsProxy                 string
 	CaCert                     string
+	noProxy                    []string
 	noTls                      bool
 	platformType               string
 	awsProfile                 string
@@ -60,23 +62,6 @@ type egressConfig struct {
 	importKeyPair              string
 	ForceTempSecurityGroup     bool
 	probeName                  string
-}
-
-func getDefaultRegion(platformType cloud.Platform) string {
-	if platformType == cloud.GCPClassic {
-		//gcp region
-		dRegion, ok := os.LookupEnv(gcpRegionEnvVarStr)
-		if !ok {
-			return gcpRegionDefault
-		}
-		return dRegion
-	}
-	//aws region
-	dRegion, ok := os.LookupEnv(awsRegionEnvVarStr)
-	if !ok {
-		return awsRegionDefault
-	}
-	return dRegion
 }
 
 func NewCmdValidateEgress() *cobra.Command {
@@ -105,7 +90,6 @@ are set correctly before execution.
 				config.region = getDefaultRegion(platformType)
 			}
 
-			// Set Up Proxy
 			if config.CaCert != "" {
 				// Read in the cert file
 				cert, err := os.ReadFile(config.CaCert)
@@ -123,6 +107,7 @@ are set correctly before execution.
 				HttpsProxy: config.httpsProxy,
 				Cacert:     config.CaCert,
 				NoTls:      config.noTls,
+				NoProxy:    config.noProxy,
 			}
 
 			// setup non cloud config options
@@ -254,7 +239,7 @@ are set correctly before execution.
 		},
 	}
 
-	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", platformTypeDefault, fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. "+
+	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", cloud.AWSClassic.String(), fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. "+
 		"Either '%s', '%s', '%s', or '%s' (hypershift)", cloud.AWSClassic, cloud.GCPClassic, cloud.AWSHCP, cloud.AWSHCPZeroEgress))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "target subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
@@ -263,7 +248,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringSliceVar(&config.securityGroupIDs, "security-group-ids", []string{}, "(optional) comma-separated list of sec. group IDs to attach to the created EC2 instance. If absent, one will be created")
 	validateEgressCmd.Flags().StringVar(&config.egressListLocation, "egress-list-location", "", "(optional) the location of the egress URL list to use. Can either be a local file path or an external URL starting with http(s). This value is ignored for the legacy probe.")
 	validateEgressCmd.Flags().StringVar(&config.region, "region", "", fmt.Sprintf("(optional) compute instance region. If absent, environment var %[1]v = %[2]v and %[3]v = %[4]v will be used", awsRegionEnvVarStr, awsRegionDefault, gcpRegionEnvVarStr, gcpRegionDefault))
-	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-seperated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
+	validateEgressCmd.Flags().StringToStringVar(&config.cloudTags, "cloud-tags", map[string]string{}, "(optional) comma-separated list of tags to assign to cloud resources e.g. --cloud-tags key1=value1,key2=value2")
 	validateEgressCmd.Flags().BoolVar(&config.debug, "debug", false, "(optional) if true, enable additional debug-level logging")
 	validateEgressCmd.Flags().DurationVar(&config.timeout, "timeout", time.Duration(0), "(optional) timeout for individual egress verification requests")
 	validateEgressCmd.Flags().StringVar(&config.kmsKeyID, "kms-key-id", "", "(optional) ID of KMS key used to encrypt root volumes of compute instances. Defaults to cloud account default key")
@@ -271,6 +256,7 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.httpsProxy, "https-proxy", "", "(optional) https-proxy to be used upon https requests being made by verifier, format: https://user:pass@x.x.x.x:8978")
 	validateEgressCmd.Flags().StringVar(&config.CaCert, "cacert", "", "(optional) path to cacert file to be used upon https requests being made by verifier")
 	validateEgressCmd.Flags().BoolVar(&config.noTls, "no-tls", false, "(optional) if true, skip client-side SSL certificate validation")
+	validateEgressCmd.Flags().StringSliceVar(&config.noProxy, "no-proxy", []string{}, "(optional) comma-separated list of domains or IPs to not pass through the configured http/https proxy e.g. --no-proxy example.com,test.example.com")
 	validateEgressCmd.Flags().StringVar(&config.awsProfile, "profile", "", "(optional) AWS profile. If present, any credentials passed with CLI will be ignored")
 	validateEgressCmd.Flags().StringVar(&config.gcpVpcName, "vpc-name", "", "(optional unless --platform='gcp') VPC name where GCP cluster is installed")
 	validateEgressCmd.Flags().BoolVar(&config.skipAWSInstanceTermination, "skip-termination", false, "(optional) Skip instance termination to allow further debugging")
@@ -282,15 +268,33 @@ are set correctly before execution.
 		validateEgressCmd.PrintErr(err)
 	}
 
+	validateEgressCmd.MarkFlagsMutuallyExclusive("cacert", "no-tls")
 	return validateEgressCmd
+}
+
+func getDefaultRegion(platformType cloud.Platform) string {
+	switch platformType {
+	case cloud.GCPClassic:
+		dRegion, ok := os.LookupEnv(gcpRegionEnvVarStr)
+		if !ok {
+			return gcpRegionDefault
+		}
+		return dRegion
+	default: // All other platforms, but we assume AWS
+		dRegion, ok := os.LookupEnv(awsRegionEnvVarStr)
+		if !ok {
+			return awsRegionDefault
+		}
+		return dRegion
+	}
 }
 
 func getCustomEgressListFromFlag(location string) (string, error) {
 	var egressListYaml string
 	if _, err := os.Stat(location); err == nil {
-		egressListYaml, err = GetCustomLocalEgressList(location)
+		egressListYaml, err = getCustomLocalEgressList(location)
 		if err != nil {
-			return "", fmt.Errorf("Failed to fetch egress URL list from %s: %v\n", location, err)
+			return "", fmt.Errorf("failed to fetch egress URL list from %s: %v", location, err)
 		}
 		absPath, _ := filepath.Abs(location) // if we've gotten this far, we know the path is valid
 		fmt.Printf("Using local egress list from %s\n", absPath)
@@ -299,17 +303,17 @@ func getCustomEgressListFromFlag(location string) (string, error) {
 
 	parsedUrl, err := url.ParseRequestURI(location)
 	if err != nil {
-		return "", fmt.Errorf("Failed to parse URL %s: %w\n", location, err)
+		return "", fmt.Errorf("failed to parse URL %s: %w", location, err)
 	}
-	egressListYaml, err = GetCustomExternalEgressList(parsedUrl.String())
+	egressListYaml, err = getCustomExternalEgressList(parsedUrl.String())
 	if err != nil {
-		return "", fmt.Errorf("Failed to fetch egress URL list from %s: %w\n", parsedUrl.String(), err)
+		return "", fmt.Errorf("failed to fetch egress URL list from %s: %w", parsedUrl.String(), err)
 	}
 	fmt.Printf("Using external egress list from %s\n", parsedUrl.String())
 	return egressListYaml, nil
 }
 
-func GetCustomLocalEgressList(filePath string) (string, error) {
+func getCustomLocalEgressList(filePath string) (string, error) {
 	file, err := os.ReadFile(filePath)
 	if err != nil {
 		return "", err
@@ -317,12 +321,18 @@ func GetCustomLocalEgressList(filePath string) (string, error) {
 	return string(file), nil
 }
 
-func GetCustomExternalEgressList(url string) (string, error) {
-	response, err := http.Get(url)
+func getCustomExternalEgressList(uri string) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		return "", err
 	}
-	b, err := io.ReadAll(response.Body)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", err
 	}

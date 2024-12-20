@@ -137,6 +137,21 @@ resource "aws_subnet" "proxied" {
   tags              = { Name = "${var.name_prefix}-proxied" }
 }
 
+# If any escape routes specified, create an unproxied NAT gateway
+resource "aws_eip" "escape_nat_eip" {
+  count      = min(1, length(var.proxied_subnet_escape_routes))
+  domain     = "vpc"
+  tags       = { Name = "${var.name_prefix}-escape-nat-eip" }
+  depends_on = [aws_internet_gateway.igw]
+}
+resource "aws_nat_gateway" "escape_nat_gw" {
+  count         = min(1, length(var.proxied_subnet_escape_routes))
+  allocation_id = aws_eip.escape_nat_eip[0].id
+  subnet_id     = aws_subnet.public.id
+  tags          = { Name = "${var.name_prefix}-escape-nat-gw" }
+  depends_on    = [aws_internet_gateway.igw]
+}
+
 # Create a route table for the proxied subnet that routes all traffic into the proxy_machine
 resource "aws_route_table" "proxied" {
   vpc_id = aws_vpc.main.id
@@ -145,6 +160,13 @@ resource "aws_route_table" "proxied" {
   route {
     cidr_block           = "0.0.0.0/0"
     network_interface_id = aws_instance.proxy_machine.primary_network_interface_id
+  }
+  dynamic "route" {
+    for_each = toset(var.proxied_subnet_escape_routes)
+    content {
+      cidr_block = route.value
+      gateway_id = aws_nat_gateway.escape_nat_gw[0].id
+    }
   }
 }
 

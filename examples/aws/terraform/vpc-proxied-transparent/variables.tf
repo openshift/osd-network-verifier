@@ -33,11 +33,18 @@ variable "public_subnet_cidr_block" {
   default     = "10.0.0.0/24" # Default to a /24 block within the 10.0.0.0 private network
 }
 
-# CIDR block for the private subnet
+# CIDR block for the proxied subnet
 variable "proxied_subnet_cidr_block" {
-  description = "CIDR block for the private subnet"
+  description = "CIDR block for the proxied subnet"
   type        = string
   default     = "10.0.1.0/24" # Default to a /24 block within the 10.0.0.0 private network
+}
+
+# Optional destination CIDR blocks for which proxy will be bypassed
+variable "proxied_subnet_escape_routes" {
+  description = "CIDR blocks that proxied clients can connect to directly"
+  type        = list(string)
+  default     = []
 }
 
 # User/developer's CIDR block for SSH/webUI access to the proxy machine for debugging

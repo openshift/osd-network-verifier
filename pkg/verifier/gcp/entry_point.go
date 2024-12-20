@@ -3,7 +3,7 @@ package gcpverifier
 import (
 	"encoding/base64"
 	"fmt"
-	"math/rand"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"strconv"
 	"time"
 
@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	DEFAULT_TIMEOUT = 5 * time.Second
+	DefaultTimeout = 5 * time.Second
 )
 
-// validateEgress performs validation process for egress
+// ValidateEgress performs validation process for egress
 // Basic workflow is:
 // - prepare for ComputeService instance creation
 // - create instance and wait till it gets ready, wait for startup script execution
@@ -28,7 +28,7 @@ const (
 func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.Output {
 	// Validate cloud platform type and default to PlatformGCP if not specified
 	if !vei.PlatformType.IsValid() {
-		vei.PlatformType = cloud.AWSClassic
+		vei.PlatformType = cloud.GCPClassic
 	}
 	// Validate CPUArchitecture and default to ArchX86 if not specified
 	if !vei.CPUArchitecture.IsValid() {
@@ -43,7 +43,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Set timeout to default if not specified
 	if vei.Timeout <= 0 {
-		vei.Timeout = DEFAULT_TIMEOUT
+		vei.Timeout = DefaultTimeout
 	}
 	g.Logger.Debug(vei.Ctx, "configured a %s timeout for each egress request", vei.Timeout)
 
@@ -62,39 +62,27 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		return g.Output.AddError(fmt.Errorf("instance type %s is invalid: %s", vei.InstanceType, err))
 	}
 
-	// Fetch the egress URL list from github, falling back to local lists in the event of a failure.
-	egressListYaml := vei.EgressListYaml
-	var egressListStr, tlsDisabledEgressListStr string
-	if egressListYaml == "" {
-		githubEgressList, githubListErr := egress_lists.GetGithubEgressList(vei.PlatformType)
-		if githubListErr == nil {
-			egressListYaml, githubListErr = githubEgressList.GetContent()
-			if githubListErr == nil {
-				g.Logger.Debug(vei.Ctx, "Using egress URL list from %s at SHA %s", githubEgressList.GetURL(), githubEgressList.GetSHA())
-				egressListStr, tlsDisabledEgressListStr, githubListErr = egress_lists.EgressListToString(egressListYaml, map[string]string{})
-			}
-		}
-		if githubListErr != nil {
-			var err error
-			g.Output.AddError(fmt.Errorf("failed to get egress list from GitHub, falling back to local list: %v", githubListErr))
-			egressListYaml, err = egress_lists.GetLocalEgressList(vei.PlatformType)
-			if err != nil {
-				return g.Output.AddError(err)
-			}
-			egressListStr, tlsDisabledEgressListStr, err = egress_lists.EgressListToString(egressListYaml, map[string]string{})
-			if err != nil {
-				return g.Output.AddError(err)
-			}
-		}
+	// Generate both egress lists for the given PlatformType. Note: the result of this is ignored by the Legacy probe.
+	generatorVariables := map[string]string{}
+	generator := egress_lists.NewGenerator(vei.PlatformType, generatorVariables, g.Logger)
+
+	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.Ctx, vei.EgressListYaml)
+	if err != nil {
+		return g.Output.AddError(err)
 	}
 
 	// Generate the userData file
 	// Expand replaces all ${var} (using empty string for unknown ones), adding the env variables used in startup-script.sh
+	if vei.Proxy.NoTls {
+		g.Logger.Info(vei.Ctx, "NoTls enabled; ignoring any provided CA certs")
+		vei.Proxy.Cacert = ""
+	}
 	userDataVariables := map[string]string{
 		"TIMEOUT":          vei.Timeout.String(),
 		"HTTP_PROXY":       vei.Proxy.HttpProxy,
 		"HTTPS_PROXY":      vei.Proxy.HttpsProxy,
 		"CACERT":           base64.StdEncoding.EncodeToString([]byte(vei.Proxy.Cacert)),
+		"NO_PROXY":         vei.Proxy.NoProxyAsString(),
 		"NOTLS":            strconv.FormatBool(vei.Proxy.NoTls),
 		"DELAY":            "5",
 		"URLS":             egressListStr,
@@ -106,6 +94,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"value":       "$value",
 		"USE_SYSTEMD": "true",
 	}
+
 	userData, err := vei.Probe.GetExpandedUserData(userDataVariables)
 	if err != nil {
 		return g.Output.AddError(err)
@@ -121,6 +110,12 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		}
 	}
 
+	// Generate a random integer to be used in the instanceName
+	randInt, err := helpers.RandBigInt(10000)
+	if err != nil {
+		return g.Output.AddError(err)
+	}
+
 	// Create the ComputeService instance
 	instance, err := g.createComputeServiceInstance(createComputeServiceInstanceInput{
 		projectID:        vei.GCP.ProjectID,
@@ -128,7 +123,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		vpcSubnetID:      fmt.Sprintf("projects/%s/regions/%s/subnetworks/%s", vei.GCP.ProjectID, vei.GCP.Region, vei.SubnetID),
 		userdata:         userData,
 		machineType:      vei.InstanceType,
-		instanceName:     fmt.Sprintf("verifier-%v", rand.Intn(10000)),
+		instanceName:     fmt.Sprintf("verifier-%v", randInt.String()),
 		sourceImage:      fmt.Sprintf("projects/rhel-cloud/global/images/%s", vei.CloudImageID),
 		networkName:      fmt.Sprintf("projects/%s/global/networks/%s", vei.GCP.ProjectID, vei.GCP.VpcName),
 		tags:             vei.Tags,

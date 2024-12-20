@@ -2,19 +2,18 @@ reviewers:
   - abyrne55
   - reedcort
   - dakotalongRH
-  - lnguyen1401
   - luis-falcon
   - joshbranham
 approvers:
   - abyrne55
-  - rafael-azevedo
   - fahlmant
+  - joshbranham
+  - rafael-azevedo
 emeritus_approvers:
   - AlexVulaj
   - bng0y
   - boranx
   - bdematte
-  - mjlshen
 maintainers:
   - abyrne55
   - fahlmant

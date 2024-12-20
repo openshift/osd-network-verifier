@@ -69,7 +69,7 @@ endpoints:
   - host: oso-rhc4tp-docker-registry.s3-us-west-2.amazonaws.com
     ports:
       - 443
-  - host: ocm-quay-production-s3.s3.amazonaws.com
+  - host: quayio-production-s3.s3.amazonaws.com
     ports:
       - 443
   - host: aws.amazon.com
@@ -166,8 +166,5 @@ endpoints:
     ports:
       - 443
   - host: tagging.${AWS_REGION}.amazonaws.com
-    ports:
-      - 443
-  - host: servicequotas.${AWS_REGION}.amazonaws.com
     ports:
       - 443

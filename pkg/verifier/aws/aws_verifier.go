@@ -16,7 +16,6 @@ import (
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/go-playground/validator"
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
-
 	"github.com/openshift/osd-network-verifier/pkg/clients/aws"
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
@@ -72,6 +71,7 @@ const (
 	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
 	userdataEndVerifier   = "USERDATA END"
 	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
+	invalidKMSCode        = "Client.InvalidKMSKey.InvalidState"
 )
 
 // AwsVerifier holds an aws client and knows how to fulfill the VerifierService which contains all functions needed for verifier
@@ -318,7 +318,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	}
 
 	if input.keyPair != "" {
-		instanceReq.KeyName = awsTools.String(DEBUG_KEY_NAME)
+		instanceReq.KeyName = awsTools.String(DebugKeyName)
 	}
 	// Finally, we make our request
 	instanceResp, err := a.AwsClient.RunInstances(input.ctx, &instanceReq)
@@ -340,10 +340,28 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	// Wait up to 5 minutes for the instance to be running
 	waiter := ec2.NewInstanceRunningWaiter(a.AwsClient)
 	if err := waiter.Wait(input.ctx, &ec2.DescribeInstancesInput{InstanceIds: []string{instanceID}}, 2*time.Minute); err != nil {
+		resp, err := a.AwsClient.DescribeInstances(context.TODO(), &ec2.DescribeInstancesInput{
+			InstanceIds: []string{instanceID},
+		})
+		if err != nil {
+			fmt.Println("Warning: Waiter Describe instances failure.")
+		}
+
+		var stateCode string
+		if resp.Reservations[0].Instances[0].StateReason.Code != nil {
+			stateCode = *resp.Reservations[0].Instances[0].StateReason.Code
+		}
+
+		waiterErr := fmt.Errorf("%s: terminated %s after timing out waiting for instance to be running", err, instanceID)
+		if stateCode == invalidKMSCode {
+			waiterErr = handledErrors.NewKmsError("encountered issue accessing KMS key when launching instance.")
+		}
+
 		if err := a.AwsClient.TerminateEC2Instance(input.ctx, instanceID); err != nil {
 			return instanceID, handledErrors.NewGenericError(err)
 		}
-		return "", fmt.Errorf("%s: terminated %s after timing out waiting for instance to be running", err, instanceID)
+
+		return "", waiterErr
 	}
 
 	return instanceID, nil
@@ -437,8 +455,13 @@ func (a *AwsVerifier) writeDebugLogs(ctx context.Context, log string) {
 
 // CreateSecurityGroup creates a security group with the specified name and cluster tag key in a specified VPC
 func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]string, name, vpcId string) (*ec2.CreateSecurityGroupOutput, error) {
+	seq, err := helpers.RandSeq(5)
+	if err != nil {
+		return &ec2.CreateSecurityGroupOutput{}, err
+	}
+
 	input := &ec2.CreateSecurityGroupInput{
-		GroupName:   awsTools.String(name + "-" + helpers.RandSeq(5)),
+		GroupName:   awsTools.String(name + "-" + seq),
 		VpcId:       &vpcId,
 		Description: awsTools.String("osd-network-verifier security group"),
 		TagSpecifications: []ec2Types.TagSpecification{

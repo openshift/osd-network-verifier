@@ -8,7 +8,7 @@ The Terraform scripts in this directory will deploy an AWS VPC with a [mitmproxy
 ## Setup
 
 > [!IMPORTANT]  
-> The proxied subnet set up by this script will be configured to allow only HTTP[S] (i.e., TCP ports 80 & 443) egress via the generated proxy server. IOW, **anything you launch in the proxied subnet will not be able to connect to the internet unless the application is configured to use the proxy server**. Same goes for any application using ports other than 80 or 443 (e.g., Splunk inputs). If this behavior doesn't work for you, you'll need to add an internet gateway or NAT gateway to the proxied subnet and adjust its routing table accordingly.
+> The proxied subnet set up by this script will be configured to allow only HTTP[S] (i.e., TCP ports 80 & 443) egress via the generated proxy server. IOW, **anything you launch in the proxied subnet will not be able to connect to the internet unless the application is configured to use the proxy server**. Same goes for any application using ports other than 80 or 443 (e.g., Splunk inputs). You can partially bypass this behavior by adding CIDR blocks covering the destination IPs you'd like to access unproxied to `proxied_subnet_escape_routes` in your terraform.tfvars, which will add a NAT gateway to the proxied subnet and adjust its routing table accordingly.
 
 1. Clone this repo and `cd` into this directory
 2. Run `terraform init`
