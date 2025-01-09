@@ -180,7 +180,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// If security group not given, create a temporary one
 	if len(vei.AWS.SecurityGroupIDs) == 0 || vei.ForceTempSecurityGroup {
-
 		createSecurityGroupOutput, err := a.CreateSecurityGroup(vei.Ctx, vei.Tags, "osd-network-verifier", vpcId)
 		if err != nil {
 			return a.Output.AddError(err)
@@ -208,7 +207,6 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 				return a.Output.AddError(err)
 			}
 		}
-
 	}
 
 	// Create EC2 instance
@@ -224,6 +222,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		securityGroupIDs:    vei.AWS.SecurityGroupIDs,
 		tempSecurityGroupID: vei.AWS.TempSecurityGroup,
 		keyPair:             vei.ImportKeyPair,
+		vpcID:               vpcId,
 	})
 	if err != nil {
 		return a.Output.AddError(err)
@@ -246,48 +245,16 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Terminate the EC2 instance (unless user requests otherwise)
 	if !vei.SkipInstanceTermination {
-		// Replaced the SGs attached to the network-verifier-instance by the default SG in order to allow
-		// deletion of temporary SGs created
-
-		// Getting a list of the SGs for the current VPC of our instance
-		var defaultSecurityGroupID = ""
-		describeSGOutput, err := a.AwsClient.DescribeSecurityGroups(vei.Ctx, &ec2.DescribeSecurityGroupsInput{
-			Filters: []ec2Types.Filter{
-				{
-					Name:   awsTools.String("vpc-id"),
-					Values: []string{vpcId},
-				},
-				{
-					Name:   awsTools.String("group-name"),
-					Values: []string{"default"},
-				},
-			},
-		})
-		if err != nil {
-			a.Output.AddError(err)
-			a.Logger.Info(vei.Ctx, "Unable to describe security groups. Falling back to slower cloud resource cleanup method.")
-
-		}
-
-		if describeSGOutput != nil {
-
-			//Fetch default Security Group ID.
-			for _, SG := range describeSGOutput.SecurityGroups {
-				if *SG.GroupName == "default" {
-					defaultSecurityGroupID = *SG.GroupId
-				}
-			}
-
-			//Replacing the SGs attach to instance by the default one. This is to clean the SGs created in case the instance
-			//termination times out
-			_, err = a.AwsClient.ModifyInstanceAttribute(vei.Ctx, &ec2.ModifyInstanceAttributeInput{
-				InstanceId: &instanceID,
-				Groups:     []string{defaultSecurityGroupID},
-			})
+		// Replace the SecurityGroup attached to the instance with the default one for the VPC to allow for graceful
+		// termination of the network-verifier created temporary SecurityGroup
+		defaultSecurityGroupID := a.fetchVpcDefaultSecurityGroup(vei.Ctx, vpcId)
+		if defaultSecurityGroupID != "" {
+			err = a.modifyInstanceSecurityGroup(vei.Ctx, instanceID, defaultSecurityGroupID)
 			if err != nil {
 				a.Logger.Info(vei.Ctx, "Unable to detach instance from security group. Falling back to slower cloud resource cleanup method.")
 				a.writeDebugLogs(vei.Ctx, fmt.Sprintf("Fell back to slower cloud resource cleanup because faster method (network interface detatchment) blocked by AWS: %s.", err))
 			}
+			a.Logger.Info(vei.Ctx, "Modified the instance to use the default security group")
 		}
 
 		a.Logger.Info(vei.Ctx, "Deleting instance with ID: %s", instanceID)
