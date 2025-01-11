@@ -60,6 +60,16 @@ var defaultIpPermissions = []ec2Types.IpPermission{
 			},
 		},
 	},
+	{
+		FromPort:   awsTools.Int32(53),
+		ToPort:     awsTools.Int32(53),
+		IpProtocol: awsTools.String("udp"),
+		IpRanges: []ec2Types.IpRange{
+			{
+				CidrIp: awsTools.String("0.0.0.0/0"),
+			},
+		},
+	},
 }
 
 const (
