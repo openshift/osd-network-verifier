@@ -69,8 +69,6 @@ const (
 	// This corresponds with the quay tag: v0.1.90-f2e86a9
 	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:137bf177c2e87732b2692c1af39d3b79b2f84c7f0ee9254df4ea4412dddfab1e"
 	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
-	userdataEndVerifier   = "USERDATA END"
-	prepulledImageMessage = "Warning: could not pull the specified docker image, will try to use the prepulled one"
 	invalidKMSCode        = "Client.InvalidKMSKey.InvalidState"
 )
 
@@ -79,7 +77,7 @@ type AwsVerifier struct {
 	AwsClient *aws.Client
 	Logger    ocmlog.Logger
 	Output    output.Output
-	// This cache is only to be used inside of describeInstanceType() to minimize nil ptr error risk
+	// This cache is only to be used inside describeInstanceType() to minimize nil ptr error risk
 	cachedInstanceTypeInfo *ec2Types.InstanceTypeInfo
 }
 
@@ -158,7 +156,7 @@ func (a *AwsVerifier) describeInstanceType(ctx context.Context, instanceType str
 	return a.cachedInstanceTypeInfo, nil
 }
 
-// instanceTypeUsesNitro asks the AWS API whether or not the provided instanceType uses the "Nitro"
+// instanceTypeUsesNitro asks the AWS API whether the provided instanceType uses the "Nitro"
 // hypervisor. Nitro is the only hypervisor supporting serial console output, which we need to
 // collect in order to gather probe results
 func (a *AwsVerifier) instanceTypeUsesNitro(ctx context.Context, instanceType string) (bool, error) {
@@ -169,7 +167,7 @@ func (a *AwsVerifier) instanceTypeUsesNitro(ctx context.Context, instanceType st
 	}
 
 	// Return true if instance type uses nitro
-	return (instanceTypeInfo.Hypervisor == ec2Types.InstanceTypeHypervisorNitro), nil
+	return instanceTypeInfo.Hypervisor == ec2Types.InstanceTypeHypervisorNitro, nil
 }
 
 // instanceTypeArchitecture asks the AWS API about the CPU architecture(s) supported by the provided
@@ -256,6 +254,7 @@ type createEC2InstanceInput struct {
 	tags                map[string]string
 	ctx                 context.Context
 	keyPair             string
+	vpcID               string
 }
 
 func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, error) {
@@ -339,8 +338,8 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 
 	// Wait up to 5 minutes for the instance to be running
 	waiter := ec2.NewInstanceRunningWaiter(a.AwsClient)
-	if err := waiter.Wait(input.ctx, &ec2.DescribeInstancesInput{InstanceIds: []string{instanceID}}, 2*time.Minute); err != nil {
-		resp, err := a.AwsClient.DescribeInstances(context.TODO(), &ec2.DescribeInstancesInput{
+	if err := waiter.Wait(input.ctx, &ec2.DescribeInstancesInput{InstanceIds: []string{instanceID}}, 5*time.Minute); err != nil {
+		resp, err := a.AwsClient.DescribeInstances(input.ctx, &ec2.DescribeInstancesInput{
 			InstanceIds: []string{instanceID},
 		})
 		if err != nil {
@@ -348,13 +347,24 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		}
 
 		var stateCode string
-		if resp.Reservations[0].Instances[0].StateReason.Code != nil {
+		if resp != nil && resp.Reservations[0].Instances[0].StateReason.Code != nil {
 			stateCode = *resp.Reservations[0].Instances[0].StateReason.Code
 		}
 
 		waiterErr := fmt.Errorf("%s: terminated %s after timing out waiting for instance to be running", err, instanceID)
 		if stateCode == invalidKMSCode {
 			waiterErr = handledErrors.NewKmsError("encountered issue accessing KMS key when launching instance.")
+		}
+
+		// Switch the instance SecurityGroup to the default before terminating to avoid a cleanup race condition. This is
+		// handled by the normal cleanup process, except in this specific case where we fail early because of KMS issues.
+		defaultSecurityGroupID := a.fetchVpcDefaultSecurityGroup(input.ctx, input.vpcID)
+		if defaultSecurityGroupID != "" {
+			// Replace the SecurityGroup attached to the instance with the default one for the VPC to allow for graceful
+			// termination of the network-verifier created temporary SecurityGroup. If we hit an error, we ignore it
+			// and continue with normal termination of the instance.
+			_ = a.modifyInstanceSecurityGroup(input.ctx, instanceID, defaultSecurityGroupID)
+			a.Logger.Info(input.ctx, "Modified the instance to use the default security group")
 		}
 
 		if err := a.AwsClient.TerminateEC2Instance(input.ctx, instanceID); err != nil {
@@ -491,16 +501,16 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 
 	a.Logger.Info(ctx, "Created security group with ID: %s", *output.GroupId)
 
-	input_rules := &ec2.AuthorizeSecurityGroupEgressInput{
+	inputRules := &ec2.AuthorizeSecurityGroupEgressInput{
 		GroupId:       output.GroupId,
 		IpPermissions: defaultIpPermissions,
 	}
 
-	if _, err := a.AwsClient.AuthorizeSecurityGroupEgress(ctx, input_rules); err != nil {
+	if _, err := a.AwsClient.AuthorizeSecurityGroupEgress(ctx, inputRules); err != nil {
 		return &ec2.CreateSecurityGroupOutput{}, err
 	}
 
-	revoke_default_egress := &ec2.RevokeSecurityGroupEgressInput{
+	revokeDefaultEgress := &ec2.RevokeSecurityGroupEgressInput{
 		GroupId: output.GroupId,
 		IpPermissions: []ec2Types.IpPermission{
 			{
@@ -516,7 +526,7 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 		},
 	}
 
-	if _, err := a.AwsClient.RevokeSecurityGroupEgress(ctx, revoke_default_egress); err != nil {
+	if _, err := a.AwsClient.RevokeSecurityGroupEgress(ctx, revokeDefaultEgress); err != nil {
 		return &ec2.CreateSecurityGroupOutput{}, err
 	}
 
@@ -693,4 +703,41 @@ func (a *AwsVerifier) GetVpcIdFromSubnetId(ctx context.Context, vpcSubnetID stri
 		return "", fmt.Errorf("empty vpc id for the returned subnet: %s", vpcSubnetID)
 	}
 	return vpcId, nil
+}
+
+// fetchVpcDefaultSecurityGroup will return either the 'default' SG ID, or an empty string if not found/an error is hit
+func (a *AwsVerifier) fetchVpcDefaultSecurityGroup(ctx context.Context, vpcId string) string {
+	describeSGOutput, err := a.AwsClient.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
+		Filters: []ec2Types.Filter{
+			{
+				Name:   awsTools.String("vpc-id"),
+				Values: []string{vpcId},
+			},
+			{
+				Name:   awsTools.String("group-name"),
+				Values: []string{"default"},
+			},
+		},
+	})
+
+	if err != nil {
+		return ""
+	}
+
+	for _, SG := range describeSGOutput.SecurityGroups {
+		if *SG.GroupName == "default" {
+			return *SG.GroupId
+		}
+	}
+
+	return ""
+}
+
+func (a *AwsVerifier) modifyInstanceSecurityGroup(ctx context.Context, instanceID string, securityGroupID string) error {
+	_, err := a.AwsClient.ModifyInstanceAttribute(ctx, &ec2.ModifyInstanceAttributeInput{
+		InstanceId: &instanceID,
+		Groups:     []string{securityGroupID},
+	})
+
+	return err
 }
