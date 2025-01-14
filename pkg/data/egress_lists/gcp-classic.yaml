@@ -69,6 +69,48 @@ endpoints:
   - host: inputs1.osdsecuritylogs.splunkcloud.com
     ports:
       - 9997
+  - host: inputs2.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs3.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs4.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs5.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs6.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs7.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs8.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs9.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs10.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs11.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs12.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs13.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs14.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs15.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
   - host: http-inputs-osdsecuritylogs.splunkcloud.com
     ports:
       - 443
