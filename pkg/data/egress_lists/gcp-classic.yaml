@@ -1,7 +1,4 @@
 endpoints:
-  - host: cloud.redhat.com
-    ports:
-      - 443
   - host: registry.redhat.io
     ports:
       - 443
@@ -17,20 +14,22 @@ endpoints:
   - host: cdn03.quay.io
     ports:
       - 443
+  - host: cdn04.quay.io
+    ports:
+      - 443
+  - host: cdn05.quay.io
+    ports:
+      - 443
+  - host: cdn06.quay.io
+    ports:
+      - 443
   - host: sso.redhat.com
     ports:
       - 443
-      - 80
   - host: pull.q1w2.quay.rhcloud.com
     ports:
       - 443
-  - host: openshift.org
-    ports:
-      - 443
   - host: console.redhat.com
-    ports:
-      - 443
-  - host: quay-registry.s3.amazonaws.com
     ports:
       - 443
   - host: cert-api.access.redhat.com
@@ -52,22 +51,10 @@ endpoints:
   - host: registry.access.redhat.com
     ports:
       - 443
+  - host: registry.connect.redhat.com
+    ports:
+      - 443
   - host: quayio-production-s3.s3.amazonaws.com
-    ports:
-      - 443
-  - host: ec2.amazonaws.com
-    ports:
-      - 443
-  - host: iam.amazonaws.com
-    ports:
-      - 443
-  - host: route53.amazonaws.com
-    ports:
-      - 443
-  - host: sts.amazonaws.com
-    ports:
-      - 443
-  - host: events.amazonaws.com
     ports:
       - 443
   - host: events.pagerduty.com
@@ -82,49 +69,88 @@ endpoints:
   - host: inputs1.osdsecuritylogs.splunkcloud.com
     ports:
       - 9997
+  - host: inputs2.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs3.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs4.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs5.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs6.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs7.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs8.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs9.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs10.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs11.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs12.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs13.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs14.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
+  - host: inputs15.osdsecuritylogs.splunkcloud.com
+    ports:
+      - 9997
   - host: http-inputs-osdsecuritylogs.splunkcloud.com
     ports:
       - 443
   - host: observatorium.api.openshift.com
     ports:
       - 443
-  - host: tagging.us-east-1.amazonaws.com
-    ports:
-      - 443
-  - host: deploymentmanager.googleapis.com
+  - host: observatorium-mst.api.openshift.com
     ports:
       - 443
   - host: compute.googleapis.com
     ports:
       - 443
-  - host: cloudapis.googleapis.com
-    ports:
-      - 443
   - host: cloudresourcemanager.googleapis.com
-    ports:
-      - 443
-  - host: dns.googleapis.com
-    ports:
-      - 443
-  - host: networksecurity.googleapis.com
-    ports:
-      - 443
-  - host: iamcredentials.googleapis.com
     ports:
       - 443
   - host: iam.googleapis.com
     ports:
       - 443
-  - host: servicemanagement.googleapis.com
-    ports:
-      - 443
   - host: serviceusage.googleapis.com
     ports:
       - 443
-  - host: storage-api.googleapis.com
+  - host: oauth2.googleapis.com
     ports:
       - 443
-  - host: storage-component.googleapis.com
+  - host: storage.googleapis.com
     ports:
       - 443
+  - host: accounts.google.com
+    ports:
+      - 443
+  - host: catalog.redhat.com
+    ports:
+      - 443
+  - host: api.pagerduty.com
+    ports:
+      - 443
+  - host: rhc4tp-prod-z8cxf-image-registry-us-east-1-evenkyleffocxqvofrk.s3.dualstack.us-east-1.amazonaws.com
+    ports:
+      - 443
+  - host: oso-rhc4tp-docker-registry.s3-us-west-2.amazonaws.com
+    ports:
+      - 443 
 
