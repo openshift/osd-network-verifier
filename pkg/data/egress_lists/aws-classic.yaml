@@ -14,25 +14,25 @@ endpoints:
   - host: cdn03.quay.io
     ports:
       - 443
+  - host: cdn04.quay.io
+    ports:
+      - 443
+  - host: cdn05.quay.io
+    ports:
+      - 443
+  - host: cdn06.quay.io
+    ports:
+      - 443
   - host: sso.redhat.com
     ports:
       - 443
   - host: pull.q1w2.quay.rhcloud.com
     ports:
       - 443
-  - host: www.okd.io
-    ports:
-      - 443
-  - host: www.redhat.com
-    ports:
-      - 443
   - host: catalog.redhat.com
     ports:
       - 443
-  - host: dvbwgdztaeq9o.cloudfront.net
-    ports:
-      - 443
-  - host: openshift.org
+  - host: oidc.op1.openshiftapps.com
     ports:
       - 443
   - host: console.redhat.com
@@ -63,16 +63,7 @@ endpoints:
   - host: registry.connect.redhat.com
     ports:
       - 443
-  - host: rhc4tp-prod-z8cxf-image-registry-us-east-1-evenkyleffocxqvofrk.s3.dualstack.us-east-1.amazonaws.com
-    ports:
-      - 443
-  - host: oso-rhc4tp-docker-registry.s3-us-west-2.amazonaws.com
-    ports:
-      - 443
   - host: quayio-production-s3.s3.amazonaws.com
-    ports:
-      - 443
-  - host: aws.amazon.com
     ports:
       - 443
   - host: ec2.amazonaws.com
