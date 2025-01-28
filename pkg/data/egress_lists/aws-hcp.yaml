@@ -14,6 +14,15 @@ endpoints:
   - host: cdn03.quay.io
     ports:
       - 443
+  - host: cdn04.quay.io
+    ports:
+      - 443
+  - host: cdn05.quay.io
+    ports:
+      - 443
+  - host: cdn06.quay.io
+    ports:
+      - 443
   - host: console.redhat.com
     ports:
       - 443
