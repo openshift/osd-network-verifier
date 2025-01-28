@@ -138,6 +138,12 @@ endpoints:
   - host: storage.googleapis.com
     ports:
       - 443
+  - host: dns.googleapis.com
+    ports:
+      - 443
+  - host: iamcredentials.googleapis.com
+    ports:
+      - 443
   - host: accounts.google.com
     ports:
       - 443
@@ -147,10 +153,4 @@ endpoints:
   - host: api.pagerduty.com
     ports:
       - 443
-  - host: rhc4tp-prod-z8cxf-image-registry-us-east-1-evenkyleffocxqvofrk.s3.dualstack.us-east-1.amazonaws.com
-    ports:
-      - 443
-  - host: oso-rhc4tp-docker-registry.s3-us-west-2.amazonaws.com
-    ports:
-      - 443 
 
