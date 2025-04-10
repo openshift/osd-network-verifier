@@ -3,13 +3,11 @@ package awsverifier
 import (
 	"encoding/base64"
 	"fmt"
-	"os"
-	"strconv"
-	"time"
-
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"os"
+	"strconv"
 
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 
@@ -45,7 +43,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Default to 5sec per-request timeout if none specified
 	if vei.Timeout <= 0 {
-		vei.Timeout = 5 * time.Second
+		vei.Timeout = verifier.DefaultTimeout
 	}
 	a.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 

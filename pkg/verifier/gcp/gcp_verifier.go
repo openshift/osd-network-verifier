@@ -234,7 +234,7 @@ func (g *GcpVerifier) describeComputeServiceInstances(projectID, zone, instanceN
 
 	case "STOPPING", "STOPPED", "TERMINATED", "SUSPENDED":
 		g.Logger.Debug(context.TODO(), "Fatal - Instance status: ", instanceName)
-		return "FATAL", fmt.Errorf(resp.Status)
+		return "FATAL", fmt.Errorf("instance is in state '%s'", resp.Status)
 	}
 
 	if len(resp.Status) == 0 {
