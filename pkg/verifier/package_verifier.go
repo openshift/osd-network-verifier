@@ -11,6 +11,8 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 )
 
+const DefaultTimeout = 5 * time.Second
+
 // VerifierService defines the behaviors necessary to run verifier completely.
 // Any clients that fulfill this interface will be able to run all verifier tests
 type verifierService interface {

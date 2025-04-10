@@ -3,20 +3,14 @@ package gcpverifier
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/openshift/osd-network-verifier/pkg/helpers"
-	"strconv"
-	"time"
-
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
+	"github.com/openshift/osd-network-verifier/pkg/helpers"
 	"github.com/openshift/osd-network-verifier/pkg/output"
 	"github.com/openshift/osd-network-verifier/pkg/probes/curl"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
-)
-
-const (
-	DefaultTimeout = 5 * time.Second
+	"strconv"
 )
 
 // ValidateEgress performs validation process for egress
@@ -43,7 +37,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// Set timeout to default if not specified
 	if vei.Timeout <= 0 {
-		vei.Timeout = DefaultTimeout
+		vei.Timeout = verifier.DefaultTimeout
 	}
 	g.Logger.Debug(vei.Ctx, "configured a %s timeout for each egress request", vei.Timeout)
 

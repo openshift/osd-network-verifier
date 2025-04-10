@@ -93,7 +93,7 @@ func TestFindUnreachableEndpointsWithCurlProbe(t *testing.T) {
 			}
 
 			if tt.expectSuccess != cli.Output.IsSuccessful() {
-				t.Errorf(tt.errorMessage)
+				t.Error(tt.errorMessage)
 			}
 		})
 	}
