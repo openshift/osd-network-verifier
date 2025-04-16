@@ -228,7 +228,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 
 	// ensurePrivate is a flag to ensure the return IP address from the given hosts are private defined in RFC1918
 	// Currently, it will be used the Zero Egress cluster check only
-	ensurePrivate := false
+	var ensurePrivate bool
 	if vei.PlatformType == cloud.AWSHCPZeroEgress {
 		ensurePrivate = true
 	}
