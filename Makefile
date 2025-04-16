@@ -12,9 +12,9 @@ LDFLAGS=-ldflags="-X '$(PREFIX).Version=$(VERSION)' -X '$(PREFIX).CommitHash=$(C
 
 .PHONY: build
 build:
-	go fmt ./...
-	go mod tidy
-	go build $(LDFLAGS) $(GOFLAGS) .
+	${GOENV} go fmt ./...
+	${GOENV} go mod tidy
+	${GOENV} go build $(LDFLAGS) $(GOFLAGS) .
 
 .PHONY: fmt
 fmt:
@@ -28,7 +28,7 @@ check-fmt: fmt
 
 .PHONY: test
 test:
-	go test $(GOFLAGS) ./...
+	${GOENV} go test $(GOFLAGS) ./...
 
 .PHONY: boilerplate-update
 boilerplate-update:
