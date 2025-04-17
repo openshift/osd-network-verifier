@@ -18,8 +18,8 @@ build:
 
 .PHONY: fmt
 fmt:
-	go fmt ./...
-	go mod tidy
+	${GOENV} go fmt ./...
+	${GOENV} go mod tidy
 
 .PHONY: check-fmt
 check-fmt: fmt
