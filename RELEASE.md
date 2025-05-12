@@ -1,12 +1,8 @@
 # Releasing osd-network-verifier
-In practice, "the verifier" is a system comprised of three pieces of software: the machine image used by the probe VM/instance (a.k.a. "golden AMI"), the Golang module that handles launching that probe into the subnet-under-test and parsing its output (this repo), and the applications that use this Golang mod like osdctl, uhc-clusters-service/OCM, and CAD ("downstream consumers"). This doc details our release process, which touches all three parts.
+In practice, "the verifier" is a system comprised of three pieces of software: the machine image used by the probe VM/instance (a.k.a. "golden AMI"), the Golang module that handles launching that probe into the subnet-under-test and parsing its output (this repo), and the applications that use this Golang mod like osdctl, uhc-clusters-service/OCM, and CAD ("downstream consumers"). This doc details the release process for all three parts of this system.
 
-## 0. Versioning
-These changes don't automatically mean a change is a breaking or significant change, but should be taken into consideration:
-
-* The various input verifier structs in [./pkg/verifier/package_verifier.go](./pkg/verifier/package_verifier.go) are exported and consumed downstream. Breaking changes to that input struct should be considered breaking changes for osd-network-verifier.
-* New AMIs in [./pkg/probes/curl/machine_images.go](./pkg/probes/curl/machine_images.go), especially as the result of security fixes.
-* New cloud IAM requirements/new cloud infrastructure to provision
+## 0. Determine release version number
+osd-network-verifier follows [semantic versioning](https://semver.org/spec/v2.0.0.html) (mostly). Most releases should be backwards-compatible and therefore will only bump the minor or patch versions. Releases including breaking changes to the API used by downstream consumers (e.g., the structs in [package_verifier.go](./pkg/verifier/package_verifier.go)) must bump the major version and should be preceded by at least 1 backwards-compatible transitional minor version. Changes that expand the cloud IAM permission set required for existing functionality are considered breaking and warrant a major version bump.
 
 ## 1. Update the machine images used by the verifier
 The code we're about to release contains hardcoded lists of IDs referencing public machine images (a.k.a. AMIs) that are used by the verifier to launch VMs/instances into the subnet-under-test. If the machine images referenced by a given verifier release become unavailable, the verifier won't be able to run in all supported regions. Even if available, old machine images might contain OS vulnerabilities that pose security/compliance risks. Therefore, it's important that every cloud/architecture combination's AMI list is updated with every verifier release, even if the release contains no probe- or AMI-related changes.
@@ -24,14 +20,18 @@ test -z $(grep -E -o ami-[[:alnum:]]{17} $SRC_MACHINE_IMAGES | sort -u | comm -2
 ```
 If you get any curl errors, make sure you're logged into the RH VPN. If you get an outdated AMI warning, proceed with the steps below. Otherwise, skip to the next section.
 
-Run the following BASH to generate Golang snippets containing the latest AMI IDs. It will take 1-3 minutes, and you'll need to set an `AWS_PROFILE` corresponding to an AWS account that's enabled for all the same regions as the verifier (`rhcontrol` works well for this, as shown below).
+Obtain credentials for the AWS account that hosts the verifier's AMIs (see [golden AMI README](https://gitlab.cee.redhat.com/service/osd-network-verifier-golden-ami#aws-account)) and set your AWS_PROFILE accordingly. If you're not using a profile, remove `-p $AWS_PROFILE` from the commands below before running them. Run the following BASH to generate Golang snippets containing the latest AMI IDs and to enable [deregistration protection](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/deregister-ami.html#ami-deregistration-protection) for each AMI.
 ```bash
-AWS_PROFILE=rhcontrol
-OUT_DIR=$(mktemp -d)
+export AWS_PROFILE=my_example_profile AMI_ACCOUNT_NUM=0123456789 # Replace with real values
+export $(osdctl account cli -i $AMI_ACCOUNT_NUM -p $AWS_PROFILE -oenv | xargs)
+OUT_DIR=$(mktemp -d) AWS_LOG=$(mktemp)
 for REG_AMI_PAIR in $(curl -s https://ci.int.devshift.net/job/gl-build-master-osd-network-verifier-golden-ami-packer/lastSuccessfulBuild/consoleText | grep -E -o "[[:alpha:]]+-[[:alpha:]]+-[[:digit:]]: ami-[[:alnum:]]{17}" | sort -u | tr -d " "); do
   REG=$(echo $REG_AMI_PAIR | cut -d: -f1) AMI=$(echo $REG_AMI_PAIR | cut -d: -f2)
-  ARCH=$(aws ec2 describe-images --image-ids=$AMI_ID --region=$REGION --query='Images[0].Architecture' --output text --profile=$AWS_PROFILE)
+  ARCH=$(aws ec2 describe-images --image-ids=$AMI --region=$REG --query='Images[0].Architecture' --output text)
   echo "\"$REG\": \"$AMI\"," >> $OUT_DIR/$ARCH
+  aws ec2 enable-image-deregistration-protection --image-id=$AMI --region=$REG >> $AWS_LOG \
+    && echo "$AMI ($ARCH, $REG) protected from deregistration" \
+    || echo "ERROR: Failed to protect $AMI ($ARCH, $REG) from deregistration. Do not proceed with release! See $AWS_LOG"
 done
 echo "Overwrite the region:AMI mappings in machine_images.go with the following Golang snippets..."
 for AF in $OUT_DIR/*; do
@@ -40,12 +40,12 @@ for AF in $OUT_DIR/*; do
 done
 ```
 Create a new branch and copy-paste the snippets into machine_images.go, taking care to match up the CPU architectures. Test thoroughly and merge the resulting PR before proceeding with releasing.
+
 ## 2. Cut a release of the Golang module
 ### Run unit and integration tests
-Each Our CI typically won't allow PRs that fail unit tests to merge
-Run our integration test
+The CI tests run before PRs are merged are fairly basic and can be bypassed in some situations, so it's important to manually run our unit tests (via `make test`) and our automated integration test before each release. If this release is enabling new regions, perform your own testing in those regions.
 
-osd-network-verifier will follow semantic versioning
+
 
 
 ### Testing changes
