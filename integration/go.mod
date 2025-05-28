@@ -1,6 +1,6 @@
 module github.com/openshift/osd-network-verifier/integration
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.6
 
@@ -37,6 +37,6 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
-	golang.org/x/net v0.30.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
