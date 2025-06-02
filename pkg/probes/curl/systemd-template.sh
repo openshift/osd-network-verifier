@@ -16,7 +16,7 @@ array=(1 2 3 4 27 41 42 43 45)
 if echo ${USERDATA_BEGIN} > /dev/ttyS0 ; then : ; else
     exit 255
 fi
-curl --retry 3 --retry-connrefused -t B -Z -s -I -m ${TIMEOUT} -w "%{stderr}${LINE_PREFIX}%{json}\n" ${CURLOPT} ${URLS} --proto =http,https,telnet ${TLSDISABLED_URLS_RENDERED} 2>/dev/ttyS0
+${CURL_COMMAND} 2>/dev/ttyS0
 ret=$?
 value="\<${ret}\>"
 if [[ " ${array[@]} " =~ $value ]]; then
