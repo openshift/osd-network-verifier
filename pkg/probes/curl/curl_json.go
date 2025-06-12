@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/curlgen"
 
 	"github.com/openshift/osd-network-verifier/pkg/data/cpu"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
@@ -42,7 +42,6 @@ const outputLinePrefix = "@NV@"
 var presetUserDataVariables = map[string]string{
 	"USERDATA_BEGIN": startingToken,
 	"USERDATA_END":   endingToken,
-	"LINE_PREFIX":    outputLinePrefix,
 }
 
 // GetStartingToken returns the string token used to signal the beginning of the probe's output
@@ -100,15 +99,10 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 	// Extract required variables specified in template (if any)
 	directivelessUserDataTemplate, requiredVariables := helpers.ExtractRequiredVariablesDirective(userDataTemplate)
 
-	// Ensure userDataVariables complies with requiredVariables and presetUserDataVariables. See
-	// docstring for helpers.ValidateProvidedVariables() for more details
-	err := helpers.ValidateProvidedVariables(userDataVariables, presetUserDataVariables, requiredVariables)
-	if err != nil {
-		return "", err
-	}
-
 	// TIMEOUT might be a duration string (e.g., "3s"), but curl only accepts a naked
 	// positive decimal number of seconds
+
+	var err error
 	userDataVariables["TIMEOUT"], err = normalizeSaneNonzeroDuration(userDataVariables["TIMEOUT"], "%.2f")
 	if err != nil {
 		return "", fmt.Errorf("invalid userdata variable TIMEOUT: %w", err)
@@ -117,6 +111,28 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 	userDataVariables["DELAY"], err = normalizeSaneNonzeroDuration(userDataVariables["DELAY"], "%.f")
 	if err != nil {
 		return "", fmt.Errorf("invalid userdata variable DELAY: %w", err)
+	}
+
+	curlOptions := curlgen.Options{
+		CaPath:          "/etc/pki/tls/certs/",
+		ProxyCaPath:     "/etc/pki/tls/certs/",
+		Retry:           3,
+		MaxTime:         userDataVariables["TIMEOUT"],
+		NoTls:           userDataVariables["NOTLS"],
+		Urls:            userDataVariables["URLS"],
+		TlsDisabledUrls: userDataVariables["TLSDISABLED_URLS"],
+	}
+
+	userDataVariables["CURL_COMMAND"], err = curlgen.GenerateString(&curlOptions, outputLinePrefix)
+	if err != nil {
+		return "", err
+	}
+
+	// Ensure userDataVariables complies with requiredVariables and presetUserDataVariables. See
+	// docstring for helpers.ValidateProvidedVariables() for more details
+	err = helpers.ValidateProvidedVariables(userDataVariables, presetUserDataVariables, requiredVariables)
+	if err != nil {
+		return "", err
 	}
 
 	// We expect CACERT to be either empty or a base64 encoded PEM-formatted CA certificate string.
@@ -149,35 +165,6 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 		}
 
 		userDataVariables["CACERT_RENDERED"] = strings.TrimSpace(string(cloudInitYamlBytes))
-	}
-
-	// Also for compatibility reasons, we map the NOTLS variable to curl's "insecure" flag
-	if userDataVariables["NOTLS"] != "" {
-		noTLS, err := strconv.ParseBool(userDataVariables["NOTLS"])
-		if err != nil {
-			return "", fmt.Errorf("invalid userdata variable NOTLS: %w", err)
-		}
-		if noTLS {
-			userDataVariables["CURLOPT"] += " -k "
-			// In addition to adding the curl flag, we can merge the list of "tlsDisabled" URLs
-			// with the list of "normal" URLs now (since all URLs will be "tlsDisabled")
-			userDataVariables["URLS"] += " " + userDataVariables["TLSDISABLED_URLS"]
-			userDataVariables["TLSDISABLED_URLS"] = ""
-		}
-	}
-
-	// Assuming NOTLS=false, "tlsDisabled" URLs must have curl's "--insecure" flag applied *only* to them.
-	// We use curl's "parser reset" flag ("--next" or "-:") to do this, but this has the unfortunate side
-	// effect of forcing us to re-pass most curl flags (except global flags and those irrelevant to HTTPS)
-	if userDataVariables["TLSDISABLED_URLS"] != "" {
-		userDataVariables["TLSDISABLED_URLS_RENDERED"] = fmt.Sprintf(
-			// TODO consider a better way of keeping this in sync with what's in userdata-template.yaml?
-			`--next -k --retry 3 --retry-connrefused -s -I -m %s -w "%%{stderr}%s%%{json}\n" %s %s --proto =https`,
-			userDataVariables["TIMEOUT"],
-			outputLinePrefix,
-			userDataVariables["CURLOPT"],
-			userDataVariables["TLSDISABLED_URLS"],
-		)
 	}
 
 	// Expand template

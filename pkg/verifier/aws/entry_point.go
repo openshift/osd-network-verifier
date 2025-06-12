@@ -3,11 +3,12 @@ package awsverifier
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
+	"strconv"
+
 	awsTools "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2Types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
-	"os"
-	"strconv"
 
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 
