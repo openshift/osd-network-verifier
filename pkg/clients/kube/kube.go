@@ -117,7 +117,10 @@ func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string, timeo
 	}
 }
 
-// CleanupJob deletes a job and its associated pods
+// CleanupJob deletes a job and waits for the KubeAPI to let us know that it's gone
+// TODO: this seems to take many seconds longer to return than the output of
+// `oc get jobs -w --output-watch-events` implies the deletion takes. We should
+// investigate why this is the case.
 func (c *Client) CleanupJob(ctx context.Context, jobName string) error {
 	// Delete the job (this will also delete the pods due to cascading deletion)
 	err := c.DeleteJob(ctx, jobName)
