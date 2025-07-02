@@ -41,12 +41,32 @@ var defaultIpPermissions = []ec2Types.IpPermission{
 		},
 	},
 	{
+		FromPort:   awsTools.Int32(80),
+		ToPort:     awsTools.Int32(80),
+		IpProtocol: awsTools.String("tcp"),
+		Ipv6Ranges: []ec2Types.Ipv6Range{
+			{
+				CidrIpv6: awsTools.String("::/0"),
+			},
+		},
+	},
+	{
 		FromPort:   awsTools.Int32(443),
 		ToPort:     awsTools.Int32(443),
 		IpProtocol: awsTools.String("tcp"),
 		IpRanges: []ec2Types.IpRange{
 			{
 				CidrIp: awsTools.String("0.0.0.0/0"),
+			},
+		},
+	},
+	{
+		FromPort:   awsTools.Int32(443),
+		ToPort:     awsTools.Int32(443),
+		IpProtocol: awsTools.String("tcp"),
+		Ipv6Ranges: []ec2Types.Ipv6Range{
+			{
+				CidrIpv6: awsTools.String("::/0"),
 			},
 		},
 	},
@@ -61,12 +81,32 @@ var defaultIpPermissions = []ec2Types.IpPermission{
 		},
 	},
 	{
+		FromPort:   awsTools.Int32(9997),
+		ToPort:     awsTools.Int32(9997),
+		IpProtocol: awsTools.String("tcp"),
+		Ipv6Ranges: []ec2Types.Ipv6Range{
+			{
+				CidrIpv6: awsTools.String("::/0"),
+			},
+		},
+	},
+	{
 		FromPort:   awsTools.Int32(53),
 		ToPort:     awsTools.Int32(53),
 		IpProtocol: awsTools.String("udp"),
 		IpRanges: []ec2Types.IpRange{
 			{
 				CidrIp: awsTools.String("0.0.0.0/0"),
+			},
+		},
+	},
+	{
+		FromPort:   awsTools.Int32(53),
+		ToPort:     awsTools.Int32(53),
+		IpProtocol: awsTools.String("udp"),
+		Ipv6Ranges: []ec2Types.Ipv6Range{
+			{
+				CidrIpv6: awsTools.String("::/0"),
 			},
 		},
 	},
@@ -543,10 +583,10 @@ func (a *AwsVerifier) CreateSecurityGroup(ctx context.Context, tags map[string]s
 	return output, nil
 }
 
-// ipPermissionFromURL generates an EC2 IpPermission (for use in sec. group rules) from a given http(s)
+// ipPermissionFromURL generates EC2 IpPermissions (for use in sec. group rules) from a given http(s)
 // URL (e.g., "http://10.0.8.1:8080" or "https://proxy.example.com:1234") with the given human-readable
-// description
-func ipPermissionFromURL(urlStr string, description string) (*ec2Types.IpPermission, error) {
+// description. For FQDNs, it returns both IPv4 and IPv6 wildcard rules.
+func ipPermissionFromURL(urlStr string, description string) ([]ec2Types.IpPermission, error) {
 
 	// Validate URL by parsing it
 	parsedUrl, err := url.Parse(urlStr)
@@ -561,17 +601,9 @@ func ipPermissionFromURL(urlStr string, description string) (*ec2Types.IpPermiss
 	// name (FQDN, e.g., "example.com") or an IP address
 	validate := validator.New()
 	err = validate.Var(parsedUrlHostnameStr, "fqdn")
-	if err == nil {
-		// If parsedUrlHostnameStr is an FQDN, set the ip to 0.0.0.0 in order to
-		// create an outbound SG rule to all IPs. Ref: OSD-20562
-		parsedUrlHostnameStr = "0.0.0.0"
-	}
+	isFQDN := (err == nil)
 
-	// Ensure parsedUrlHostnameStr is a valid IP address at this point
-	ipAddr, err := netip.ParseAddr(parsedUrlHostnameStr)
-	if err != nil {
-		return nil, errors.New("URL must be valid IP address or FQDN (fully qualified domain name)")
-	}
+	var ipPermissions []ec2Types.IpPermission
 
 	// Then attempt to extract port number and cast to int32
 	parsedUrlPortStr := parsedUrl.Port()
@@ -592,40 +624,80 @@ func ipPermissionFromURL(urlStr string, description string) (*ec2Types.IpPermiss
 	}
 	parsedUrlPortInt32 := int32(parsedUrlPortInt64)
 
-	// Construct egress rule (ipPermission) and add to array
-	ipPerm := &ec2Types.IpPermission{
-		FromPort:   awsTools.Int32(parsedUrlPortInt32),
-		ToPort:     awsTools.Int32(parsedUrlPortInt32),
-		IpProtocol: awsTools.String("tcp"),
-	}
-	// Set CIDR range based on IP version (/0 for 0.0.0.0 or ::, /32 for
-	// specific IPv4, /128 for specific IPv6)
-	if ipAddr.Is4() {
-		cidrPrefixLength := "/32"
-		if ipAddr.String() == "0.0.0.0" {
-			cidrPrefixLength = "/0"
-		}
-		ipPerm.IpRanges = []ec2Types.IpRange{
-			{
-				CidrIp:      awsTools.String(ipAddr.String() + cidrPrefixLength),
-				Description: awsTools.String(description),
+	if isFQDN {
+		// If parsedUrlHostnameStr is an FQDN, create both IPv4 and IPv6 wildcard rules
+		// to create outbound SG rules to all IPs. Ref: OSD-20562, OSD-21112
+
+		// IPv4 wildcard rule
+		ipv4Perm := ec2Types.IpPermission{
+			FromPort:   awsTools.Int32(parsedUrlPortInt32),
+			ToPort:     awsTools.Int32(parsedUrlPortInt32),
+			IpProtocol: awsTools.String("tcp"),
+			IpRanges: []ec2Types.IpRange{
+				{
+					CidrIp:      awsTools.String("0.0.0.0/0"),
+					Description: awsTools.String(description),
+				},
 			},
 		}
-	}
-	if ipAddr.Is6() {
-		cidrPrefixLength := "/128"
-		if ipAddr.String() == "::" {
-			cidrPrefixLength = "/0"
-		}
-		ipPerm.Ipv6Ranges = []ec2Types.Ipv6Range{
-			{
-				CidrIpv6:    awsTools.String(ipAddr.String() + cidrPrefixLength),
-				Description: awsTools.String(description),
+		ipPermissions = append(ipPermissions, ipv4Perm)
+
+		// IPv6 wildcard rule
+		ipv6Perm := ec2Types.IpPermission{
+			FromPort:   awsTools.Int32(parsedUrlPortInt32),
+			ToPort:     awsTools.Int32(parsedUrlPortInt32),
+			IpProtocol: awsTools.String("tcp"),
+			Ipv6Ranges: []ec2Types.Ipv6Range{
+				{
+					CidrIpv6:    awsTools.String("::/0"),
+					Description: awsTools.String(description),
+				},
 			},
 		}
+		ipPermissions = append(ipPermissions, ipv6Perm)
+	} else {
+		// Ensure parsedUrlHostnameStr is a valid IP address at this point
+		ipAddr, err := netip.ParseAddr(parsedUrlHostnameStr)
+		if err != nil {
+			return nil, errors.New("URL must be valid IP address or FQDN (fully qualified domain name)")
+		}
+
+		// Construct egress rule (ipPermission) for specific IP
+		ipPerm := ec2Types.IpPermission{
+			FromPort:   awsTools.Int32(parsedUrlPortInt32),
+			ToPort:     awsTools.Int32(parsedUrlPortInt32),
+			IpProtocol: awsTools.String("tcp"),
+		}
+		// Set CIDR range based on IP version (/0 for 0.0.0.0 or ::, /32 for
+		// specific IPv4, /128 for specific IPv6)
+		if ipAddr.Is4() {
+			cidrPrefixLength := "/32"
+			if ipAddr.String() == "0.0.0.0" {
+				cidrPrefixLength = "/0"
+			}
+			ipPerm.IpRanges = []ec2Types.IpRange{
+				{
+					CidrIp:      awsTools.String(ipAddr.String() + cidrPrefixLength),
+					Description: awsTools.String(description),
+				},
+			}
+		}
+		if ipAddr.Is6() {
+			cidrPrefixLength := "/128"
+			if ipAddr.String() == "::" {
+				cidrPrefixLength = "/0"
+			}
+			ipPerm.Ipv6Ranges = []ec2Types.Ipv6Range{
+				{
+					CidrIpv6:    awsTools.String(ipAddr.String() + cidrPrefixLength),
+					Description: awsTools.String(description),
+				},
+			}
+		}
+		ipPermissions = append(ipPermissions, ipPerm)
 	}
 
-	return ipPerm, nil
+	return ipPermissions, nil
 }
 
 // ipPermissionSetFromURLs wraps ipPermissionFromURL() with deduplication logic. I.e.,
@@ -642,21 +714,23 @@ func ipPermissionSetFromURLs(urlStrs []string, descriptionPrefix string) ([]ec2T
 
 	// Iterate over provided proxy URLs, converting each to an IpPermission
 	for _, urlStr := range urlStrs {
-		ipPerm, err := ipPermissionFromURL(urlStr, descriptionPrefix+urlStr)
+		ipPerms, err := ipPermissionFromURL(urlStr, descriptionPrefix+urlStr)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create security group rule from URL '%s': %w", urlStr, err)
 		}
-		// Add ipPerm to ipPermissions only if not already there (AWS will reject duplicates)
-		ipPermAlreadyExists := false
-		for _, existingIPPerm := range ipPermissionSet {
-			ipPermAlreadyExists = ipPermAlreadyExists || helpers.IPPermissionsEquivalent(*ipPerm, existingIPPerm)
-		}
-		// Also check against defaultIpPermissions
-		for _, defaultIPPerm := range defaultIpPermissions {
-			ipPermAlreadyExists = ipPermAlreadyExists || helpers.IPPermissionsEquivalent(*ipPerm, defaultIPPerm)
-		}
-		if !ipPermAlreadyExists {
-			ipPermissionSet = append(ipPermissionSet, *ipPerm)
+		// Add ipPerms to ipPermissions only if not already there (AWS will reject duplicates)
+		for _, ipPerm := range ipPerms {
+			ipPermAlreadyExists := false
+			for _, existingIPPerm := range ipPermissionSet {
+				ipPermAlreadyExists = ipPermAlreadyExists || helpers.IPPermissionsEquivalent(existingIPPerm, ipPerm)
+			}
+			// Also check against defaultIpPermissions
+			for _, defaultIPPerm := range defaultIpPermissions {
+				ipPermAlreadyExists = ipPermAlreadyExists || helpers.IPPermissionsEquivalent(defaultIPPerm, ipPerm)
+			}
+			if !ipPermAlreadyExists {
+				ipPermissionSet = append(ipPermissionSet, ipPerm)
+			}
 		}
 	}
 

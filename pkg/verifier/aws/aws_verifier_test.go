@@ -170,7 +170,7 @@ func TestIpPermissionFromURL(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *ec2Types.IpPermission
+		want    []ec2Types.IpPermission
 		wantErr bool
 	}{
 		{
@@ -179,14 +179,16 @@ func TestIpPermissionFromURL(t *testing.T) {
 				urlStr:      "http://1.2.3.4:567",
 				description: "test4",
 			},
-			want: &ec2Types.IpPermission{
-				FromPort:   awss.Int32(567),
-				ToPort:     awss.Int32(567),
-				IpProtocol: awss.String("tcp"),
-				IpRanges: []ec2Types.IpRange{
-					{
-						CidrIp:      awss.String("1.2.3.4/32"),
-						Description: awss.String("test4"),
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("1.2.3.4/32"),
+							Description: awss.String("test4"),
+						},
 					},
 				},
 			},
@@ -197,14 +199,16 @@ func TestIpPermissionFromURL(t *testing.T) {
 				urlStr:      "http://[ff06::c3]:567",
 				description: "test6",
 			},
-			want: &ec2Types.IpPermission{
-				FromPort:   awss.Int32(567),
-				ToPort:     awss.Int32(567),
-				IpProtocol: awss.String("tcp"),
-				Ipv6Ranges: []ec2Types.Ipv6Range{
-					{
-						CidrIpv6:    awss.String("ff06::c3/128"),
-						Description: awss.String("test6"),
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					Ipv6Ranges: []ec2Types.Ipv6Range{
+						{
+							CidrIpv6:    awss.String("ff06::c3/128"),
+							Description: awss.String("test6"),
+						},
 					},
 				},
 			},
@@ -215,14 +219,16 @@ func TestIpPermissionFromURL(t *testing.T) {
 				urlStr:      "https://10.0.8.8",
 				description: "testi",
 			},
-			want: &ec2Types.IpPermission{
-				FromPort:   awss.Int32(443),
-				ToPort:     awss.Int32(443),
-				IpProtocol: awss.String("tcp"),
-				IpRanges: []ec2Types.IpRange{
-					{
-						CidrIp:      awss.String("10.0.8.8/32"),
-						Description: awss.String("testi"),
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(443),
+					ToPort:     awss.Int32(443),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("10.0.8.8/32"),
+							Description: awss.String("testi"),
+						},
 					},
 				},
 			},
@@ -233,14 +239,27 @@ func TestIpPermissionFromURL(t *testing.T) {
 				urlStr:      "https://example.fqdn.test.com",
 				description: "test-fqdn",
 			},
-			want: &ec2Types.IpPermission{
-				FromPort:   awss.Int32(443),
-				ToPort:     awss.Int32(443),
-				IpProtocol: awss.String("tcp"),
-				IpRanges: []ec2Types.IpRange{
-					{
-						CidrIp:      awss.String("0.0.0.0/0"),
-						Description: awss.String("test-fqdn"),
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(443),
+					ToPort:     awss.Int32(443),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("0.0.0.0/0"),
+							Description: awss.String("test-fqdn"),
+						},
+					},
+				},
+				{
+					FromPort:   awss.Int32(443),
+					ToPort:     awss.Int32(443),
+					IpProtocol: awss.String("tcp"),
+					Ipv6Ranges: []ec2Types.Ipv6Range{
+						{
+							CidrIpv6:    awss.String("::/0"),
+							Description: awss.String("test-fqdn"),
+						},
 					},
 				},
 			},
@@ -251,14 +270,27 @@ func TestIpPermissionFromURL(t *testing.T) {
 				urlStr:      "http://example.fqdn.test.com",
 				description: "test-fqdn2",
 			},
-			want: &ec2Types.IpPermission{
-				FromPort:   awss.Int32(80),
-				ToPort:     awss.Int32(80),
-				IpProtocol: awss.String("tcp"),
-				IpRanges: []ec2Types.IpRange{
-					{
-						CidrIp:      awss.String("0.0.0.0/0"),
-						Description: awss.String("test-fqdn2"),
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(80),
+					ToPort:     awss.Int32(80),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("0.0.0.0/0"),
+							Description: awss.String("test-fqdn2"),
+						},
+					},
+				},
+				{
+					FromPort:   awss.Int32(80),
+					ToPort:     awss.Int32(80),
+					IpProtocol: awss.String("tcp"),
+					Ipv6Ranges: []ec2Types.Ipv6Range{
+						{
+							CidrIpv6:    awss.String("::/0"),
+							Description: awss.String("test-fqdn2"),
+						},
 					},
 				},
 			},
@@ -269,14 +301,27 @@ func TestIpPermissionFromURL(t *testing.T) {
 				urlStr:      "http://example.fqdn.test.com:7654",
 				description: "test-fqdn3",
 			},
-			want: &ec2Types.IpPermission{
-				FromPort:   awss.Int32(7654),
-				ToPort:     awss.Int32(7654),
-				IpProtocol: awss.String("tcp"),
-				IpRanges: []ec2Types.IpRange{
-					{
-						CidrIp:      awss.String("0.0.0.0/0"),
-						Description: awss.String("test-fqdn3"),
+			want: []ec2Types.IpPermission{
+				{
+					FromPort:   awss.Int32(7654),
+					ToPort:     awss.Int32(7654),
+					IpProtocol: awss.String("tcp"),
+					IpRanges: []ec2Types.IpRange{
+						{
+							CidrIp:      awss.String("0.0.0.0/0"),
+							Description: awss.String("test-fqdn3"),
+						},
+					},
+				},
+				{
+					FromPort:   awss.Int32(7654),
+					ToPort:     awss.Int32(7654),
+					IpProtocol: awss.String("tcp"),
+					Ipv6Ranges: []ec2Types.Ipv6Range{
+						{
+							CidrIpv6:    awss.String("::/0"),
+							Description: awss.String("test-fqdn3"),
+						},
 					},
 				},
 			},
@@ -444,6 +489,17 @@ func Test_ipPermissionSetFromURLs(t *testing.T) {
 					IpRanges: []ec2Types.IpRange{
 						{
 							CidrIp:      awss.String("0.0.0.0/0"),
+							Description: awss.String("multi-identical test: http://proxy.example.org:567"),
+						},
+					},
+				},
+				{
+					FromPort:   awss.Int32(567),
+					ToPort:     awss.Int32(567),
+					IpProtocol: awss.String("tcp"),
+					Ipv6Ranges: []ec2Types.Ipv6Range{
+						{
+							CidrIpv6:    awss.String("::/0"),
 							Description: awss.String("multi-identical test: http://proxy.example.org:567"),
 						},
 					},
