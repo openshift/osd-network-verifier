@@ -85,7 +85,9 @@ func TestClient_GetJob(t *testing.T) {
 	// Create a mock client with a mock job and pod
 	mockedClientset := fak8s.NewClientset()
 	setupJobMockingReactors(mockedClientset)
-	createMockedJob("osd-network-verifier", mockedClientset)
+	if err := createMockedJob("osd-network-verifier", mockedClientset); err != nil {
+		t.Fatalf("could not create mocked job: %v", err)
+	}
 
 	type args struct {
 		jobName string
@@ -135,7 +137,9 @@ func TestClient_GetJobLogs(t *testing.T) {
 	// Create a mock client with a mock job and pod
 	mockedClientset := fak8s.NewClientset()
 	setupJobMockingReactors(mockedClientset)
-	createMockedJob("osd-network-verifier", mockedClientset)
+	if err := createMockedJob("osd-network-verifier", mockedClientset); err != nil {
+		t.Fatalf("could not create mocked job: %v", err)
+	}
 
 	type args struct {
 		jobName string
@@ -185,7 +189,9 @@ func TestClient_DeleteJob(t *testing.T) {
 	// Create a mock client with a mock job and pod
 	mockedClientset := fak8s.NewClientset()
 	setupJobMockingReactors(mockedClientset)
-	createMockedJob("osd-network-verifier", mockedClientset)
+	if err := createMockedJob("osd-network-verifier", mockedClientset); err != nil {
+		t.Fatalf("could not create mocked job: %v", err)
+	}
 
 	type args struct {
 		jobName string
@@ -243,20 +249,6 @@ func TestClient_DeleteJob(t *testing.T) {
 	}
 }
 
-// getMockedJob returns a K8s Job spec with the given name in the test namespace
-func getMockedJob(name string) *batchv1.Job {
-	return &batchv1.Job{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Job",
-			APIVersion: "batch/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNamespace,
-			Name:      name,
-		},
-	}
-}
-
 // setupJobMockingReactors adds hooks ("reactors") to the fake clientset that emulates the behavior of the KubeAPI
 // (i.e., when a job is created, a pod is created and when a job is deleted, the pod is deleted)
 func setupJobMockingReactors(clientset *fak8s.Clientset) {
@@ -291,13 +283,29 @@ func setupJobMockingReactors(clientset *fak8s.Clientset) {
 
 		// Delete the associated pod if the propagation policy is set properly
 		if deletedJobPropagationPolicy != nil && *deletedJobPropagationPolicy != metav1.DeletePropagationOrphan {
-			clientset.Tracker().Delete(corev1.SchemeGroupVersion.WithResource("pods"), deletedJobNamespace, deletedJobName)
+			err := clientset.Tracker().Delete(corev1.SchemeGroupVersion.WithResource("pods"), deletedJobNamespace, deletedJobName)
+			return false, nil, err
 		}
 		return false, nil, nil
 	})
 }
 
-// createMockedJob creates a mock job in the test namespace
-func createMockedJob(name string, clientset *fak8s.Clientset) {
-	clientset.BatchV1().Jobs(testNamespace).Create(context.Background(), getMockedJob(name), metav1.CreateOptions{})
+// createMockedJob creates a mock job in the test namespace. Tests calling this should fail out if err != nil
+func createMockedJob(name string, clientset *fak8s.Clientset) error {
+	_, err := clientset.BatchV1().Jobs(testNamespace).Create(context.Background(), getMockedJob(name), metav1.CreateOptions{})
+	return err
+}
+
+// getMockedJob returns a K8s Job spec with the given name in the test namespace
+func getMockedJob(name string) *batchv1.Job {
+	return &batchv1.Job{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Job",
+			APIVersion: "batch/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      name,
+		},
+	}
 }

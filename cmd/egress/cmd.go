@@ -155,7 +155,7 @@ are set correctly before execution.
 				// HELLO WORLD EXAMPLE
 				fmt.Println("START POD MODE HELLO WORLD EXAMPLE")
 				kubeVerifier.KubeClient.SetNamespace("openshift-network-diagnostics")
-				kubeVerifier.KubeClient.CreateJob(context.TODO(), &batchv1.Job{
+				_, err = kubeVerifier.KubeClient.CreateJob(context.TODO(), &batchv1.Job{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "verifier-pod-mode-hello-world",
 					},
@@ -175,8 +175,16 @@ are set correctly before execution.
 						},
 					},
 				})
+				if err != nil {
+					fmt.Printf("could not create job: %v\n", err)
+					os.Exit(1)
+				}
 				fmt.Println("Created job; waiting for completion...")
-				kubeVerifier.KubeClient.WaitForJobCompletion(context.TODO(), "verifier-pod-mode-hello-world", 20*time.Second)
+				err = kubeVerifier.KubeClient.WaitForJobCompletion(context.TODO(), "verifier-pod-mode-hello-world", 20*time.Second)
+				if err != nil {
+					fmt.Printf("could not wait for job completion: %v\n", err)
+					os.Exit(1)
+				}
 				fmt.Println("Job completed; getting logs...")
 				logs, err := kubeVerifier.KubeClient.GetJobLogs(context.TODO(), "verifier-pod-mode-hello-world")
 				if err != nil {
@@ -185,7 +193,11 @@ are set correctly before execution.
 				}
 				fmt.Println(logs)
 				fmt.Println("Deleting job...")
-				kubeVerifier.KubeClient.CleanupJob(context.TODO(), "verifier-pod-mode-hello-world")
+				err = kubeVerifier.KubeClient.CleanupJob(context.TODO(), "verifier-pod-mode-hello-world")
+				if err != nil {
+					fmt.Printf("could not delete job: %v\n", err)
+					os.Exit(1)
+				}
 				fmt.Println("Job deleted")
 				fmt.Println("END POD MODE HELLO WORLD EXAMPLE")
 				os.Exit(0)

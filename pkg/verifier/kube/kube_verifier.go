@@ -15,6 +15,7 @@ type KubeVerifier struct {
 	Output     output.Output
 }
 
+// NewKubeVerifier returns a KubeVerifier authenticated to a k8s cluster with the given clientset
 func NewKubeVerifier(clientset *kubernetes.Clientset, debug bool) (*KubeVerifier, error) {
 	builder := ocmlog.NewStdLoggerBuilder()
 	builder.Debug(debug)
