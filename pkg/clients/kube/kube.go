@@ -9,6 +9,7 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
@@ -85,42 +86,39 @@ func (c *Client) GetJobLogs(ctx context.Context, jobName string) (string, error)
 	return string(logs), nil
 }
 
-// WaitForJobCompletion waits for a job to complete (succeed or fail)
-func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string, timeout time.Duration) error {
+// WaitForJobCompletion waits for a job to complete (succeed or fail). It's context-aware,
+// so set ctx to something like `context.WithTimeout(ctx, 10*time.Second)` to set a timeout.
+func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string) error {
 	watcher, err := c.WatchJob(ctx, jobName)
 	if err != nil {
 		return fmt.Errorf("failed to watch job %s: %w", jobName, err)
 	}
 	defer watcher.Stop()
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
 	for {
 		select {
-		case <-timeoutCtx.Done():
-			return fmt.Errorf("timeout waiting for job %s to complete", jobName)
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled while waiting for job %s to complete", jobName)
 		case event := <-watcher.ResultChan():
 			job, ok := event.Object.(*batchv1.Job)
 			if !ok {
 				continue
 			}
 
-			// Check if job is complete
-			if job.Status.Succeeded > 0 {
+			jobStatus := getJobStatus(job)
+			if jobStatus == batchv1.JobComplete || jobStatus == batchv1.JobSuccessCriteriaMet {
 				return nil
 			}
-			if job.Status.Failed > 0 {
+			if jobStatus == batchv1.JobFailed {
 				return fmt.Errorf("job %s failed", jobName)
 			}
 		}
 	}
 }
 
-// CleanupJob deletes a job and waits for the KubeAPI to let us know that it's gone
-// TODO: this seems to take many seconds longer to return than the output of
-// `oc get jobs -w --output-watch-events` implies the deletion takes. We should
-// investigate why this is the case.
+// CleanupJob deletes a job and polls the KubeAPI until deletion is confirmed. It's
+// context-aware, so set ctx to something like `context.WithTimeout(ctx, 10*time.Second)`
+// to set a timeout.
 func (c *Client) CleanupJob(ctx context.Context, jobName string) error {
 	// Delete the job (this will also delete the pods due to cascading deletion)
 	err := c.DeleteJob(ctx, jobName)
@@ -128,22 +126,33 @@ func (c *Client) CleanupJob(ctx context.Context, jobName string) error {
 		return fmt.Errorf("failed to delete job %s: %w", jobName, err)
 	}
 
-	// Wait for the job to be fully deleted
-	watcher, err := c.WatchJob(ctx, jobName)
-	if err != nil {
-		// Job might already be deleted
-		return nil
-	}
-	defer watcher.Stop()
-
+	// Poll for job deletion instead of using a watcher to avoid infinite loops
 	for {
 		select {
-		case event := <-watcher.ResultChan():
-			if event.Type == watch.Deleted {
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled waiting for job %s to be deleted", jobName)
+		default:
+			// Check if job still exists
+			_, err := c.GetJob(ctx, jobName)
+			if errors.IsNotFound(err) {
 				return nil
 			}
-		case <-time.After(30 * time.Second):
-			return fmt.Errorf("timeout waiting for job %s to be deleted", jobName)
+			if err != nil {
+				return fmt.Errorf("error checking if job %s was deleted: %w", jobName, err)
+			}
+			// Wait a bit before checking again
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
+}
+
+// getJobStatus returns the status of a job (Completed, Failed, Suspended, etc.) or
+// an empty string if the status is not yet available.
+func getJobStatus(job *batchv1.Job) batchv1.JobConditionType {
+	for _, condition := range job.Status.Conditions {
+		if condition.Status == corev1.ConditionTrue {
+			return condition.Type
+		}
+	}
+	return ""
 }
