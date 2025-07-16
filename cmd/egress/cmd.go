@@ -14,6 +14,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2/google"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/openshift/osd-network-verifier/cmd/utils"
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
@@ -23,6 +25,7 @@ import (
 	"github.com/openshift/osd-network-verifier/pkg/proxy"
 	"github.com/openshift/osd-network-verifier/pkg/verifier"
 	gcpverifier "github.com/openshift/osd-network-verifier/pkg/verifier/gcp"
+	kubeverifier "github.com/openshift/osd-network-verifier/pkg/verifier/kube"
 )
 
 var (
@@ -62,6 +65,9 @@ type egressConfig struct {
 	importKeyPair              string
 	ForceTempSecurityGroup     bool
 	probeName                  string
+	podMode                    bool
+	kubeConfigPath             string
+	namespace                  string
 }
 
 func NewCmdValidateEgress() *cobra.Command {
@@ -120,6 +126,34 @@ are set correctly before execution.
 				InstanceType: config.instanceType,
 				PlatformType: platformType,
 				Proxy:        p,
+			}
+			// Pod mode workflow
+			if config.podMode {
+				// Build a REST config using user-provided kubeconfig file
+				restConfig, err := clientcmd.BuildConfigFromFlags("", getKubeConfigPath(config.kubeConfigPath))
+				if err != nil {
+					fmt.Printf("could not build KubeAPI client due to error loading kubeconfig: %v\n", err)
+					os.Exit(1)
+				}
+
+				// Generate a KubeAPI clientset from the REST config
+				clientset, err := kubernetes.NewForConfig(restConfig)
+				if err != nil {
+					fmt.Printf("could not build KubeAPI client: %v\n", err)
+					os.Exit(1)
+				}
+
+				// Create a new KubeVerifier using the clientset
+				kubeVerifier, err := kubeverifier.NewKubeVerifier(clientset, config.debug)
+				if err != nil {
+					fmt.Printf("could not build kubeVerifier: %v\n", err)
+					os.Exit(1)
+				}
+				kubeVerifier.KubeClient.SetNamespace(config.namespace)
+
+				// TODO: Implement pod mode
+				fmt.Println("Pod mode not yet implemented")
+				os.Exit(0)
 			}
 
 			// AWS workflow
@@ -264,11 +298,27 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.importKeyPair, "import-keypair", "", "(optional) Takes the path to your public key used to connect to Debug Instance. Automatically skips Termination")
 	validateEgressCmd.Flags().BoolVar(&config.ForceTempSecurityGroup, "force-temp-security-group", false, "(optional) Enforces creation of Temporary SG even if --security-group-ids flag is used")
 	validateEgressCmd.Flags().StringVar(&config.probeName, "probe", "Curl", "(optional) select the probe to be used for egress testing. Either 'Curl' (default) or 'Legacy'")
-	if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
-		validateEgressCmd.PrintErr(err)
-	}
+	validateEgressCmd.Flags().BoolVar(&config.podMode, "pod-mode", false, "(optional) launch probe into a k8s cluster as a pod (vs. into a cloud account as a VM). Incompatible with cloud-related flags. See README for details")
+	validateEgressCmd.Flags().StringVar(&config.namespace, "namespace", "openshift-network-diagnostics", "(optional) k8s namespace to launch probe pods/jobs into. Only has an effect in --pod-mode")
+	validateEgressCmd.Flags().StringVar(&config.kubeConfigPath, "kubeconfig", "", "(optional) path to kubeconfig file. Defaults to KUBECONFIG env-var if set, otherwise ~/.kube/config")
 
+	// Require either --pod-mode or --subnet-id, but block most other flags when using pod mode
+	validateEgressCmd.MarkFlagsOneRequired("pod-mode", "subnet-id")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "subnet-id")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "instance-type")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "security-group-ids")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "region")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "cloud-tags")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "kms-key-id")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "skip-termination")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "terminate-debug")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "import-keypair")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "force-temp-security-group")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "profile")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "vpc-name")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "cpu-arch")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("cacert", "no-tls")
+
 	return validateEgressCmd
 }
 
@@ -337,4 +387,17 @@ func getCustomExternalEgressList(uri string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func getKubeConfigPath(flagValue string) string {
+	if flagValue == "" {
+		// If the flag is not set, check the KUBECONFIG env-var
+		kubeConfigPath := os.Getenv("KUBECONFIG")
+		if kubeConfigPath == "" {
+			// If the KUBECONFIG env-var is not set, use the default kubeconfig path
+			return filepath.Join(os.Getenv("HOME"), ".kube", "config")
+		}
+		return kubeConfigPath
+	}
+	return flagValue
 }
