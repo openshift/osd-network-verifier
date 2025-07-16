@@ -14,9 +14,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2/google"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -70,6 +67,7 @@ type egressConfig struct {
 	probeName                  string
 	podMode                    bool
 	kubeConfigPath             string
+	namespace                  string
 }
 
 func NewCmdValidateEgress() *cobra.Command {
@@ -151,60 +149,11 @@ are set correctly before execution.
 					fmt.Printf("could not build kubeVerifier: %v\n", err)
 					os.Exit(1)
 				}
+				kubeVerifier.KubeClient.SetNamespace(config.namespace)
 
-				// HELLO WORLD EXAMPLE
-				fmt.Println("START POD MODE HELLO WORLD EXAMPLE")
-				kubeVerifier.KubeClient.SetNamespace("openshift-network-diagnostics")
-				// Whole process should take no more than 30 seconds
-				ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
-				defer cancel()
-				_, err = kubeVerifier.KubeClient.CreateJob(ctx, &batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "verifier-pod-mode-hello-world",
-					},
-					Spec: batchv1.JobSpec{
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
-								RestartPolicy: corev1.RestartPolicyNever,
-								Containers: []corev1.Container{
-									{
-										Name:            "hello-world",
-										ImagePullPolicy: corev1.PullIfNotPresent,
-										Image:           "image-registry.openshift-image-registry.svc:5000/openshift/tools",
-										Command:         []string{"/bin/sh", "-c", "echo 'Hello world from osd-network-verifier pod mode!'"},
-									},
-								},
-							},
-						},
-					},
-				})
-				if err != nil {
-					fmt.Printf("could not create job: %v\n", err)
-					os.Exit(1)
-				}
-				fmt.Println("Created job; waiting for completion...")
-				err = kubeVerifier.KubeClient.WaitForJobCompletion(ctx, "verifier-pod-mode-hello-world")
-				if err != nil {
-					fmt.Printf("could not wait for job completion: %v\n", err)
-					os.Exit(1)
-				}
-				fmt.Println("Job completed; getting logs...")
-				logs, err := kubeVerifier.KubeClient.GetJobLogs(ctx, "verifier-pod-mode-hello-world")
-				if err != nil {
-					fmt.Printf("could not get job logs: %v\n", err)
-					os.Exit(1)
-				}
-				fmt.Println(logs)
-				fmt.Println("Deleting job...")
-				err = kubeVerifier.KubeClient.CleanupJob(ctx, "verifier-pod-mode-hello-world")
-				if err != nil {
-					fmt.Printf("could not delete job: %v\n", err)
-					os.Exit(1)
-				}
-				fmt.Println("Job deleted")
-				fmt.Println("END POD MODE HELLO WORLD EXAMPLE")
+				// TODO: Implement pod mode
+				fmt.Println("Pod mode not yet implemented")
 				os.Exit(0)
-				// END HELLO WORLD EXAMPLE
 			}
 
 			// AWS workflow
@@ -349,15 +298,12 @@ are set correctly before execution.
 	validateEgressCmd.Flags().StringVar(&config.importKeyPair, "import-keypair", "", "(optional) Takes the path to your public key used to connect to Debug Instance. Automatically skips Termination")
 	validateEgressCmd.Flags().BoolVar(&config.ForceTempSecurityGroup, "force-temp-security-group", false, "(optional) Enforces creation of Temporary SG even if --security-group-ids flag is used")
 	validateEgressCmd.Flags().StringVar(&config.probeName, "probe", "Curl", "(optional) select the probe to be used for egress testing. Either 'Curl' (default) or 'Legacy'")
-	validateEgressCmd.Flags().BoolVar(&config.podMode, "pod-mode", false, "(optional) launch probe into a k8s cluster as a pod (vs. into a cloud account as a VM). Incompatible with cloud-related flags. See README for details.")
+	validateEgressCmd.Flags().BoolVar(&config.podMode, "pod-mode", false, "(optional) launch probe into a k8s cluster as a pod (vs. into a cloud account as a VM). Incompatible with cloud-related flags. See README for details")
+	validateEgressCmd.Flags().StringVar(&config.namespace, "namespace", "openshift-network-diagnostics", "(optional) k8s namespace to launch probe pods/jobs into. Only has an effect in --pod-mode")
 	validateEgressCmd.Flags().StringVar(&config.kubeConfigPath, "kubeconfig", "", "(optional) path to kubeconfig file. Defaults to KUBECONFIG env-var if set, otherwise ~/.kube/config")
 
-	// TODO: Make this required for non-pod mode
-	// if err := validateEgressCmd.MarkFlagRequired("subnet-id"); err != nil {
-	// 	validateEgressCmd.PrintErr(err)
-	// }
-
-	validateEgressCmd.MarkFlagsMutuallyExclusive("cacert", "no-tls")
+	// Require either --pod-mode or --subnet-id, but block most other flags when using pod mode
+	validateEgressCmd.MarkFlagsOneRequired("pod-mode", "subnet-id")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "subnet-id")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "instance-type")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "security-group-ids")
@@ -371,6 +317,8 @@ are set correctly before execution.
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "profile")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "vpc-name")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "cpu-arch")
+	validateEgressCmd.MarkFlagsMutuallyExclusive("cacert", "no-tls")
+
 	return validateEgressCmd
 }
 
