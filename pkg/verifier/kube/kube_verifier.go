@@ -15,6 +15,7 @@ import (
 	ocmlog "github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/clients/kube"
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
+	"github.com/openshift/osd-network-verifier/pkg/data/curlgen"
 	"github.com/openshift/osd-network-verifier/pkg/data/egress_lists"
 	handledErrors "github.com/openshift/osd-network-verifier/pkg/errors"
 	"github.com/openshift/osd-network-verifier/pkg/output"
@@ -147,62 +148,24 @@ func (k *KubeVerifier) VerifyDns(vdi verifier.VerifyDnsInput) *output.Output {
 }
 
 func (k *KubeVerifier) generateCurlCommands(egressListStr, tlsDisabledEgressListStr string, timeout time.Duration, proxyConfig proxy.ProxyConfig) (string, error) {
-	var commands []string
-	
-	// Parse regular URLs
-	regularUrls := strings.Split(strings.TrimSpace(egressListStr), "\n")
-	for _, url := range regularUrls {
-		url = strings.TrimSpace(url)
-		if url != "" {
-			curlCmd := k.buildCurlCommand(url, timeout, proxyConfig, false)
-			commands = append(commands, curlCmd)
-		}
+	// Build curlgen options
+	options := &curlgen.Options{
+		CaPath:          "/etc/pki/tls/certs/",
+		ProxyCaPath:     "/etc/pki/tls/certs/",
+		Retry:           3,
+		MaxTime:         fmt.Sprintf("%.2f", timeout.Seconds()),
+		NoTls:           fmt.Sprintf("%t", proxyConfig.NoTls),
+		Urls:            strings.TrimSpace(egressListStr),
+		TlsDisabledUrls: strings.TrimSpace(tlsDisabledEgressListStr),
 	}
 	
-	// Parse TLS-disabled URLs
-	tlsDisabledUrls := strings.Split(strings.TrimSpace(tlsDisabledEgressListStr), "\n") 
-	for _, url := range tlsDisabledUrls {
-		url = strings.TrimSpace(url)
-		if url != "" {
-			curlCmd := k.buildCurlCommand(url, timeout, proxyConfig, true)
-			commands = append(commands, curlCmd)
-		}
+	// Generate the curl command using curlgen
+	curlCommand, err := curlgen.GenerateString(options, curlOutputSeparator)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate curl command: %w", err)
 	}
 	
-	// Join commands with the separator
-	return strings.Join(commands, fmt.Sprintf(" && echo '%s' && ", curlOutputSeparator)), nil
-}
-
-func (k *KubeVerifier) buildCurlCommand(url string, timeout time.Duration, proxyConfig proxy.ProxyConfig, disableTLS bool) string {
-	var curlArgs []string
-	
-	// Basic curl configuration
-	curlArgs = append(curlArgs, "curl")
-	curlArgs = append(curlArgs, "--capath", "/etc/pki/tls/certs/")
-	curlArgs = append(curlArgs, "--proxy-capath", "/etc/pki/tls/certs/")
-	curlArgs = append(curlArgs, "--retry", "3")
-	curlArgs = append(curlArgs, "--retry-connrefused")
-	curlArgs = append(curlArgs, "-s", "-I")
-	curlArgs = append(curlArgs, "-m", fmt.Sprintf("%.2f", timeout.Seconds()))
-	curlArgs = append(curlArgs, "-w", fmt.Sprintf("\"%%{stderr}%s%%{json}\\n\"", curlOutputSeparator))
-	
-	// Add proxy settings if configured
-	if proxyConfig.HttpProxy != "" {
-		curlArgs = append(curlArgs, "--proxy", proxyConfig.HttpProxy)
-	}
-	
-	// Disable TLS verification if requested
-	if disableTLS || proxyConfig.NoTls {
-		curlArgs = append(curlArgs, "-k")
-	}
-	
-	// Add the URL
-	curlArgs = append(curlArgs, url)
-	
-	// Add error handling
-	command := strings.Join(curlArgs, " ") + " || true"
-	
-	return command
+	return curlCommand, nil
 }
 
 func (k *KubeVerifier) createAndExecuteJob(input createJobInput) error {
