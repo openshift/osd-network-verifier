@@ -35,7 +35,7 @@ const (
 )
 
 type KubeVerifier struct {
-	KubeClient kube.Client
+	KubeClient kube.ClientInterface
 	Logger     ocmlog.Logger
 	Output     output.Output
 }
@@ -54,7 +54,7 @@ type createJobInput struct {
 }
 
 // NewKubeVerifier returns a KubeVerifier authenticated to a k8s cluster with the given clientset
-func NewKubeVerifier(clientset *kubernetes.Clientset, debug bool) (*KubeVerifier, error) {
+func NewKubeVerifier(clientset kubernetes.Interface, debug bool) (*KubeVerifier, error) {
 	builder := ocmlog.NewStdLoggerBuilder()
 	builder.Debug(debug)
 	logger, err := builder.Build()
@@ -68,7 +68,7 @@ func NewKubeVerifier(clientset *kubernetes.Clientset, debug bool) (*KubeVerifier
 	}
 
 	return &KubeVerifier{
-		KubeClient: *kubeClient,
+		KubeClient: kubeClient,
 		Logger:     logger,
 		Output:     output.Output{},
 	}, nil

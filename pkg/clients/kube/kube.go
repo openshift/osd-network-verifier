@@ -15,6 +15,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// ClientInterface defines the interface for Kubernetes operations
+type ClientInterface interface {
+	GetNamespace() string
+	SetNamespace(namespace string)
+	CreateJob(ctx context.Context, job *batchv1.Job) (*batchv1.Job, error)
+	WaitForJobCompletion(ctx context.Context, jobName string) error
+	GetJobLogs(ctx context.Context, jobName string) (string, error)
+}
+
 // Client represents a Kubernetes Client
 type Client struct {
 	clientset kubernetes.Interface
@@ -22,7 +31,7 @@ type Client struct {
 }
 
 // NewClient creates a new Kubernetes client from a clientset
-func NewClient(clientset *kubernetes.Clientset) (*Client, error) {
+func NewClient(clientset kubernetes.Interface) (*Client, error) {
 	return &Client{
 		clientset: clientset,
 		namespace: "default",
