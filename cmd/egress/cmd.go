@@ -2,7 +2,6 @@ package egress
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,15 +77,18 @@ func NewCmdValidateEgress() *cobra.Command {
 		Short: "Verify essential OpenShift domains are reachable from given subnet ID.",
 		Long:  `Verify essential OpenShift domains are reachable from given subnet ID.`,
 		Example: `For AWS, ensure your credential environment vars
-AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credentials)
-are set correctly before execution.
+AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credentials) are set correctly before execution.
 
 # Verify that essential OpenShift domains are reachable from a given SUBNET_ID/SECURITY_GROUP association
-./osd-network-verifier egress --subnet-id ${SUBNET_ID} --security-group-ids ${SECURITY_GROUP}`,
+./osd-network-verifier egress --subnet-id ${SUBNET_ID} --security-group-ids ${SECURITY_GROUP}
+
+# Verify that essential OpenShift domains are reachable from a Pod within the connected cluster, for the clusters given region.
+./osd-network-verifier egress --pod-mode --region us-east-1`,
 		Run: func(cmd *cobra.Command, args []string) {
+			ctx := cmd.Context()
+
 			platformType, err := cloud.ByName(config.platformType)
 			if err != nil {
-				//Unknown platformType specified
 				fmt.Println(err)
 				os.Exit(1)
 			}
@@ -118,7 +120,7 @@ are set correctly before execution.
 
 			// setup non cloud config options
 			vei := verifier.ValidateEgressInput{
-				Ctx:          context.TODO(),
+				Ctx:          ctx,
 				SubnetID:     config.vpcSubnetID,
 				CloudImageID: config.cloudImageID,
 				Timeout:      config.timeout,
@@ -129,6 +131,24 @@ are set correctly before execution.
 			}
 			// Pod mode workflow
 			if config.podMode {
+				// Pod mode only supports the curl Probe
+				vei.Probe = curl.Probe{}
+
+				// If on AWS, we need to configure the region for EgressList generation. This is primarily because
+				// PodMode doesn't require cloud provider access, so we can't infer the region. This means the caller
+				// has to pass the correct region for the cluster, or verification will fail!
+				if vei.PlatformType.IsAws() {
+					vei.AWS.Region = config.region
+				}
+
+				if config.egressListLocation != "" {
+					vei.EgressListYaml, err = getCustomEgressListFromFlag(config.egressListLocation)
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+				}
+
 				// Build a REST config using user-provided kubeconfig file
 				restConfig, err := clientcmd.BuildConfigFromFlags("", getKubeConfigPath(config.kubeConfigPath))
 				if err != nil {
@@ -151,8 +171,15 @@ are set correctly before execution.
 				}
 				kubeVerifier.KubeClient.SetNamespace(config.namespace)
 
-				// TODO: Implement pod mode
-				fmt.Println("Pod mode not yet implemented")
+				out := kubeVerifier.ValidateEgress(vei)
+				out.Summary(config.debug)
+
+				if !out.IsSuccessful() {
+					kubeVerifier.Logger.Error(ctx, "Failure!")
+					os.Exit(1)
+				}
+
+				kubeVerifier.Logger.Info(ctx, "Success")
 				os.Exit(0)
 			}
 
@@ -175,7 +202,7 @@ are set correctly before execution.
 					os.Exit(1)
 				}
 
-				awsVerifier.Logger.Warn(context.TODO(), "Using region: %s", config.region)
+				awsVerifier.Logger.Warn(ctx, "Using region: %s", config.region)
 
 				vei.SkipInstanceTermination = config.skipAWSInstanceTermination
 				vei.TerminateDebugInstance = config.terminateDebugInstance
@@ -209,11 +236,11 @@ are set correctly before execution.
 				out.Summary(config.debug)
 
 				if !out.IsSuccessful() {
-					awsVerifier.Logger.Error(context.TODO(), "Failure!")
+					awsVerifier.Logger.Error(ctx, "Failure!")
 					os.Exit(1)
 				}
 
-				awsVerifier.Logger.Info(context.TODO(), "Success")
+				awsVerifier.Logger.Info(ctx, "Success")
 				os.Exit(0)
 			}
 
@@ -247,7 +274,7 @@ are set correctly before execution.
 				}
 
 				// Tries to find google credentials in all known locations stating with env "GOOGLE_APPLICATION_CREDENTIALS""
-				creds, err := google.FindDefaultCredentials(context.TODO())
+				creds, err := google.FindDefaultCredentials(ctx)
 				if err != nil {
 					fmt.Printf("could not find GCP credentials file: %v\n", err)
 					os.Exit(1)
@@ -258,16 +285,16 @@ are set correctly before execution.
 					os.Exit(1)
 				}
 
-				gcpVerifier.Logger.Info(context.TODO(), "Using Project ID %s", vei.GCP.ProjectID)
+				gcpVerifier.Logger.Info(ctx, "Using Project ID %s", vei.GCP.ProjectID)
 				out := verifier.ValidateEgress(gcpVerifier, vei)
 				out.Summary(config.debug)
 
 				if !out.IsSuccessful() {
-					gcpVerifier.Logger.Error(context.TODO(), "Failure!")
+					gcpVerifier.Logger.Error(ctx, "Failure!")
 					os.Exit(1)
 				}
 
-				gcpVerifier.Logger.Info(context.TODO(), "Success")
+				gcpVerifier.Logger.Info(ctx, "Success")
 				os.Exit(0)
 			}
 		},
@@ -307,7 +334,6 @@ are set correctly before execution.
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "subnet-id")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "instance-type")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "security-group-ids")
-	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "region")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "cloud-tags")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "kms-key-id")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "skip-termination")

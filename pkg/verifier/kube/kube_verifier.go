@@ -2,6 +2,7 @@ package kube
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -26,12 +27,11 @@ import (
 )
 
 const (
-	defaultContainerImage         = "image-registry.openshift-image-registry.svc:5000/openshift/tools"
-	defaultNamespace              = "openshift-network-diagnostics"
+	defaultContainerImage          = "image-registry.openshift-image-registry.svc:5000/openshift/tools"
 	defaultTTLSecondsAfterFinished = int32(600) // 10 minutes
 	defaultActiveDeadlineSeconds   = int32(300) // 5 minutes
-	defaultBackoffLimit            = int32(6)
-	curlOutputSeparator            = "@NV@"
+	defaultBackoffLimit            = int32(0)   // We only want to try once
+	defaultCurlTimeout             = 30 * time.Second
 )
 
 type KubeVerifier struct {
@@ -79,21 +79,19 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 	if !vei.PlatformType.IsValid() {
 		vei.PlatformType = cloud.AWSClassic
 	}
-	
-	// Default to curl.Probe if no Probe specified
-	if vei.Probe == nil {
-		vei.Probe = curl.Probe{}
-		k.writeDebugLogs(vei.Ctx, "defaulted to curl probe")
+
+	if _, ok := vei.Probe.(curl.Probe); !ok {
+		return k.Output.AddError(errors.New("verification via pod mode only supports curl probe"))
 	}
 
-	// Default to 5sec per-request timeout if none specified
 	if vei.Timeout <= 0 {
-		vei.Timeout = verifier.DefaultTimeout
+		vei.Timeout = defaultCurlTimeout
 	}
 	k.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
 	// Generate egress lists for the given PlatformType
-	generator := egress_lists.NewGenerator(vei.PlatformType, map[string]string{}, k.Logger)
+	generatorVariables := map[string]string{"AWS_REGION": vei.AWS.Region}
+	generator := egress_lists.NewGenerator(vei.PlatformType, generatorVariables, k.Logger)
 	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.Ctx, vei.EgressListYaml)
 	if err != nil {
 		return k.Output.AddError(err)
@@ -105,10 +103,6 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 		return k.Output.AddError(err)
 	}
 
-	// Set namespace (default if not set)
-	namespace := defaultNamespace
-	k.KubeClient.SetNamespace(namespace)
-
 	// Create and execute Job
 	jobName := fmt.Sprintf("osd-network-verifier-job-%d", time.Now().Unix())
 	proxySettings := k.buildProxyEnvironment(vei.Proxy)
@@ -116,7 +110,7 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 
 	jobInput := createJobInput{
 		JobName:                 jobName,
-		Namespace:               namespace,
+		Namespace:               k.KubeClient.GetNamespace(),
 		ContainerImage:          defaultContainerImage,
 		CurlCommand:             curlCommand,
 		ProxySettings:           proxySettings,
@@ -158,42 +152,42 @@ func (k *KubeVerifier) generateCurlCommands(egressListStr, tlsDisabledEgressList
 		Urls:            strings.TrimSpace(egressListStr),
 		TlsDisabledUrls: strings.TrimSpace(tlsDisabledEgressListStr),
 	}
-	
+
 	// Generate the curl command using curlgen
-	curlCommand, err := curlgen.GenerateString(options, curlOutputSeparator)
+	curlCommand, err := curlgen.GenerateString(options)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate curl command: %w", err)
 	}
-	
+
 	return curlCommand, nil
 }
 
 func (k *KubeVerifier) createAndExecuteJob(input createJobInput) error {
 	// Build the Job specification
 	job := k.buildJobSpec(input)
-	
+
 	// Create the Job
 	k.writeDebugLogs(input.Ctx, fmt.Sprintf("Creating Job: %s", input.JobName))
 	_, err := k.KubeClient.CreateJob(input.Ctx, job)
 	if err != nil {
 		return handledErrors.NewGenericError(fmt.Errorf("failed to create job %s: %w", input.JobName, err))
 	}
-	
+
 	// Wait for Job completion with timeout
 	k.writeDebugLogs(input.Ctx, fmt.Sprintf("Waiting for Job completion: %s", input.JobName))
 	err = k.KubeClient.WaitForJobCompletion(input.Ctx, input.JobName)
 	if err != nil {
 		return handledErrors.NewGenericError(fmt.Errorf("job %s failed or timed out: %w", input.JobName, err))
 	}
-	
+
 	return nil
 }
 
 func (k *KubeVerifier) buildJobSpec(input createJobInput) *batchv1.Job {
 	activeDeadlineSeconds := int64(input.ActiveDeadlineSeconds)
-	automountServiceAccountToken := false
-	readOnlyRootFilesystem := true
-	
+	ptrFalse := false
+	ptrTrue := true
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      input.JobName,
@@ -205,21 +199,23 @@ func (k *KubeVerifier) buildJobSpec(input createJobInput) *batchv1.Job {
 			BackoffLimit:            &input.BackoffLimit,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					AutomountServiceAccountToken: &automountServiceAccountToken,
-					SecurityContext: &corev1.PodSecurityContext{
-						FSGroup: &[]int64{1000}[0],
-					},
-					RestartPolicy: corev1.RestartPolicyNever,
+					AutomountServiceAccountToken: &ptrFalse,
+					RestartPolicy:                corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{
-							Name:    "osd-network-verifier",
-							Image:   input.ContainerImage,
-							Command: []string{"/bin/sh", "-c"},
-							Args:    []string{input.CurlCommand},
+							Name:      "osd-network-verifier",
+							Image:     input.ContainerImage,
+							Command:   []string{"/bin/sh", "-c"},
+							Args:      []string{input.CurlCommand},
 							Resources: input.ResourceLimits,
-							Env: k.buildEnvVars(input.ProxySettings),
+							Env:       k.buildEnvVars(input.ProxySettings),
 							SecurityContext: &corev1.SecurityContext{
-								ReadOnlyRootFilesystem: &readOnlyRootFilesystem,
+								AllowPrivilegeEscalation: &ptrFalse,
+								ReadOnlyRootFilesystem:   &ptrTrue,
+								RunAsNonRoot:             &ptrTrue,
+								Capabilities: &corev1.Capabilities{
+									Drop: []corev1.Capability{"ALL"},
+								},
 							},
 						},
 					},
@@ -227,13 +223,13 @@ func (k *KubeVerifier) buildJobSpec(input createJobInput) *batchv1.Job {
 			},
 		},
 	}
-	
+
 	return job
 }
 
 func (k *KubeVerifier) buildEnvVars(proxySettings map[string]string) []corev1.EnvVar {
 	var envVars []corev1.EnvVar
-	
+
 	for key, value := range proxySettings {
 		if value != "" {
 			envVars = append(envVars, corev1.EnvVar{
@@ -242,33 +238,33 @@ func (k *KubeVerifier) buildEnvVars(proxySettings map[string]string) []corev1.En
 			})
 		}
 	}
-	
+
 	return envVars
 }
 
 func (k *KubeVerifier) collectAndParseJobOutput(ctx context.Context, jobName string, probe probes.Probe) error {
 	k.writeDebugLogs(ctx, fmt.Sprintf("Collecting logs from Job: %s", jobName))
-	
+
 	// Get logs from the Job
 	logs, err := k.KubeClient.GetJobLogs(ctx, jobName)
 	if err != nil {
 		return handledErrors.NewGenericError(fmt.Errorf("failed to get logs from job %s: %w", jobName, err))
 	}
-	
+
 	// Parse the logs for probe output
 	k.writeDebugLogs(ctx, fmt.Sprintf("Raw job logs:\n---\n%s\n---", logs))
-	
+
 	// Extract probe output between separators
 	rawProbeOutput := k.parseJobLogs(logs)
 	if rawProbeOutput == "" {
 		return handledErrors.NewGenericError(fmt.Errorf("no valid probe output found in job logs"))
 	}
-	
+
 	k.writeDebugLogs(ctx, fmt.Sprintf("Parsed probe output:\n---\n%s\n---", rawProbeOutput))
-	
+
 	// Send probe output to the Probe interface for parsing
 	probe.ParseProbeOutput(false, rawProbeOutput, &k.Output)
-	
+
 	return nil
 }
 
@@ -277,11 +273,11 @@ func (k *KubeVerifier) parseJobLogs(logs string) string {
 	lines := strings.Split(logs, "\n")
 	var probeOutput []string
 	capturing := false
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
-		if strings.Contains(line, curlOutputSeparator) {
+
+		if strings.Contains(line, curlgen.DefaultCurlOutputSeparator) {
 			if capturing {
 				// End of capture, add this line and stop
 				probeOutput = append(probeOutput, line)
@@ -295,29 +291,29 @@ func (k *KubeVerifier) parseJobLogs(logs string) string {
 			probeOutput = append(probeOutput, line)
 		}
 	}
-	
+
 	return strings.Join(probeOutput, "\n")
 }
 
 func (k *KubeVerifier) buildProxyEnvironment(proxyConfig proxy.ProxyConfig) map[string]string {
 	proxyEnv := make(map[string]string)
-	
+
 	if proxyConfig.HttpProxy != "" {
 		proxyEnv["HTTP_PROXY"] = proxyConfig.HttpProxy
 		proxyEnv["http_proxy"] = proxyConfig.HttpProxy
 	}
-	
+
 	if proxyConfig.HttpsProxy != "" {
 		proxyEnv["HTTPS_PROXY"] = proxyConfig.HttpsProxy
 		proxyEnv["https_proxy"] = proxyConfig.HttpsProxy
 	}
-	
+
 	if len(proxyConfig.NoProxy) > 0 {
 		noProxy := proxyConfig.NoProxyAsString()
 		proxyEnv["NO_PROXY"] = noProxy
 		proxyEnv["no_proxy"] = noProxy
 	}
-	
+
 	return proxyEnv
 }
 

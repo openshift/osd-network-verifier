@@ -18,15 +18,17 @@ type Options struct {
 	TlsDisabledUrls string
 }
 
+const DefaultCurlOutputSeparator = "@NV@"
+
 // GenerateString function will be used to transform the Configurations (options)
-// used to built the Options struct and build a full Curl command and return it as a string
-func GenerateString(cfg *Options, outputLinePrefix string) (string, error) {
+// used to build the Options struct and build a full Curl command and return it as a string
+func GenerateString(cfg *Options) (string, error) {
 	command := fmt.Sprintf(`curl --capath %s --proxy-capath %s --retry %v --retry-connrefused -t B -Z -s -I -m %s -w "%%{stderr}%s%%{json}\n"`,
 		cfg.CaPath,
 		cfg.ProxyCaPath,
 		cfg.Retry,
 		cfg.MaxTime,
-		outputLinePrefix,
+		DefaultCurlOutputSeparator,
 	)
 
 	if cfg.NoTLS() {
@@ -41,9 +43,10 @@ func GenerateString(cfg *Options, outputLinePrefix string) (string, error) {
 
 	if cfg.TlsDisabledUrls != "" {
 		command += fmt.Sprintf(
-			` --next --insecure --retry %v --retry-connrefused -s -I -m %s -w "%%{stderr}@NV@%%{json}\n" %s --proto =https`,
+			` --next --insecure --retry %v --retry-connrefused -s -I -m %s -w "%%{stderr}%s%%{json}\n" %s --proto =https`,
 			cfg.Retry,
 			cfg.MaxTime,
+			DefaultCurlOutputSeparator,
 			cfg.TlsDisabledUrls,
 		)
 	}

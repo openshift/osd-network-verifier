@@ -31,8 +31,8 @@ var (
 )
 
 // String returns the "preferred name" of the Platform
-func (plat Platform) String() string {
-	return plat.names[0]
+func (p Platform) String() string {
+	return p.names[0]
 }
 
 // ByName returns a Platform supported by the verifier if the given name
@@ -65,9 +65,18 @@ func ByName(name string) (Platform, error) {
 }
 
 // IsValid returns true if the Platform is non-empty and supported by the network verifier
-func (plat Platform) IsValid() bool {
-	switch plat {
+func (p Platform) IsValid() bool {
+	switch p {
 	case AWSClassic, AWSHCP, GCPClassic, AWSHCPZeroEgress:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p Platform) IsAws() bool {
+	switch p {
+	case AWSClassic, AWSHCP, AWSHCPZeroEgress:
 		return true
 	default:
 		return false
