@@ -103,6 +103,10 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 		return k.Output.AddError(err)
 	}
 
+	// We always want our Curl process to exit successfully, even if egress fails. This way, the pod succeeds, and then
+	// we parse the output to identify our failures like we would in EC2.
+	curlCommand = fmt.Sprintf("%s || true", curlCommand)
+
 	// Create and execute Job
 	jobName := fmt.Sprintf("osd-network-verifier-job-%d", time.Now().Unix())
 	proxySettings := k.buildProxyEnvironment(vei.Proxy)
