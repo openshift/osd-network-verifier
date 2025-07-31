@@ -127,6 +127,8 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 
 	err = k.createAndExecuteJob(jobInput)
 	if err != nil {
+		// Best effort delete the job
+		_ = k.KubeClient.DeleteJob(jobInput.Ctx, jobInput.JobName)
 		return k.Output.AddError(err)
 	}
 
@@ -135,6 +137,9 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 	if err != nil {
 		k.Output.AddError(err)
 	}
+
+	// Best effort delete the job
+	_ = k.KubeClient.DeleteJob(jobInput.Ctx, jobInput.JobName)
 
 	return &k.Output
 }

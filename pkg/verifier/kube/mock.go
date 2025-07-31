@@ -36,6 +36,10 @@ func (m *MockClient) CreateJob(ctx context.Context, job *batchv1.Job) (*batchv1.
 	return job, nil
 }
 
+func (m *MockClient) DeleteJob(ctx context.Context, jobName string) error {
+	return nil
+}
+
 // WaitForJobCompletion mocks waiting for job completion
 func (m *MockClient) WaitForJobCompletion(ctx context.Context, jobName string) error {
 	return m.waitForJobCompletionError

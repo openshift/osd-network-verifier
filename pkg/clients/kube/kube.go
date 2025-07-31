@@ -20,6 +20,7 @@ type ClientInterface interface {
 	GetNamespace() string
 	SetNamespace(namespace string)
 	CreateJob(ctx context.Context, job *batchv1.Job) (*batchv1.Job, error)
+	DeleteJob(ctx context.Context, jobName string) error
 	WaitForJobCompletion(ctx context.Context, jobName string) error
 	GetJobLogs(ctx context.Context, jobName string) (string, error)
 }
