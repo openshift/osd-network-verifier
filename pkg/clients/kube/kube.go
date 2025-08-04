@@ -15,11 +15,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// ClientInterface defines the interface for Kubernetes operations
+// ClientInterface defines the interface for Kubernetes operations. This interface exists
+// to aid in testing.
 type ClientInterface interface {
 	GetNamespace() string
 	SetNamespace(namespace string)
 	CreateJob(ctx context.Context, job *batchv1.Job) (*batchv1.Job, error)
+	CleanupJob(ctx context.Context, jobName string) error
 	DeleteJob(ctx context.Context, jobName string) error
 	WaitForJobCompletion(ctx context.Context, jobName string) error
 	GetJobLogs(ctx context.Context, jobName string) (string, error)

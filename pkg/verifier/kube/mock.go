@@ -71,3 +71,6 @@ func (m *MockClient) SetGetJobLogsResult(logs string, err error) {
 	m.getJobLogsResult = logs
 	m.getJobLogsError = err
 }
+func (m *MockClient) CleanupJob(ctx context.Context, jobName string) error {
+	return nil
+}

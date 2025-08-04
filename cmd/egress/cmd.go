@@ -137,7 +137,7 @@ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credent
 				// If on AWS, we need to configure the region for EgressList generation. This is primarily because
 				// PodMode doesn't require cloud provider access, so we can't infer the region. This means the caller
 				// has to pass the correct region for the cluster, or verification will fail!
-				if vei.PlatformType.IsAws() {
+				if vei.PlatformType.IsAWS() {
 					if config.region == "" {
 						fmt.Printf("--region is required when running --pod-mode verification on AWS clusters.")
 						os.Exit(1)

@@ -74,7 +74,7 @@ func (p Platform) IsValid() bool {
 	}
 }
 
-func (p Platform) IsAws() bool {
+func (p Platform) IsAWS() bool {
 	switch p {
 	case AWSClassic, AWSHCP, AWSHCPZeroEgress:
 		return true
