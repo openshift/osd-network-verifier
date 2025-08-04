@@ -348,7 +348,6 @@ func TestKubeVerifier_parseJobLogs(t *testing.T) {
 @NV@
 Job completed`,
 			expected: `@NV@
-{"url": "https://example.com", "success": true}
 @NV@`,
 		},
 		{
@@ -359,24 +358,25 @@ Job completed`,
 			expected: "",
 		},
 		{
-			name: "logs with multiple probe outputs",
-			logs: `Starting job
-@NV@
-{"url": "https://example1.com", "success": true}
-@NV@
-Some other output
-@NV@
-{"url": "https://example2.com", "success": false}
-@NV@
-Job completed`,
-			expected: `@NV@
-{"url": "https://example1.com", "success": true}
-@NV@`,
-		},
-		{
 			name:     "empty logs",
 			logs:     "",
 			expected: "",
+		},
+		{
+			name: "real world sample with many @NV@ lines",
+			logs: `Starting job
+@NV@line1
+@NV@line2
+@NV@line3
+Some other log output
+@NV@line4
+@NV@line5
+Job completed`,
+			expected: `@NV@line1
+@NV@line2
+@NV@line3
+@NV@line4
+@NV@line5`,
 		},
 	}
 
@@ -628,11 +628,10 @@ func TestKubeVerifier_writeDebugLogs(t *testing.T) {
 		t.Fatalf("Failed to create KubeVerifier: %v", err)
 	}
 
-	ctx := context.Background()
 	testLog := "test debug message"
 
 	// This should not panic or error
-	kubeVerifier.writeDebugLogs(ctx, testLog)
+	kubeVerifier.writeDebugLogs(testLog)
 
 	// Check that the log was added to the output
 	// Since output doesn't expose debug logs directly, we check via the Format method

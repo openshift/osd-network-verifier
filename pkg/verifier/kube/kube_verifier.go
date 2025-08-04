@@ -87,7 +87,7 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 	if vei.Timeout <= 0 {
 		vei.Timeout = defaultCurlTimeout
 	}
-	k.writeDebugLogs(vei.Ctx, fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
+	k.writeDebugLogs(fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
 	// Generate egress lists for the given PlatformType
 	generatorVariables := map[string]string{"AWS_REGION": vei.AWS.Region}
@@ -177,14 +177,14 @@ func (k *KubeVerifier) createAndExecuteJob(input createJobInput) error {
 	job := k.buildJobSpec(input)
 
 	// Create the Job
-	k.writeDebugLogs(input.Ctx, fmt.Sprintf("Creating Job: %s", input.JobName))
+	k.writeDebugLogs(fmt.Sprintf("Creating Job: %s", input.JobName))
 	_, err := k.KubeClient.CreateJob(input.Ctx, job)
 	if err != nil {
 		return handledErrors.NewGenericError(fmt.Errorf("failed to create job %s: %w", input.JobName, err))
 	}
 
 	// Wait for Job completion with timeout
-	k.writeDebugLogs(input.Ctx, fmt.Sprintf("Waiting for Job completion: %s", input.JobName))
+	k.writeDebugLogs(fmt.Sprintf("Waiting for Job completion: %s", input.JobName))
 	err = k.KubeClient.WaitForJobCompletion(input.Ctx, input.JobName)
 	if err != nil {
 		return handledErrors.NewGenericError(fmt.Errorf("job %s failed or timed out: %w", input.JobName, err))
@@ -253,7 +253,7 @@ func (k *KubeVerifier) buildEnvVars(proxySettings map[string]string) []corev1.En
 }
 
 func (k *KubeVerifier) collectAndParseJobOutput(ctx context.Context, jobName string, probe probes.Probe) error {
-	k.writeDebugLogs(ctx, fmt.Sprintf("Collecting logs from Job: %s", jobName))
+	k.writeDebugLogs(fmt.Sprintf("Collecting logs from Job: %s", jobName))
 
 	// Get logs from the Job
 	logs, err := k.KubeClient.GetJobLogs(ctx, jobName)
@@ -261,16 +261,13 @@ func (k *KubeVerifier) collectAndParseJobOutput(ctx context.Context, jobName str
 		return handledErrors.NewGenericError(fmt.Errorf("failed to get logs from job %s: %w", jobName, err))
 	}
 
-	// Parse the logs for probe output
-	k.writeDebugLogs(ctx, fmt.Sprintf("Raw job logs:\n---\n%s\n---", logs))
-
 	// Extract probe output between separators
 	rawProbeOutput := k.parseJobLogs(logs)
 	if rawProbeOutput == "" {
 		return handledErrors.NewGenericError(fmt.Errorf("no valid probe output found in job logs"))
 	}
 
-	k.writeDebugLogs(ctx, fmt.Sprintf("Parsed probe output:\n---\n%s\n---", rawProbeOutput))
+	k.writeDebugLogs(fmt.Sprintf("Parsed probe output:\n---\n%s\n---", rawProbeOutput))
 
 	// Send probe output to the Probe interface for parsing
 	probe.ParseProbeOutput(false, rawProbeOutput, &k.Output)
@@ -279,25 +276,14 @@ func (k *KubeVerifier) collectAndParseJobOutput(ctx context.Context, jobName str
 }
 
 func (k *KubeVerifier) parseJobLogs(logs string) string {
-	// Look for content between @NV@ separators
+	// Look for all lines starting with @NV@
 	lines := strings.Split(logs, "\n")
 	var probeOutput []string
-	capturing := false
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 
-		if strings.Contains(line, curlgen.DefaultCurlOutputSeparator) {
-			if capturing {
-				// End of capture, add this line and stop
-				probeOutput = append(probeOutput, line)
-				break
-			} else {
-				// Start of capture
-				capturing = true
-				probeOutput = append(probeOutput, line)
-			}
-		} else if capturing {
+		if strings.HasPrefix(line, curlgen.DefaultCurlOutputSeparator) {
 			probeOutput = append(probeOutput, line)
 		}
 	}
@@ -340,7 +326,6 @@ func (k *KubeVerifier) buildResourceRequirements() corev1.ResourceRequirements {
 	}
 }
 
-func (k *KubeVerifier) writeDebugLogs(ctx context.Context, log string) {
+func (k *KubeVerifier) writeDebugLogs(log string) {
 	k.Output.AddDebugLogs(log)
-	k.Logger.Debug(ctx, log)
 }
