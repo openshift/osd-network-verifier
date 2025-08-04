@@ -2,8 +2,6 @@ package kube
 
 import (
 	"context"
-	"fmt"
-
 	batchv1 "k8s.io/api/batch/v1"
 )
 
@@ -72,19 +70,4 @@ func (m *MockClient) SetWaitForJobCompletionError(err error) {
 func (m *MockClient) SetGetJobLogsResult(logs string, err error) {
 	m.getJobLogsResult = logs
 	m.getJobLogsError = err
-}
-
-// CreateJobError creates a standard job creation error
-func CreateJobError(message string) error {
-	return fmt.Errorf("failed to create job: %s", message)
-}
-
-// WaitJobError creates a standard job wait error
-func WaitJobError(message string) error {
-	return fmt.Errorf("job failed or timed out: %s", message)
-}
-
-// LogsError creates a standard logs retrieval error
-func LogsError(message string) error {
-	return fmt.Errorf("failed to get logs: %s", message)
 }
