@@ -70,6 +70,9 @@ type AwsEgressConfig struct {
 	KmsKeyID          string
 	SecurityGroupIDs  []string
 	TempSecurityGroup string
+
+	// Region is currently required for pod mode only. When using EC2 for verification, the region is extracted from an AWSClient.
+	Region string
 }
 type GcpEgressConfig struct {
 	Region, Zone, ProjectID, VpcName string

@@ -37,7 +37,6 @@ var systemdTemplate string
 
 const startingToken = "NV_CURLJSON_BEGIN" //nolint:gosec
 const endingToken = "NV_CURLJSON_END"     //nolint:gosec
-const outputLinePrefix = "@NV@"
 
 var presetUserDataVariables = map[string]string{
 	"USERDATA_BEGIN": startingToken,
@@ -123,7 +122,7 @@ func (clp Probe) GetExpandedUserData(userDataVariables map[string]string) (strin
 		TlsDisabledUrls: userDataVariables["TLSDISABLED_URLS"],
 	}
 
-	userDataVariables["CURL_COMMAND"], err = curlgen.GenerateString(&curlOptions, outputLinePrefix)
+	userDataVariables["CURL_COMMAND"], err = curlgen.GenerateString(&curlOptions)
 	if err != nil {
 		return "", err
 	}

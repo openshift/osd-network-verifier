@@ -3,6 +3,7 @@ package curl
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/osd-network-verifier/pkg/data/curlgen"
 	"strings"
 )
 
@@ -104,9 +105,9 @@ func bulkDeserializeCurlJSONProbeResult(serializedLines string) ([]*CurlJSONProb
 // serialized JSON string. If the prefix is missing or JSON deserialization
 // (unmarshalling) fails, (nil, error) is returned
 func deserializeCurlJSONProbeResult(prefixedCurlJSON string) (*CurlJSONProbeResult, error) {
-	jsonStr, prefixFound := strings.CutPrefix(strings.TrimSpace(prefixedCurlJSON), outputLinePrefix)
+	jsonStr, prefixFound := strings.CutPrefix(strings.TrimSpace(prefixedCurlJSON), curlgen.DefaultCurlOutputSeparator)
 	if !prefixFound {
-		return nil, fmt.Errorf("missing prefix '%s': %s", outputLinePrefix, prefixedCurlJSON)
+		return nil, fmt.Errorf("missing prefix '%s': %s", curlgen.DefaultCurlOutputSeparator, prefixedCurlJSON)
 	}
 	var result CurlJSONProbeResult
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
