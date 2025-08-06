@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultContainerImage          = "image-registry.openshift-image-registry.svc:5000/openshift/tools"
+	defaultContainerImage          = "registry.access.redhat.com/ubi10/ubi-minimal:10.0"
 	defaultTTLSecondsAfterFinished = int32(600) // 10 minutes
 	defaultActiveDeadlineSeconds   = int32(300) // 5 minutes
 	defaultBackoffLimit            = int32(0)   // We only want to try once
