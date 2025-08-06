@@ -31,7 +31,6 @@ const (
 	defaultTTLSecondsAfterFinished = int32(600) // 10 minutes
 	defaultActiveDeadlineSeconds   = int32(300) // 5 minutes
 	defaultBackoffLimit            = int32(0)   // We only want to try once
-	defaultCurlTimeout             = 30 * time.Second
 )
 
 type KubeVerifier struct {
@@ -85,7 +84,7 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 	}
 
 	if vei.Timeout <= 0 {
-		vei.Timeout = defaultCurlTimeout
+		vei.Timeout = verifier.DefaultTimeout
 	}
 	k.writeDebugLogs(fmt.Sprintf("configured a %s timeout for each egress request", vei.Timeout))
 
