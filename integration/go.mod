@@ -11,7 +11,7 @@ require (
 	github.com/aws/smithy-go v1.22.4
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/openshift-online/ocm-sdk-go v0.1.469
-	github.com/openshift/osd-network-verifier v1.1.2
+	github.com/openshift/osd-network-verifier v0.0.0-00010101000000-000000000000
 )
 
 replace github.com/openshift/osd-network-verifier => ../
@@ -35,6 +35,5 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
