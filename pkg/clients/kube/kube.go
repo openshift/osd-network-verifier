@@ -127,7 +127,7 @@ func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string) error
 			if jobStatus == batchv1.JobComplete || jobStatus == batchv1.JobSuccessCriteriaMet {
 				return nil
 			}
-			if jobStatus == batchv1.JobFailed {
+			if jobStatus == batchv1.JobFailed || jobStatus == batchv1.JobFailureTarget {
 				return fmt.Errorf("job %s failed", jobName)
 			}
 		}
