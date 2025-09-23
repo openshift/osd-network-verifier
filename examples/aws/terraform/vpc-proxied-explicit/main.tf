@@ -2,6 +2,9 @@
 provider "aws" {
   profile = var.profile # AWS profile
   region  = var.region  # AWS region
+  ignore_tags {
+    key_prefixes = ["kubernetes.io", "openshift"]
+  }
 }
 
 ## RESOURCES
@@ -111,10 +114,16 @@ resource "aws_instance" "proxy_machine" {
     "assets/userdata.yaml.tpl",
     {
       mitmproxy_sysctl_b64  = filebase64("assets/mitmproxy-sysctl.conf")
-      mitmproxy_service_b64 = filebase64("assets/mitmproxy.service")
+      mitmproxy_service_b64 = base64encode(templatefile(
+        "assets/mitmproxy.service.tpl",
+        {
+          proxy_webui_password = random_password.proxy_webui_password.result
+        }
+      ))
       caddyfile_b64 = base64encode(templatefile(
         "assets/Caddyfile.tpl",
         {
+          proxy_webui_password      = random_password.proxy_webui_password.result
           proxy_webui_password_hash = random_password.proxy_webui_password.bcrypt_hash
           proxy_webui_username      = var.proxy_webui_username
         }

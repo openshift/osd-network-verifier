@@ -6,7 +6,7 @@ Wants=network.target iptables.service
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/bin/mitmweb --web-port=8081 --web-host=0.0.0.0 --no-web-open-browser --showhost
+ExecStart=/usr/bin/mitmweb --web-port=8081 --web-host=0.0.0.0 --no-web-open-browser --showhost --set web_password="${proxy_webui_password}"
 Restart=always
 
 [Install]
