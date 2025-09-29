@@ -6,7 +6,6 @@ reviewers:
   - joshbranham
 approvers:
   - abyrne55
-  - fahlmant
   - joshbranham
   - rafael-azevedo
 emeritus_approvers:
@@ -16,4 +15,3 @@ emeritus_approvers:
   - bdematte
 maintainers:
   - abyrne55
-  - fahlmant
