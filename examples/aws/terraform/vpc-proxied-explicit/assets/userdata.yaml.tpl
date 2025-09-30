@@ -34,7 +34,7 @@ write_files:
   permissions: '0644'
 runcmd:
 - sysctl -p /etc/sysctl.d/mitmproxy.conf
-- curl -s https://downloads.mitmproxy.org/10.3.0/mitmproxy-10.3.0-linux-x86_64.tar.gz -o - | tar -C /usr/bin/ -xzf -
+- curl -s https://downloads.mitmproxy.org/12.1.2/mitmproxy-12.1.2-linux-x86_64.tar.gz -o - | tar -C /usr/bin/ -xzf -
 - iptables -F
 - iptables -X
 - iptables -t nat -F
