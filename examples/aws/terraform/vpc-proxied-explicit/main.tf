@@ -104,7 +104,7 @@ resource "random_password" "proxy_webui_password" {
 
 # Create the proxy EC2 instance inside the public subnet
 resource "aws_instance" "proxy_machine" {
-  ami               = data.aws_ami.rhel9.id
+  ami               = data.aws_ami.rhel10.id
   instance_type     = "t3.micro"
   key_name          = aws_key_pair.proxy_machine_key.key_name # SSH key for debugging
   availability_zone = var.availability_zone
@@ -234,8 +234,8 @@ output "https_proxy_var" {
 # Get the current AWS region
 data "aws_region" "current" {}
 
-# Automatic lookup of the latest official RHEL 9 AMI
-data "aws_ami" "rhel9" {
+# Automatic lookup of the latest official RHEL 10 AMI
+data "aws_ami" "rhel10" {
   most_recent = true
 
   filter {
@@ -255,7 +255,7 @@ data "aws_ami" "rhel9" {
 
   filter {
     name   = "manifest-location"
-    values = ["amazon/RHEL-9.*_HVM-*-x86_64-*-Hourly2-GP2"]
+    values = ["amazon/RHEL-10.*_HVM-*-x86_64-*-Hourly2-GP3"]
   }
 
   owners = ["309956199498"] # Amazon's "Official Red Hat" account

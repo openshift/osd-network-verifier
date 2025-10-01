@@ -1,6 +1,6 @@
 #cloud-config
-#package_update: true
-#package_upgrade: true
+bootcmd:
+- touch /var/run/reboot-required
 yum_repos:
   caddy:
     name: Copr repo for caddy owned by @caddy
@@ -10,12 +10,13 @@ yum_repos:
     gpgcheck: 1
     gpgkey: https://download.copr.fedorainfracloud.org/results/@caddy/caddy/pubkey.gpg
     repo_gpgcheck: 0
-    enabled: 1
+    enabled: true
     enabled_metadata: 1
 packages:
   - iptables
   - iptables-nft-services
   - caddy
+package_reboot_if_required: true
 write_files:
 - encoding: b64
   content: ${mitmproxy_sysctl_b64}
@@ -34,7 +35,7 @@ write_files:
   permissions: '0644'
 runcmd:
 - sysctl -p /etc/sysctl.d/mitmproxy.conf
-- curl -s https://downloads.mitmproxy.org/10.3.0/mitmproxy-10.3.0-linux-x86_64.tar.gz -o - | tar -C /usr/bin/ -xzf -
+- curl -s https://downloads.mitmproxy.org/12.1.2/mitmproxy-12.1.2-linux-x86_64.tar.gz -o - | tar -C /usr/bin/ -xzf -
 - iptables -F
 - iptables -X
 - iptables -t nat -F
@@ -48,10 +49,10 @@ runcmd:
 - iptables -P INPUT ACCEPT
 - iptables -P FORWARD ACCEPT
 - iptables -P OUTPUT ACCEPT
-- iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080
-- iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 443 -j REDIRECT --to-port 8080
-- ip6tables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8080
-- ip6tables -t nat -A PREROUTING -i eth0 -p tcp --dport 443 -j REDIRECT --to-port 8080
+- iptables -t nat -A PREROUTING -i ens5 -p tcp --dport 80 -j REDIRECT --to-port 8080
+- iptables -t nat -A PREROUTING -i ens5 -p tcp --dport 443 -j REDIRECT --to-port 8080
+- ip6tables -t nat -A PREROUTING -i ens5 -p tcp --dport 80 -j REDIRECT --to-port 8080
+- ip6tables -t nat -A PREROUTING -i ens5 -p tcp --dport 443 -j REDIRECT --to-port 8080
 - /sbin/iptables-save > /etc/sysconfig/iptables
 - /sbin/ip6tables-save > /etc/sysconfig/ip6tables
 - systemctl daemon-reload
