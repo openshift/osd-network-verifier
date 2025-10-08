@@ -201,6 +201,60 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
+resource "aws_vpc_endpoint" "ec2" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.ec2"
+  vpc_endpoint_type = "Interface"
+
+  security_group_ids = [
+    aws_security_group.interface_endpoints_sg.id,
+  ]
+
+  private_dns_enabled = true
+  subnet_ids = [aws_subnet.proxied.id]
+  tags = {
+    Name = "${var.name_prefix}-ec2-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "elasticloadbalancing" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.elasticloadbalancing"
+  vpc_endpoint_type = "Interface"
+
+  security_group_ids = [
+    aws_security_group.interface_endpoints_sg.id,
+  ]
+
+  private_dns_enabled = true
+  subnet_ids = [aws_subnet.proxied.id]
+  tags = {
+    Name = "${var.name_prefix}-elb-endpoint"
+  }
+}
+
+
+resource "aws_security_group" "interface_endpoints_sg" {
+  vpc_id      = aws_vpc.main.id
+  name        = "${var.name_prefix}-interface-endpoints-sg"
+  description = "Allows inbound HTTPS from VPC to interface endpoints"
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr_block]
+    description = "HTTPS from VPC"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 ## OUTPUTS
 output "region" {
   description = "VPC region"
