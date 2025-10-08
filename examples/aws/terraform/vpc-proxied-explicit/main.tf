@@ -168,7 +168,7 @@ resource "aws_route_table" "proxied" {
   tags   = { Name = "${var.name_prefix}-proxied-rtb" }
 
   route {
-    cidr_block           = var.proxied_subnet_cidr_block
+    cidr_block           = "0.0.0.0/0"
     network_interface_id = aws_instance.proxy_machine.primary_network_interface_id
   }
   dynamic "route" {
