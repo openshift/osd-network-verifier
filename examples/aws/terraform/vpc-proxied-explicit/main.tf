@@ -186,6 +186,21 @@ resource "aws_route_table_association" "proxied" {
   route_table_id = aws_route_table.proxied.id # ID of proxied route table
 }
 
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id      = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  # Attach to the route tables of the subnets where your worker nodes are (proxied and public)
+  route_table_ids = [
+    aws_route_table.public.id,
+    aws_route_table.proxied.id
+  ]
+  tags = {
+    Name = "${var.name_prefix}-s3-endpoint"
+  }
+}
+
 ## OUTPUTS
 output "region" {
   description = "VPC region"
