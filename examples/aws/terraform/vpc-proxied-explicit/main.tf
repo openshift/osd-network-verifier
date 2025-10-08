@@ -258,7 +258,7 @@ resource "aws_security_group" "interface_endpoints_sg" {
 ## OUTPUTS
 output "region" {
   description = "VPC region"
-  value       = data.aws_region.current.name
+  value       = data.aws_region.current.id
 }
 output "proxy_machine_instance_id" {
   description = "Proxy machine instance ID"
