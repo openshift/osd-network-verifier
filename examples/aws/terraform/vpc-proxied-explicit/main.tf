@@ -105,7 +105,7 @@ resource "random_password" "proxy_webui_password" {
 # Create the proxy EC2 instance inside the public subnet
 resource "aws_instance" "proxy_machine" {
   ami               = data.aws_ami.rhel10.id
-  instance_type     = "t3.micro"
+  instance_type     = "m5.xlarge"
   key_name          = aws_key_pair.proxy_machine_key.key_name # SSH key for debugging
   availability_zone = var.availability_zone
   tags              = { Name = "${var.name_prefix}-proxy-machine" }
@@ -285,6 +285,10 @@ output "proxy_machine_cert_url" {
   description = "Credentialed URL for downloading the proxy CA cert (available in 2-5 minutes)"
   value       = "https://${var.proxy_webui_username}:${random_password.proxy_webui_password.result}@${aws_instance.proxy_machine.public_ip}:8443/mitmproxy-ca-cert.pem"
   sensitive   = true
+}
+output "public_subnet_id" {
+  description = "Public subnet ID"
+  value       = aws_subnet.public.id
 }
 output "proxied_subnet_id" {
   description = "Proxied subnet ID (launch your test/'captive' instances here)"
