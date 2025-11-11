@@ -167,10 +167,6 @@ resource "aws_route_table" "proxied" {
   vpc_id = aws_vpc.main.id
   tags   = { Name = "${var.name_prefix}-proxied-rtb" }
 
-  route {
-    cidr_block           = "0.0.0.0/0"
-    network_interface_id = aws_instance.proxy_machine.primary_network_interface_id
-  }
   dynamic "route" {
     for_each = toset(var.proxied_subnet_escape_routes)
     content {
