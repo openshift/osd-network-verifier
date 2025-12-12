@@ -357,7 +357,11 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 		}
 
 		var stateCode string
-		if resp != nil && resp.Reservations[0].Instances[0].StateReason.Code != nil {
+		if resp != nil &&
+			len(resp.Reservations) > 0 &&
+			len(resp.Reservations[0].Instances) > 0 &&
+			resp.Reservations[0].Instances[0].StateReason != nil &&
+			resp.Reservations[0].Instances[0].StateReason.Code != nil {
 			stateCode = *resp.Reservations[0].Instances[0].StateReason.Code
 		}
 
