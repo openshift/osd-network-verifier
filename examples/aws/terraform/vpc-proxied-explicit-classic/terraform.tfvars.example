@@ -1,0 +1,68 @@
+## Sample Variables 
+## Fill in the values below and rename me to "terraform.tfvars" 
+
+# Your AWS Profile
+# This profile should be configured in your AWS credentials file, typically located at ~/.aws/credentials on Unix-based systems and C:\Users\USERNAME\.aws\credentials on Windows. 
+# The profile configuration should look something like this:
+# 
+# [default]
+# aws_access_key_id = YOUR_ACCESS_KEY
+# aws_secret_access_key = YOUR_SECRET_KEY
+#
+profile = "default"
+
+# The AWS region where you want to create your resources
+region = "us-east-1"
+
+# The availability zone within the region where you want to create your subnets
+availability_zone = "us-east-1a"
+
+# The CIDR block for your VPC
+vpc_cidr_block = "10.0.0.0/16"
+
+# The CIDR block for your public subnet within your VPC
+public_subnet_cidr_block = "10.0.0.0/24"
+
+# The CIDR block for your proxied subnet within your VPC
+proxied_subnet_cidr_block = "10.0.1.0/24"
+
+# (optional) A list of CIDR blocks for which you'd like to create "proxy escape routes", 
+# i.e., routes that allow clients in your proxied subnet to connect to certain websites 
+# directly without going through the proxy (e.g., via NO_PROXY env var). If you're interested 
+# in NO_PROXY-ing a list of numbered domain names, for example, try using the following bash
+# one-liner to generate a list of CIDRs that cover all of the domain names
+# echo -n \[; for IP in $(dig +short $(seq -f"inputs%g.osdsecuritylogs.splunkcloud.com" -s" " 1 15) | sort -u); do echo -n "\"$IP/32\", "; done; echo -e "\b\b]"
+# You can also just allow all traffic to escape the proxy by setting this to ["0.0.0.0/0"].
+proxied_subnet_escape_routes = [
+    To make your Transparent Proxy architecture work (given your current Terraform route table logic), you need to ensure that local VPC traffic and essential AWS management traffic bypass the proxy. If you don't, the instances in your proxied subnet won't even be able to talk to the AWS metadata service to figure out who they are.
+
+Here is what you should put in your terraform.tfvars:
+
+Updated terraform.tfvars
+Terraform
+# ... (profile, region, zones remain the same) ...
+
+# The CIDR block for your VPC
+vpc_cidr_block = "10.0.0.0/16"
+
+# The CIDR block for your public subnet
+public_subnet_cidr_block = "10.0.0.0/24"
+
+# The CIDR block for your proxied subnet
+proxied_subnet_cidr_block = "10.0.1.0/24"
+
+# These routes BYPASS the proxy machine and go straight to the NAT Gateway.
+# 1. We MUST include the Metadata service (169.254.169.254/32).
+# 2. We SHOULD include the VPC CIDR so internal traffic doesn't loop.
+# 3. We include the developer IP so return SSH traffic isn't intercepted.
+proxied_subnet_escape_routes = []
+
+# A prefix to add to the Name tag associated with most of the resources created by these scripts
+name_prefix = "explicit-proxy-classic"
+
+# SSH public key to use for ec2-user@proxy-machine
+proxy_machine_ssh_pubkey = "ssh-rsa AAAAB3N...SrbX8ZbabVohBK41 replaceme@example.com"
+
+# A CIDR block containing your workstation's IP, for SSH/webUI access to the proxy machine for debugging. 
+# Running "echo $(curl -s ipv4.icanhazip.com)/32' should produce a sane default value
+developer_cidr_block = "123.123.123.123/32"
