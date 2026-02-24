@@ -32,6 +32,7 @@ func (prb Probe) GetExpandedUserData(map[string]string) (string, error) {
 	systemctl mask --now serial-getty@ttyS0.service
 	systemctl disable --now syslog.socket rsyslog.service
 	sysctl -w kernel.printk="0 4 0 7"
+	sleep 1
 	echo DUMMY_START > /dev/ttyS0
 	echo "hello world" > /dev/ttyS0
 	echo DUMMY_END > /dev/ttyS0`, nil
