@@ -24,6 +24,12 @@ var templateGCPClassic string
 //go:embed aws-hcp-zeroegress.yaml
 var templateAWSHCPZeroEgress string
 
+//go:embed aws-govcloud-classic.yaml
+var templateAWSGovCloudClassic string
+
+//go:embed aws-govcloud-hcp.yaml
+var templateAWSGovCloudHCP string
+
 type githubReposClient interface {
 	GetContents(ctx context.Context, owner, repo, path string, opts *github.RepositoryContentGetOptions) (fileContent *github.RepositoryContent, directoryContent []*github.RepositoryContent, resp *github.Response, err error)
 }
@@ -91,6 +97,10 @@ func (g *Generator) GetLocalEgressList() (string, error) {
 		return templateAWSClassic, nil
 	case cloud.AWSHCPZeroEgress:
 		return templateAWSHCPZeroEgress, nil
+	case cloud.AWSGovCloudClassic:
+		return templateAWSGovCloudClassic, nil
+	case cloud.AWSGovCloudHCP:
+		return templateAWSGovCloudHCP, nil
 	default:
 		return "", fmt.Errorf("no egress list registered for platform '%s'", g.PlatformType)
 	}
@@ -108,6 +118,10 @@ func (g *Generator) GetGithubEgressList(ctx context.Context) (*github.Repository
 		path += cloud.AWSClassic.String()
 	case cloud.AWSHCPZeroEgress:
 		path += cloud.AWSHCPZeroEgress.String()
+	case cloud.AWSGovCloudClassic:
+		path += cloud.AWSGovCloudClassic.String()
+	case cloud.AWSGovCloudHCP:
+		path += cloud.AWSGovCloudHCP.String()
 	default:
 		return nil, fmt.Errorf("no egress list registered for platform '%s'", g.PlatformType)
 	}

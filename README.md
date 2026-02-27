@@ -22,6 +22,32 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 -  [AWS](docs/aws/aws.md)
 -  [GCP](docs/gcp/gcp.md)
 
+## AWS GovCloud Support
+
+AWS GovCloud (US) environments require pod mode for network verification. Run verification as a Kubernetes Job inside your cluster:
+
+```bash
+osd-network-verifier egress \
+  --pod-mode \
+  --platform aws-govcloud-classic \
+  --region us-gov-west-1
+```
+
+**Important**: GovCloud platforms only support `--pod-mode`. EC2 mode is not available for GovCloud.
+
+Pod mode for GovCloud:
+- Avoids FedRAMP/compliance restrictions on EC2 instance creation
+- Runs verification from inside the cluster's network context
+- Requires no cloud infrastructure provisioning
+
+Supported GovCloud regions:
+- us-gov-west-1
+- us-gov-east-1
+
+Supported platforms:
+- `aws-govcloud-classic` (or alias: `govcloud`)
+- `aws-govcloud-hcp`
+
 ### Building
 `make build`: Builds `osd-network-verifier` executable in base directory
 
@@ -82,10 +108,12 @@ type Platform struct {
 }
 ```
 
-Currently network-verifier supports four implementations for Platform types.
+Currently network-verifier supports six implementations for Platform types.
 - AWSClassic
 - AWSHCP
 - AWSHCPZeroEgress
+- AWSGovCloudClassic (pod mode only)
+- AWSGovCloudHCP (pod mode only)
 - GCPClassic
 
 Network-verifier uses these supported platform types to determine information such as which egress verification list, machine type, and cpu type to use.
