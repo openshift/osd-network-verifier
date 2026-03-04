@@ -26,9 +26,6 @@ endpoints:
   - host: sso.redhat.com
     ports:
       - 443
-  - host: pull.q1w2.quay.rhcloud.com
-    ports:
-      - 443
   - host: console.redhat.com
     ports:
       - 443
