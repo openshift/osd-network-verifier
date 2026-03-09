@@ -102,10 +102,3 @@ endpoints:
   - host: tagging.${AWS_REGION}.amazonaws.com
     ports:
       - 443
-  - host: osd-splidx01.redhat-osd.local
-    ports: 
-      - 443
-  - host: osd-splidx02.redhat-osd.local
-    ports: 
-      - 443
-

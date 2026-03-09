@@ -117,9 +117,35 @@ func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string) error
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("context cancelled while waiting for job %s to complete", jobName)
-		case event := <-watcher.ResultChan():
+		case event, ok := <-watcher.ResultChan():
+			// Check if watch channel was closed
+			if !ok {
+				// Watch channel closed - fall back to polling job status until completion
+				for {
+					select {
+					case <-ctx.Done():
+						return fmt.Errorf("context cancelled while polling job %s after watch closed", jobName)
+					default:
+						job, err := c.GetJob(ctx, jobName)
+						if err != nil {
+							return fmt.Errorf("watch channel closed and failed to get job status for %s: %w", jobName, err)
+						}
+						jobStatus := getJobStatus(job)
+						if jobStatus == batchv1.JobComplete || jobStatus == batchv1.JobSuccessCriteriaMet {
+							return nil
+						}
+						if jobStatus == batchv1.JobFailed || jobStatus == batchv1.JobFailureTarget {
+							return fmt.Errorf("job %s failed", jobName)
+						}
+						// Job still running - wait and check again
+						time.Sleep(2 * time.Second)
+					}
+				}
+			}
+
 			job, ok := event.Object.(*batchv1.Job)
 			if !ok {
+				// Not a job object - could be error event
 				continue
 			}
 

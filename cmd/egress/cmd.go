@@ -93,9 +93,14 @@ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credent
 				os.Exit(1)
 			}
 
-			// Validate GovCloud platforms require pod mode
-			if (platformType == cloud.AWSGovCloudClassic || platformType == cloud.AWSGovCloudHCP) && !config.podMode {
-				fmt.Printf("Error: GovCloud platforms (aws-govcloud-classic, aws-govcloud-hcp) require --pod-mode flag.\n")
+			// Auto-enable pod mode for GovCloud platforms
+			if platformType == cloud.AWSGovCloudClassic || platformType == cloud.AWSGovCloudHCP {
+				config.podMode = true
+			}
+
+			// Custom validation: require either pod-mode or subnet-id (unless GovCloud auto-enabled pod mode)
+			if !config.podMode && config.vpcSubnetID == "" {
+				fmt.Printf("Error: either --pod-mode or --subnet-id must be specified\n")
 				os.Exit(1)
 			}
 
@@ -311,7 +316,7 @@ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credent
 	}
 
 	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", cloud.AWSClassic.String(), fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. "+
-		"Either '%s', '%s', '%s', '%s' (hypershift), '%s', or '%s'. Note: GovCloud platforms require --pod-mode", cloud.AWSClassic, cloud.GCPClassic, cloud.AWSHCP, cloud.AWSHCPZeroEgress, cloud.AWSGovCloudClassic, cloud.AWSGovCloudHCP))
+		"Either '%s', '%s', '%s', '%s' (hypershift), '%s', or '%s'. Note: GovCloud platforms automatically enable pod mode", cloud.AWSClassic, cloud.GCPClassic, cloud.AWSHCP, cloud.AWSHCPZeroEgress, cloud.AWSGovCloudClassic, cloud.AWSGovCloudHCP))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "target subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
@@ -339,8 +344,7 @@ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credent
 	validateEgressCmd.Flags().StringVar(&config.namespace, "namespace", "openshift-network-diagnostics", "(optional) k8s namespace to launch probe pods/jobs into. Only has an effect in --pod-mode")
 	validateEgressCmd.Flags().StringVar(&config.kubeConfigPath, "kubeconfig", "", "(optional) path to kubeconfig file. Defaults to KUBECONFIG env-var if set, otherwise ~/.kube/config")
 
-	// Require either --pod-mode or --subnet-id, but block most other flags when using pod mode
-	validateEgressCmd.MarkFlagsOneRequired("pod-mode", "subnet-id")
+	// Block cloud-specific flags when using pod mode
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "subnet-id")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "instance-type")
 	validateEgressCmd.MarkFlagsMutuallyExclusive("pod-mode", "security-group-ids")
