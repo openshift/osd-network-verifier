@@ -4,13 +4,6 @@
 
 AWS GovCloud (US) is a separate AWS partition designed for U.S. government agencies and their partners. The osd-network-verifier tool supports GovCloud environments using **pod mode only**, which runs verification as a Kubernetes Job inside your cluster rather than creating EC2 instances. Pod mode is **automatically enabled** when you specify a GovCloud platform.
 
-## Why Pod Mode for GovCloud?
-
-- **FedRAMP Compliance**: Avoids restrictions on EC2 instance creation in GovCloud environments
-- **Simplified Testing**: No need to manage AMIs, security groups, or other infrastructure
-- **Network Context**: Runs verification from inside the cluster's actual network context
-- **Recommended Approach**: Already used in production for GovCloud clusters
-
 ## Setup
 
 ### Prerequisites
@@ -41,8 +34,6 @@ AWS GovCloud (US) is a separate AWS partition designed for U.S. government agenc
   --platform aws-govcloud-classic \
   --region us-gov-west-1
 ```
-
-**Note**: The `--pod-mode` flag is optional for GovCloud platforms as it's automatically enabled.
 
 ### Using Platform Aliases
 
@@ -183,92 +174,3 @@ If your cluster uses an HTTP(S) proxy:
   --https-proxy https://proxy.example.com:8443 \
   --no-proxy "localhost,127.0.0.1,.svc,.cluster.local"
 ```
-
-## Troubleshooting
-
-### Kubeconfig Required
-
-GovCloud platforms automatically enable pod mode, which requires a valid kubeconfig to access your cluster.
-
-**Solution**: Ensure you have a valid kubeconfig:
-- Use `ocm backplane login <cluster-name>` to get access
-- Or set `KUBECONFIG` environment variable to point to your kubeconfig file
-- Or use `--kubeconfig` flag to specify the path
-
-### Permission Denied Creating Pods
-
-**Solution**: Ensure your kubeconfig has sufficient permissions to create Jobs/Pods in the target namespace.
-
-### Egress List Not Found
-
-```
-failed to fetch egress URL list from https://...
-```
-
-**Solution**:
-1. Verify the URL is accessible
-2. Check that the file exists at the specified location
-3. For GitHub URLs, ensure you're using the raw content URL
-
-### Pod Failures
-
-**Solution**: Use `--debug` flag to see detailed pod logs and identify which endpoints are failing.
-
-## GovCloud vs Commercial AWS Differences
-
-### Endpoints
-
-GovCloud uses the same DNS suffixes as commercial AWS (`.amazonaws.com`), but with different region names:
-- Commercial: `us-east-1`, `us-west-2`, etc.
-- GovCloud: `us-gov-west-1`, `us-gov-east-1`
-
-### Service Availability
-
-Some AWS services may not be available in GovCloud. The GovCloud egress lists are tailored to reflect these differences.
-
-### FIPS Compliance
-
-GovCloud environments may require FIPS 140-2 validated cryptographic modules. Ensure your cluster configuration meets these requirements.
-
-## Examples
-
-### Full Example with Custom List
-
-```shell
-# 1. Get kubeconfig
-ocm backplane login my-govcloud-cluster
-
-# 2. Run verification with custom egress list
-./osd-network-verifier egress \
-  --platform aws-govcloud-classic \
-  --region us-gov-west-1 \
-  --egress-list-location ./my-custom-govcloud-egress.yaml \
-  --debug
-```
-
-### Testing Multiple Regions
-
-```shell
-# Test us-gov-west-1
-./osd-network-verifier egress \
-  --platform govcloud \
-  --region us-gov-west-1
-
-# Test us-gov-east-1
-./osd-network-verifier egress \
-  --platform govcloud \
-  --region us-gov-east-1
-```
-
-## Supported Platforms
-
-- `aws-govcloud-classic` (or alias: `govcloud`, `aws-govcloud`)
-- `aws-govcloud-hcp` (or alias: `aws-govcloud-hosted-cp`)
-
-**Note**: GovCloud platforms automatically enable pod mode. EC2 mode is not available for GovCloud.
-
-## See Also
-
-- [AWS Setup Documentation](./aws.md)
-- [Pod Mode Details](../../README.md#aws-govcloud-support)
-- [Egress Lists](../../pkg/data/egress_lists/)
