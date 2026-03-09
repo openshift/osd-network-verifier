@@ -21,31 +21,7 @@ The recommended workflow of diagnostic use of ONV is shown in the following flow
 ## Cloud Provider Specific READMEs
 -  [AWS](docs/aws/aws.md)
 -  [GCP](docs/gcp/gcp.md)
-
-## AWS GovCloud Support
-
-AWS GovCloud (US) environments automatically use pod mode for network verification. Run verification as a Kubernetes Job inside your cluster:
-
-```bash
-osd-network-verifier egress \
-  --platform aws-govcloud-classic \
-  --region us-gov-west-1
-```
-
-**Note**: GovCloud platforms automatically enable pod mode (no `--pod-mode` flag needed). EC2 mode is not available for GovCloud.
-
-Pod mode for GovCloud:
-- Avoids FedRAMP/compliance restrictions on EC2 instance creation
-- Runs verification from inside the cluster's network context
-- Requires no cloud infrastructure provisioning
-
-Supported GovCloud regions:
-- us-gov-west-1
-- us-gov-east-1
-
-Supported platforms:
-- `aws-govcloud-classic` (or alias: `govcloud`)
-- `aws-govcloud-hcp`
+-  [AWS Govcloud](docs/aws/awsgov.md)
 
 ### Building
 `make build`: Builds `osd-network-verifier` executable in base directory
