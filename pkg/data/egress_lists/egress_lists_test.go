@@ -178,3 +178,50 @@ endpoints:
 		t.Errorf("Expected egress list to contain %s, got: %s", expected, tls)
 	}
 }
+
+func Test_GetLocalEgressList_GovCloud(t *testing.T) {
+	tests := []struct {
+		name         string
+		platformType cloud.Platform
+		wantContains string
+		wantErr      bool
+	}{
+		{
+			name:         "GovCloud Classic",
+			platformType: cloud.AWSGovCloudClassic,
+			wantContains: "registry.redhat.io",
+			wantErr:      false,
+		},
+		{
+			name:         "GovCloud HCP",
+			platformType: cloud.AWSGovCloudHCP,
+			wantContains: "registry.redhat.io",
+			wantErr:      false,
+		},
+	}
+
+	logger, err := logging.NewStdLoggerBuilder().Streams(os.Stderr, os.Stderr).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			generator := &Generator{
+				PlatformType:      tt.platformType,
+				Variables:         map[string]string{"AWS_REGION": "us-gov-west-1"},
+				logger:            logger,
+				githubReposClient: nil,
+			}
+
+			got, err := generator.GetLocalEgressList()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetLocalEgressList() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !strings.Contains(got, tt.wantContains) {
+				t.Errorf("GetLocalEgressList() should contain %s", tt.wantContains)
+			}
+		})
+	}
+}
