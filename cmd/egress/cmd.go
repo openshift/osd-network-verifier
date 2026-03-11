@@ -33,10 +33,11 @@ var (
 )
 
 const (
-	awsRegionEnvVarStr = "AWS_REGION"
-	awsRegionDefault   = "us-east-2"
-	gcpRegionEnvVarStr = "GCP_REGION"
-	gcpRegionDefault   = "us-east1"
+	awsRegionEnvVarStr       = "AWS_REGION"
+	awsRegionDefault         = "us-east-2"
+	awsGovCloudRegionDefault = "us-gov-west-1"
+	gcpRegionEnvVarStr       = "GCP_REGION"
+	gcpRegionDefault         = "us-east1"
 )
 
 type egressConfig struct {
@@ -363,7 +364,7 @@ func getDefaultRegion(platformType cloud.Platform) string {
 	case cloud.AWSGovCloudClassic:
 		dRegion, ok := os.LookupEnv(awsRegionEnvVarStr)
 		if !ok {
-			return "us-gov-west-1"
+			return awsGovCloudRegionDefault
 		}
 		return dRegion
 	default: // All other platforms, but we assume AWS
