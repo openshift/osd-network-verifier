@@ -87,12 +87,3 @@ endpoints:
   - host: tagging.${AWS_REGION}.amazonaws.com
     ports:
       - 443
-  - host: goalert-api.goalert-stg.appsrefrs01ugw1.p1.openshiftusgov.com
-    ports:
-      - 443
-  - host: ocm-prod.rosa-public-nlb.appsrefrp01ugw1.p1.openshiftusgov.com
-    ports:
-      - 443
-  - host: osd-splunk.redhat-osd.local
-    ports:
-      - 9997
