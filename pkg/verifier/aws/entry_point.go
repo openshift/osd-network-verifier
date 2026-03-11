@@ -22,7 +22,6 @@ import (
 const (
 	// ConfigPathFstring is the base path of the config file
 	ConfigPathFstring = "/app/build/config/%s.yaml"
-	DebugKeyName      = "onv-debug-key"
 )
 
 // ValidateEgress performs validation process for egress
@@ -137,6 +136,9 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		vei.Proxy.Cacert = ""
 	}
 
+	// Set probe delay: 1 second works best to keep boot logs minimal
+	probeDelay := "1"
+
 	userDataVariables := map[string]string{
 		"AWS_REGION":       a.AwsClient.Region,
 		"VALIDATOR_IMAGE":  networkValidatorImage,
@@ -149,6 +151,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 		"NOTLS":            strconv.FormatBool(vei.Proxy.NoTls),
 		"CONFIG_PATH":      configPath,
 		"DELAY":            "5",
+		"PROBE_DELAY":      probeDelay,
 		"URLS":             egressListStr,
 		"TLSDISABLED_URLS": tlsDisabledEgressListStr,
 	}

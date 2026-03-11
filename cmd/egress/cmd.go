@@ -188,7 +188,7 @@ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credent
 			}
 
 			// AWS workflow
-			if platformType == cloud.AWSClassic || platformType == cloud.AWSHCP || platformType == cloud.AWSHCPZeroEgress {
+			if platformType == cloud.AWSClassic || platformType == cloud.AWSGovCloudClassic || platformType == cloud.AWSHCP || platformType == cloud.AWSHCPZeroEgress {
 
 				if len(vei.Tags) == 0 {
 					vei.Tags = awsDefaultTags
@@ -305,7 +305,7 @@ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (also AWS_SESSION_TOKEN for STS credent
 	}
 
 	validateEgressCmd.Flags().StringVar(&config.platformType, "platform", cloud.AWSClassic.String(), fmt.Sprintf("(optional) infra platform type, which determines which endpoints to test. "+
-		"Either '%s', '%s', '%s', or '%s' (hypershift)", cloud.AWSClassic, cloud.GCPClassic, cloud.AWSHCP, cloud.AWSHCPZeroEgress))
+		"Either '%s', '%s', '%s', '%s', or '%s' (hypershift)", cloud.AWSClassic, cloud.AWSGovCloudClassic, cloud.GCPClassic, cloud.AWSHCP, cloud.AWSHCPZeroEgress))
 	validateEgressCmd.Flags().StringVar(&config.vpcSubnetID, "subnet-id", "", "target subnet ID")
 	validateEgressCmd.Flags().StringVar(&config.cloudImageID, "image-id", "", "(optional) cloud image for the compute instance")
 	validateEgressCmd.Flags().StringVar(&config.instanceType, "instance-type", "", "(optional) compute instance type")
@@ -358,6 +358,12 @@ func getDefaultRegion(platformType cloud.Platform) string {
 		dRegion, ok := os.LookupEnv(gcpRegionEnvVarStr)
 		if !ok {
 			return gcpRegionDefault
+		}
+		return dRegion
+	case cloud.AWSGovCloudClassic:
+		dRegion, ok := os.LookupEnv(awsRegionEnvVarStr)
+		if !ok {
+			return "us-gov-west-1"
 		}
 		return dRegion
 	default: // All other platforms, but we assume AWS

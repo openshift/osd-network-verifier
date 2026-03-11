@@ -80,6 +80,7 @@ const (
 	networkValidatorImage = "quay.io/app-sre/osd-network-verifier@sha256:137bf177c2e87732b2692c1af39d3b79b2f84c7f0ee9254df4ea4412dddfab1e"
 	networkValidatorRepo  = "quay.io/app-sre/osd-network-verifier"
 	invalidKMSCode        = "Client.InvalidKMSKey.InvalidState"
+	DebugKeyName          = "onv-debug-key"
 )
 
 // AwsVerifier holds an aws client and knows how to fulfill the VerifierService which contains all functions needed for verifier
@@ -329,6 +330,7 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 	if input.keyPair != "" {
 		instanceReq.KeyName = awsTools.String(DebugKeyName)
 	}
+
 	// Finally, we make our request
 	instanceResp, err := a.AwsClient.RunInstances(input.ctx, &instanceReq)
 	if err != nil {
@@ -393,17 +395,30 @@ func (a *AwsVerifier) createEC2Instance(input createEC2InstanceInput) (string, e
 
 func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID string, probe probes.Probe, ensurePrivate bool) error {
 	var consoleOutput string
+	var previousOutputLength int
+	var consoleOutputWithStartToken string // Save first snapshot containing startingToken
 
 	a.writeDebugLogs(ctx, "Scraping console output and waiting for user data script to complete...")
 
 	// Periodically scrape console output and analyze the logs for any errors or a successful completion
 	err := helpers.PollImmediate(10*time.Second, 270*time.Second, func() (bool, error) {
+		// Try to get full console output first (works in commercial AWS)
 		b64EncodedConsoleOutput, err := a.AwsClient.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
 			InstanceId: awsTools.String(instanceID),
-			Latest:     awsTools.Bool(true),
 		})
 		if err != nil {
 			return false, handledErrors.NewGenericError(err)
+		}
+
+		// If full output is nil/empty, try getting just the latest 64KB (works in GovCloud)
+		if b64EncodedConsoleOutput.Output == nil || len(*b64EncodedConsoleOutput.Output) == 0 {
+			b64EncodedConsoleOutput, err = a.AwsClient.GetConsoleOutput(ctx, &ec2.GetConsoleOutputInput{
+				InstanceId: awsTools.String(instanceID),
+				Latest:     awsTools.Bool(true),
+			})
+			if err != nil {
+				return false, handledErrors.NewGenericError(err)
+			}
 		}
 
 		// Return and resume waiting if console output is still nil
@@ -425,16 +440,53 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 		}
 		consoleOutput = string(consoleOutputBytes)
 
+		// Log when we see new content
+		if len(consoleOutput) > previousOutputLength {
+			a.writeDebugLogs(ctx, fmt.Sprintf("Console output size: %d bytes (was %d)", len(consoleOutput), previousOutputLength))
+			previousOutputLength = len(consoleOutput)
+		}
+
 		// Check for startingToken and endingToken
 		startingTokenSeen := strings.Contains(consoleOutput, probe.GetStartingToken())
 		endingTokenSeen := strings.Contains(consoleOutput, probe.GetEndingToken())
+
+		// Save the first snapshot that contains startingToken (for multi-poll reconstruction)
+		if startingTokenSeen && consoleOutputWithStartToken == "" {
+			consoleOutputWithStartToken = consoleOutput
+			a.writeDebugLogs(ctx, fmt.Sprintf("Saved console snapshot with startingToken (%d bytes)", len(consoleOutput)))
+		}
+
 		if !startingTokenSeen {
 			if endingTokenSeen {
-				a.writeDebugLogs(ctx, fmt.Sprintf("raw console logs:\n---\n%s\n---", consoleOutput))
-				return false, handledErrors.NewGenericError(fmt.Errorf("probe output corrupted: endingToken encountered before startingToken"))
+				// We have endingToken but not startingToken in current snapshot
+				// Try to reconstruct using saved snapshot with startingToken
+				if consoleOutputWithStartToken != "" {
+					a.writeDebugLogs(ctx, "Console output truncated, attempting multi-poll reconstruction...")
+					consoleOutput = a.reconstructConsoleOutput(consoleOutputWithStartToken, consoleOutput, probe)
+					// Re-check if reconstruction succeeded
+					if !strings.Contains(consoleOutput, probe.GetStartingToken()) {
+						return false, handledErrors.NewGenericError(fmt.Errorf("multi-poll reconstruction failed: could not recover startingToken"))
+					}
+					a.writeDebugLogs(ctx, fmt.Sprintf("Successfully reconstructed console output (%d bytes)", len(consoleOutput)))
+					// Continue to normal processing below
+				} else {
+					// Never captured startingToken, but we have endingToken
+					// This happens when probe completes before first non-empty poll
+					// Try to extract JSON between last boot message and endingToken
+					a.writeDebugLogs(ctx, "Attempting smart extraction: endingToken found but startingToken was never captured")
+					extractedOutput := a.extractProbeOutputWithoutStartToken(consoleOutput, probe)
+					if extractedOutput != "" {
+						a.writeDebugLogs(ctx, fmt.Sprintf("Extracted %d bytes of probe output", len(extractedOutput)))
+						// Process extracted output directly
+						probe.ParseProbeOutput(ensurePrivate, extractedOutput, &a.Output)
+						return true, nil
+					}
+					return false, handledErrors.NewGenericError(fmt.Errorf("probe output truncated: endingToken seen but startingToken never captured, and smart extraction failed"))
+				}
+			} else {
+				a.writeDebugLogs(ctx, "consoleOutput contains data, but probe has not yet printed startingToken, continuing to wait...")
+				return false, nil
 			}
-			a.writeDebugLogs(ctx, "consoleOutput contains data, but probe has not yet printed startingToken, continuing to wait...")
-			return false, nil
 		}
 		if !endingTokenSeen {
 			a.writeDebugLogs(ctx, "consoleOutput contains startingToken, but probe has not yet printed endingToken, continuing to wait...")
@@ -450,9 +502,18 @@ func (a *AwsVerifier) findUnreachableEndpoints(ctx context.Context, instanceID s
 			return false, handledErrors.NewGenericError(fmt.Errorf("probe output corrupted: no data between startingToken and endingToken"))
 		}
 
-		// Send probe's output off to the Probe interface for parsing
-		a.writeDebugLogs(ctx, fmt.Sprintf("probe output:\n---\n%s\n---", rawProbeOutput))
-		probe.ParseProbeOutput(ensurePrivate, rawProbeOutput, &a.Output)
+		// Use smart extraction to filter out incomplete lines (e.g., stderr without corresponding @NV@{json})
+		// This handles cases where console output is truncated mid-stream (Latest: true returns only last 64KB)
+		extractedOutput := a.extractProbeOutputWithoutStartToken(consoleOutput, probe)
+		if extractedOutput != "" {
+			a.writeDebugLogs(ctx, fmt.Sprintf("Smart-extracted probe output (%d bytes from %d raw bytes)", len(extractedOutput), len(rawProbeOutput)))
+			a.writeDebugLogs(ctx, fmt.Sprintf("probe output:\n---\n%s\n---", extractedOutput))
+			probe.ParseProbeOutput(ensurePrivate, extractedOutput, &a.Output)
+		} else {
+			// Fallback to raw output if smart extraction failed
+			a.writeDebugLogs(ctx, fmt.Sprintf("probe output:\n---\n%s\n---", rawProbeOutput))
+			probe.ParseProbeOutput(ensurePrivate, rawProbeOutput, &a.Output)
+		}
 		return true, nil
 	})
 
@@ -475,6 +536,91 @@ func buildTags(tags map[string]string) []ec2Types.Tag {
 func (a *AwsVerifier) writeDebugLogs(ctx context.Context, log string) {
 	a.Output.AddDebugLogs(log)
 	a.Logger.Debug(ctx, log)
+}
+
+// reconstructConsoleOutput attempts to merge two console snapshots when output exceeds 64KB:
+// - earlySnapshot contains startingToken (beginning of probe output)
+// - lateSnapshot contains endingToken (end of probe output)
+// Returns merged output containing both tokens
+func (a *AwsVerifier) reconstructConsoleOutput(earlySnapshot, lateSnapshot string, probe probes.Probe) string {
+	startToken := probe.GetStartingToken()
+	endToken := probe.GetEndingToken()
+
+	// Extract from startingToken to end of early snapshot
+	startIdx := strings.Index(earlySnapshot, startToken)
+	if startIdx == -1 {
+		return lateSnapshot // Fallback
+	}
+	earlyPortion := earlySnapshot[startIdx:]
+
+	// Extract from beginning to endingToken in late snapshot
+	endIdx := strings.Index(lateSnapshot, endToken)
+	if endIdx == -1 {
+		return earlySnapshot // Fallback
+	}
+	latePortion := lateSnapshot[:endIdx+len(endToken)]
+
+	// Find overlap: look for common content between end of early and beginning of late
+	// Try to find a reasonable overlap point (look for newlines to avoid splitting JSON)
+	overlapSize := 1000 // Look for up to 1KB of overlap
+	if len(earlyPortion) < overlapSize {
+		overlapSize = len(earlyPortion)
+	}
+
+	earlyTail := earlyPortion[len(earlyPortion)-overlapSize:]
+	overlapIdx := strings.Index(latePortion, earlyTail)
+
+	if overlapIdx > 0 {
+		// Found overlap, merge at that point
+		return earlyPortion + latePortion[overlapIdx+overlapSize:]
+	}
+
+	// No clear overlap found, concatenate with a marker for debugging
+	// The JSON parser should handle duplicates gracefully
+	return earlyPortion + latePortion
+}
+
+// extractProbeOutputWithoutStartToken attempts to extract probe JSON when we only have endingToken
+// This happens when the probe completes very quickly and the first non-empty poll already has
+// truncated output (Latest: true only returns last 64KB, startingToken has scrolled off)
+func (a *AwsVerifier) extractProbeOutputWithoutStartToken(consoleOutput string, probe probes.Probe) string {
+	endToken := probe.GetEndingToken()
+
+	// Find the endingToken
+	endIdx := strings.Index(consoleOutput, endToken)
+	if endIdx == -1 {
+		return ""
+	}
+
+	// The probe output is everything before the endingToken
+	beforeEndToken := consoleOutput[:endIdx]
+
+	// Curl outputs each result as: {stderr}@NV@{json}\n
+	// Extract all lines containing @NV@ and get the JSON part after it
+	lines := strings.Split(beforeEndToken, "\n")
+	var jsonLines []string
+
+	for _, line := range lines {
+		// Look for the @NV@ separator that curl uses
+		if strings.Contains(line, "@NV@") {
+			// Split on @NV@ and take the JSON part (after the separator)
+			parts := strings.SplitN(line, "@NV@", 2)
+			if len(parts) == 2 {
+				jsonPart := strings.TrimSpace(parts[1])
+				if jsonPart != "" && (strings.HasPrefix(jsonPart, "{") || strings.HasPrefix(jsonPart, "[")) {
+					// Add the @NV@ prefix back so the parser can recognize it
+					jsonLines = append(jsonLines, "@NV@"+jsonPart)
+				}
+			}
+		}
+	}
+
+	if len(jsonLines) == 0 {
+		return ""
+	}
+
+	// Join all JSON lines
+	return strings.Join(jsonLines, "\n")
 }
 
 // CreateSecurityGroup creates a security group with the specified name and cluster tag key in a specified VPC

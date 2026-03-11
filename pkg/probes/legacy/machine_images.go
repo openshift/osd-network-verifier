@@ -42,4 +42,9 @@ var cloudMachineImageMap = map[cloud.Platform]map[cpu.Architecture]map[string]st
 			"us-west-2":      "ami-0c03998bcb7c924f9",
 		},
 	},
+	cloud.AWSGovCloudClassic: {
+		cpu.ArchX86: {
+			// TODO: Add legacy probe AMIs for GovCloud if needed
+		},
+	},
 }

@@ -4,10 +4,10 @@ ${CACERT_RENDERED}
 runcmd:
   - systemctl mask --now serial-getty@ttyS0.service
   - dmesg -D
-  - sleep 1
+  - sleep ${PROBE_DELAY}
   - echo "${USERDATA_BEGIN}" >/dev/ttyS0
   - export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY} no_proxy="${NO_PROXY}"
-  - ${CURL_COMMAND} 2>/dev/ttyS0
+  - ${CURL_COMMAND} 2>&1 >/dev/ttyS0
   - echo "${USERDATA_END}" >/dev/ttyS0
 power_state:
   delay: ${DELAY}
