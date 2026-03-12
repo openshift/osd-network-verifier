@@ -46,6 +46,16 @@ func TestPlatform_String(t *testing.T) {
 			platform: GCPClassic,
 			want:     "gcp-classic",
 		},
+		{
+			name:     "aws-govcloud-classic",
+			platform: AWSGovCloudClassic,
+			want:     "aws-govcloud-classic",
+		},
+		{
+			name:     "govcloud",
+			platform: AWSGovCloudClassic,
+			want:     "aws-govcloud-classic",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,6 +89,11 @@ func TestPlatform_IsValid(t *testing.T) {
 		{
 			name:   "GCP happy path",
 			fields: fields(GCPClassic),
+			want:   true,
+		},
+		{
+			name:   "AWSGovCloudClassic happy path",
+			fields: fields(AWSGovCloudClassic),
 			want:   true,
 		},
 		{
@@ -138,6 +153,18 @@ func TestByName(t *testing.T) {
 		{
 			name: "gcp-classic",
 			want: GCPClassic,
+		},
+		{
+			name: "aws-govcloud-classic",
+			want: AWSGovCloudClassic,
+		},
+		{
+			name: "govcloud",
+			want: AWSGovCloudClassic,
+		},
+		{
+			name: "  govcloud  ",
+			want: AWSGovCloudClassic,
 		},
 		{
 			name: "invalid name",
