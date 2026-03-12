@@ -7,7 +7,7 @@ runcmd:
   - sleep 1
   - echo "${USERDATA_BEGIN}" >/dev/ttyS0
   - export http_proxy=${HTTP_PROXY} https_proxy=${HTTPS_PROXY} no_proxy="${NO_PROXY}"
-  - ${CURL_COMMAND} 2>/dev/ttyS0
+  - ${CURL_COMMAND} >/dev/null 2>/dev/ttyS0 #changed this because serial console was overflowing resulting in incomplete lines
   - echo "${USERDATA_END}" >/dev/ttyS0
 power_state:
   delay: ${DELAY}

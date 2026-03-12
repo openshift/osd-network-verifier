@@ -28,6 +28,9 @@ var (
 	GCPClassic = Platform{
 		names: [3]string{"gcp-classic", "gcp"},
 	}
+	AWSGovCloudClassic = Platform{
+		names: [3]string{"aws-govcloud-classic", "govcloud"},
+	}
 )
 
 // String returns the "preferred name" of the Platform
@@ -61,13 +64,17 @@ func ByName(name string) (Platform, error) {
 		return AWSHCPZeroEgress, nil
 	}
 
+	if slices.Contains(AWSGovCloudClassic.names[:], normalizedName) {
+		return AWSGovCloudClassic, nil
+	}
+
 	return Platform{}, fmt.Errorf("no platform with name %s", name)
 }
 
 // IsValid returns true if the Platform is non-empty and supported by the network verifier
 func (p Platform) IsValid() bool {
 	switch p {
-	case AWSClassic, AWSHCP, GCPClassic, AWSHCPZeroEgress:
+	case AWSClassic, AWSHCP, GCPClassic, AWSHCPZeroEgress, AWSGovCloudClassic:
 		return true
 	default:
 		return false
@@ -76,7 +83,7 @@ func (p Platform) IsValid() bool {
 
 func (p Platform) IsAWS() bool {
 	switch p {
-	case AWSClassic, AWSHCP, AWSHCPZeroEgress:
+	case AWSClassic, AWSHCP, AWSHCPZeroEgress, AWSGovCloudClassic:
 		return true
 	default:
 		return false

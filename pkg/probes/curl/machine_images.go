@@ -84,6 +84,15 @@ var cloudMachineImageMap = map[cloud.Platform]map[cpu.Architecture]map[string]st
 			"us-west-2":      "ami-084026f634b808f4d",
 		},
 	},
+	cloud.AWSGovCloudClassic: {
+		cpu.ArchX86: {
+			"us-gov-west-1": "ami-030d1cf861950bc2b",
+			"us-gov-east-1": "ami-02b32ce96992f4454",
+		},
+		cpu.ArchARM: {
+			// ARM AMIs are not available in govcloud
+		},
+	},
 	// See function docstring's note on GCP; tl;dr: deepest key should be "*"
 	cloud.GCPClassic: {
 		cpu.ArchX86: {

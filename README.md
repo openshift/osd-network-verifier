@@ -82,8 +82,9 @@ type Platform struct {
 }
 ```
 
-Currently network-verifier supports four implementations for Platform types.
+Currently network-verifier supports five implementations for Platform types.
 - AWSClassic
+- AWSGovCloudClassic
 - AWSHCP
 - AWSHCPZeroEgress
 - GCPClassic
