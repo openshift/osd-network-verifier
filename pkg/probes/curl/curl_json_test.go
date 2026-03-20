@@ -169,7 +169,7 @@ func TestCurlJSONProbe_GetExpandedUserData(t *testing.T) {
 
 			// Finally, ensure output is valid YAML
 			gotByteSlice := []byte(got)
-			var unmarshalled interface{}
+			var unmarshalled any
 			err = yaml.Unmarshal(gotByteSlice, &unmarshalled)
 			if err != nil {
 				t.Errorf("curl.Probe.GetExpandedUserData() produced invalid YAML (err: %v), content=%v", err, got)
@@ -279,6 +279,35 @@ func TestCurlJSONProbe_GetMachineImageID(t *testing.T) {
 			},
 			wantRegex: amiIDRegex,
 			wantErr:   false,
+		},
+		{
+			name: "AWS GovCloud X86 us-gov-west-1",
+			args: args{
+				platformType: cloud.AWSGovCloudClassic,
+				cpuArch:      cpu.ArchX86,
+				region:       "us-gov-west-1",
+			},
+			wantRegex: amiIDRegex,
+			wantErr:   false,
+		},
+		{
+			name: "AWS GovCloud X86 us-gov-east-1",
+			args: args{
+				platformType: cloud.AWSGovCloudClassic,
+				cpuArch:      cpu.ArchX86,
+				region:       "us-gov-east-1",
+			},
+			wantRegex: amiIDRegex,
+			wantErr:   false,
+		},
+		{
+			name: "AWS GovCloud ARM (not available)",
+			args: args{
+				platformType: cloud.AWSGovCloudClassic,
+				cpuArch:      cpu.ArchARM,
+				region:       "us-gov-west-1",
+			},
+			wantErr: true,
 		},
 		{
 			name: "GCP ARM",

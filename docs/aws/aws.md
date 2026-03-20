@@ -100,7 +100,7 @@ To verify the entire VPC, repeat the verification process for each subnet ID.
 
    4. Obtain params:
       1. subnet-id: the subnet id to be verified.
-      2. platform: This parameter dictates for which set of endpoints the verifier should test. If testing a subnet that hosts (or will host) a traditional OSD/ROSA cluster, set this to `aws` (or leave blank). If you're instead testing a subnet hosting a HyperShift Hosted Cluster (*not* a hosted control plane/management cluster) on AWS, set this to `hostedcluster`.
+      2. platform: This parameter dictates for which set of endpoints the verifier should test. If testing a subnet that hosts (or will host) a traditional OSD/ROSA cluster, set this to `aws` (or leave blank). If you're instead testing a subnet hosting a HyperShift Hosted Cluster (*not* a hosted control plane/management cluster) on AWS, set this to `hostedcluster`. If you're testing a subnet that hosts a classic ROSA cluster hosted in AWS GovCloud, set this to `aws-govcloud-classic`
 
    5. Execute:
 

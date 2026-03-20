@@ -1,0 +1,89 @@
+endpoints:
+  - host: registry.redhat.io
+    ports:
+      - 443
+  - host: quay.io
+    ports:
+      - 443
+  - host: cdn01.quay.io
+    ports:
+      - 443
+  - host: cdn02.quay.io
+    ports:
+      - 443
+  - host: cdn03.quay.io
+    ports:
+      - 443
+  - host: cdn04.quay.io
+    ports:
+      - 443
+  - host: cdn05.quay.io
+    ports:
+      - 443
+  - host: cdn06.quay.io
+    ports:
+      - 443
+  - host: sso.redhat.com
+    ports:
+      - 443
+  - host: catalog.redhat.com
+    ports:
+      - 443
+  - host: oidc.op1.openshiftapps.com
+    ports:
+      - 443
+  - host: console.redhat.com
+    ports:
+      - 443
+  - host: quay-registry.s3-fips.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: cert-api.access.redhat.com
+    ports:
+      - 443
+    tlsDisabled: true
+  - host: api.access.redhat.com
+    ports:
+      - 443
+  - host: infogw.api.openshift.com
+    ports:
+      - 443
+  - host: mirror.openshift.com
+    ports:
+      - 443
+  - host: api.openshift.com
+    ports:
+      - 443
+  - host: registry.access.redhat.com
+    ports:
+      - 443
+  - host: registry.connect.redhat.com
+    ports:
+      - 443
+  - host: quayio-production-s3.s3-fips.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: iam.us-gov.amazonaws.com
+    ports:
+      - 443
+  - host: sts.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: observatorium.api.openshift.com
+    ports:
+      - 443
+  - host: observatorium-mst.api.openshift.com
+    ports:
+      - 443
+  - host: ec2.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: elasticloadbalancing.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: events.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
+  - host: tagging.${AWS_REGION}.amazonaws.com
+    ports:
+      - 443
