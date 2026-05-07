@@ -1,17 +1,15 @@
 reviewers:
-  - abyrne55
+  - AlexSmithGH
+  - BATMAN-JD
+  - eth1030
+  - geowa4
   - reedcort
   - dakotalongRH
-  - luis-falcon
   - joshbranham
 approvers:
-  - abyrne55
+  - AlexSmithGH
+  - BATMAN-JD
+  - eth1030
+  - geowa4
   - joshbranham
   - rafael-azevedo
-emeritus_approvers:
-  - AlexVulaj
-  - bng0y
-  - boranx
-  - bdematte
-maintainers:
-  - abyrne55
