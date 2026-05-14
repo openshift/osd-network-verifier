@@ -148,9 +148,13 @@ func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string) error
 			if err := checkJobCompletion(currentJob); err != errJobIncomplete {
 				return err
 			}
-		case event := <-watcher.ResultChan():
-			job, ok := event.Object.(*batchv1.Job)
+		case event, ok := <-watcher.ResultChan():
 			if !ok {
+				// Watch channel closed, fall back to polling
+				continue
+			}
+			job, isJob := event.Object.(*batchv1.Job)
+			if !isJob {
 				continue
 			}
 			if err := checkJobCompletion(job); err != errJobIncomplete {
