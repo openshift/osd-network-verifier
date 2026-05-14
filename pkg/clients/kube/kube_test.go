@@ -3,7 +3,9 @@ package kube
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -307,5 +309,123 @@ func getMockedJob(name string) *batchv1.Job {
 			Namespace: testNamespace,
 			Name:      name,
 		},
+	}
+}
+
+func TestClient_WaitForJobCompletion(t *testing.T) {
+	tests := []struct {
+		name           string
+		jobName        string
+		setupJob       func(*fak8s.Clientset) error
+		wantErr        bool
+		errContains    string
+		timeoutSeconds int
+	}{
+		{
+			name:    "job completes with JobComplete condition",
+			jobName: "test-job-condition-complete",
+			setupJob: func(clientset *fak8s.Clientset) error {
+				job := getMockedJob("test-job-condition-complete")
+				job.Status.Conditions = []batchv1.JobCondition{
+					{
+						Type:   batchv1.JobComplete,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				_, err := clientset.BatchV1().Jobs(testNamespace).Create(context.Background(), job, metav1.CreateOptions{})
+				return err
+			},
+			wantErr:        false,
+			timeoutSeconds: 15,
+		},
+		{
+			name:    "job fails with JobFailed condition",
+			jobName: "test-job-condition-failed",
+			setupJob: func(clientset *fak8s.Clientset) error {
+				job := getMockedJob("test-job-condition-failed")
+				job.Status.Conditions = []batchv1.JobCondition{
+					{
+						Type:   batchv1.JobFailed,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				_, err := clientset.BatchV1().Jobs(testNamespace).Create(context.Background(), job, metav1.CreateOptions{})
+				return err
+			},
+			wantErr:        true,
+			errContains:    "failed",
+			timeoutSeconds: 15,
+		},
+		{
+			name:    "job completes with JobSuccessCriteriaMet condition",
+			jobName: "test-job-success-criteria-met",
+			setupJob: func(clientset *fak8s.Clientset) error {
+				job := getMockedJob("test-job-success-criteria-met")
+				job.Status.Conditions = []batchv1.JobCondition{
+					{
+						Type:   batchv1.JobSuccessCriteriaMet,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				_, err := clientset.BatchV1().Jobs(testNamespace).Create(context.Background(), job, metav1.CreateOptions{})
+				return err
+			},
+			wantErr:        false,
+			timeoutSeconds: 15,
+		},
+		{
+			name:    "job fails with JobFailureTarget condition",
+			jobName: "test-job-failure-target",
+			setupJob: func(clientset *fak8s.Clientset) error {
+				job := getMockedJob("test-job-failure-target")
+				job.Status.Conditions = []batchv1.JobCondition{
+					{
+						Type:   batchv1.JobFailureTarget,
+						Status: corev1.ConditionTrue,
+					},
+				}
+				_, err := clientset.BatchV1().Jobs(testNamespace).Create(context.Background(), job, metav1.CreateOptions{})
+				return err
+			},
+			wantErr:        true,
+			errContains:    "failed",
+			timeoutSeconds: 15,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a new mock clientset for each test
+			mockedClientset := fak8s.NewClientset()
+			setupJobMockingReactors(mockedClientset)
+
+			// Setup the job
+			if err := tt.setupJob(mockedClientset); err != nil {
+				t.Fatalf("Failed to setup job: %v", err)
+			}
+
+			c := &Client{
+				clientset: mockedClientset,
+				namespace: testNamespace,
+			}
+
+			// Create context with timeout
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(tt.timeoutSeconds)*time.Second)
+			defer cancel()
+
+			err := c.WaitForJobCompletion(ctx, tt.jobName)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("WaitForJobCompletion() expected error but got nil")
+				} else if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("WaitForJobCompletion() error = %v, want error containing %v", err, tt.errContains)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("WaitForJobCompletion() unexpected error = %v", err)
+				}
+			}
+		})
 	}
 }
