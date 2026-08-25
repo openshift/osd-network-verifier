@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.230.0
 	github.com/aws/smithy-go v1.22.4
 	github.com/go-playground/validator v9.31.0+incompatible
-	github.com/google/go-github/v63 v63.0.0
 	github.com/openshift-online/ocm-sdk-go v0.1.469
 	github.com/spf13/cobra v1.9.1
 	go.uber.org/mock v0.5.2
@@ -50,7 +49,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
