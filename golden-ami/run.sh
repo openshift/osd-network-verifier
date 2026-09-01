@@ -9,6 +9,10 @@
 #   credential injection (falls back when primary creds are absent).
 
 if [[ $# -eq 1 ]] ; then
+  if [[ ! "$1" =~ ^[a-zA-Z0-9._/:@-]+$ ]]; then
+    echo "Invalid image URI: $1"
+    exit 1
+  fi
   export PKR_VAR_image_uri=$1
 fi
 
@@ -22,6 +26,9 @@ if [[ -z "${AWS_ACCESS_KEY_ID}" || -z "${AWS_SECRET_ACCESS_KEY}" ]]; then
     echo "Setting variables from CI environment"
     export AWS_ACCESS_KEY_ID="${CI_AWS_ACCESS_KEY_ID}"
     export AWS_SECRET_ACCESS_KEY="${CI_AWS_SECRET_ACCESS_KEY}"
+    if [[ -n "${CI_AWS_SESSION_TOKEN:-}" ]]; then
+      export AWS_SESSION_TOKEN="${CI_AWS_SESSION_TOKEN}"
+    fi
   else
     echo "AWS credentials not properly set and could not be determined from the environment"
     exit 2

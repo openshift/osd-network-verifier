@@ -15,4 +15,5 @@ COPY build/config /app/build/config/
 # Copy the CA trust bundle from ubi-minimal --> ubi-micro
 COPY --from=builder /etc/pki/ca-trust /etc/pki/ca-trust
 
+USER 1001
 ENTRYPOINT ["network-validator", "--config=/app/build/config/config.yaml"]

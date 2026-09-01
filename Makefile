@@ -34,7 +34,9 @@ test:
 boilerplate-update:
 	@boilerplate/update
 
-.PHONY: golden-ami-%
-golden-ami-%:
+.PHONY: FORCE
+FORCE:
+
+golden-ami-%: FORCE
 	$(MAKE) -C golden-ami $*
 

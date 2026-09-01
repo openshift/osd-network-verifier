@@ -91,9 +91,9 @@ When adding a new AWS region:
 
 ## Testing
 
-Packer configuration can be validated with OPA/Rego policies:
+Packer configuration can be validated with:
 
 ```bash
-packer hcl2_upgrade -with-annotations packer/
-opa eval -d tests/deny.rego -i packer/ 'data.main.deny'
+packer validate packer/
+packer validate packer_repackage/
 ```

@@ -16,6 +16,9 @@ OWNER_ACCOUNT=309956199498
 
 if [[ $# -eq 1 ]]; then
     export IMAGE_ARCHITECTURE=$1
+elif [[ $# -gt 1 ]]; then
+    echo "Usage: $0 [x86_64|arm64]"
+    exit 1
 else
     export IMAGE_ARCHITECTURE="x86_64"
 fi
@@ -43,6 +46,9 @@ if [[ -z "${AWS_ACCESS_KEY_ID}" || -z "${AWS_SECRET_ACCESS_KEY}" ]]; then
         echo "Setting variables from CI environment"
         export AWS_ACCESS_KEY_ID="${CI_AWS_ACCESS_KEY_ID}"
         export AWS_SECRET_ACCESS_KEY="${CI_AWS_SECRET_ACCESS_KEY}"
+        if [[ -n "${CI_AWS_SESSION_TOKEN:-}" ]]; then
+            export AWS_SESSION_TOKEN="${CI_AWS_SESSION_TOKEN}"
+        fi
     else
         echo "AWS credentials not properly set and could not be determined from the environment"
         exit 2
@@ -52,7 +58,7 @@ fi
 if [[ -z "${PKR_VAR_source_ami}" ]]; then
     PKR_VAR_source_ami=$(aws ec2 describe-images \
         --owners $OWNER_ACCOUNT \
-        --filters "Name=platform-details,Values='Red Hat Enterprise Linux'" "Name=architecture,Values=${IMAGE_ARCHITECTURE}" "Name=root-device-type,Values=ebs" "Name=manifest-location,Values=amazon/RHEL-9.*_HVM-*-${IMAGE_ARCHITECTURE}-*-Hourly2-GP2" \
+        --filters "Name=platform-details,Values='Red Hat Enterprise Linux'" "Name=architecture,Values=${IMAGE_ARCHITECTURE}" "Name=root-device-type,Values=ebs" "Name=state,Values=available" "Name=name,Values=RHEL-9.*_HVM-*-${IMAGE_ARCHITECTURE}-*-Hourly2-GP*" \
         --region=$SOURCE_REGION \
         --output text \
         --query 'sort_by(Images, &CreationDate)[-1].ImageId')
