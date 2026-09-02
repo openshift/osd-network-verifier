@@ -1,3 +1,7 @@
+# Legacy AMI targets: these build the network-validator container locally but do
+# NOT push it to a registry. To use the legacy AMI workflow, you must manually
+# push the container image and pass its URI to run.sh. CI does not use these
+# targets; it uses build-all-amis-ci (RHEL repackage) instead.
 .PHONY: build-and-publish-docker-and-ami
 build-and-publish-docker-and-ami: build-docker
 	./run.sh ${IMAGE_URI}
