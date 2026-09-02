@@ -12,9 +12,6 @@ endpoints:
     ports:
       - 443
       - 80
-  - host: pull.q1w2.quay.rhcloud.com
-    ports:
-      - 443
   - host: openshift.org
     ports:
       - 443
