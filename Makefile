@@ -33,3 +33,10 @@ test:
 .PHONY: boilerplate-update
 boilerplate-update:
 	@boilerplate/update
+
+.PHONY: FORCE
+FORCE:
+
+golden-ami-%: FORCE
+	$(MAKE) -C golden-ami $*
+

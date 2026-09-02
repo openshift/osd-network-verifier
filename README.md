@@ -94,3 +94,10 @@ Network-verifier uses these supported platform types to determine information su
 ## Release Process
 
 See [RELEASE.md](./RELEASE.md)
+
+## Golden AMI
+
+The [golden-ami](./golden-ami/) subdirectory contains the Packer configurations and
+scripts used to build and publish the golden AMI images that osd-network-verifier
+relies on across all AWS regions. See [golden-ami/README.md](./golden-ami/README.md)
+for build instructions and AMI quota management.
