@@ -104,6 +104,9 @@ func (c *Client) GetJobLogs(ctx context.Context, jobName string) (string, error)
 	return string(logs), nil
 }
 
+// errJobIncomplete is a sentinel error to indicate a job is still in progress
+var errJobIncomplete = fmt.Errorf("job incomplete")
+
 // WaitForJobCompletion waits for a job to complete (succeed or fail). It's context-aware,
 // so set ctx to something like `context.WithTimeout(ctx, 10*time.Second)` to set a timeout.
 func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string) error {
@@ -113,22 +116,49 @@ func (c *Client) WaitForJobCompletion(ctx context.Context, jobName string) error
 	}
 	defer watcher.Stop()
 
+	// Add a ticker to periodically check job status directly as a fallback
+	// This handles cases where watch events are delayed, missing, or incomplete
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	checkJobCompletion := func(job *batchv1.Job) error {
+		// Rely on Kubernetes' own logic via job conditions
+		jobStatus := getJobStatus(job)
+		if jobStatus == batchv1.JobComplete || jobStatus == batchv1.JobSuccessCriteriaMet {
+			return nil
+		}
+		if jobStatus == batchv1.JobFailed || jobStatus == batchv1.JobFailureTarget {
+			return fmt.Errorf("job %s failed", jobName)
+		}
+
+		// Job not yet complete
+		return errJobIncomplete
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("context cancelled while waiting for job %s to complete", jobName)
-		case event := <-watcher.ResultChan():
-			job, ok := event.Object.(*batchv1.Job)
-			if !ok {
+		case <-ticker.C:
+			// Polling fallback: directly query job status
+			currentJob, err := c.GetJob(ctx, jobName)
+			if err != nil {
 				continue
 			}
-
-			jobStatus := getJobStatus(job)
-			if jobStatus == batchv1.JobComplete || jobStatus == batchv1.JobSuccessCriteriaMet {
-				return nil
+			if err := checkJobCompletion(currentJob); err != errJobIncomplete {
+				return err
 			}
-			if jobStatus == batchv1.JobFailed || jobStatus == batchv1.JobFailureTarget {
-				return fmt.Errorf("job %s failed", jobName)
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				// Watch channel closed, fall back to polling
+				continue
+			}
+			job, isJob := event.Object.(*batchv1.Job)
+			if !isJob {
+				continue
+			}
+			if err := checkJobCompletion(job); err != errJobIncomplete {
+				return err
 			}
 		}
 	}
