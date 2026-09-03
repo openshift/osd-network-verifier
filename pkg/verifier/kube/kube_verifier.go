@@ -91,7 +91,7 @@ func (k *KubeVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.
 	// Generate egress lists for the given PlatformType
 	generatorVariables := map[string]string{"AWS_REGION": vei.AWS.Region}
 	generator := egress_lists.NewGenerator(vei.PlatformType, generatorVariables, k.Logger)
-	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.Ctx, vei.EgressListYaml)
+	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.EgressListYaml)
 	if err != nil {
 		return k.Output.AddError(err)
 	}

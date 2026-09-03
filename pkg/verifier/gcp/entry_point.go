@@ -60,7 +60,7 @@ func (g *GcpVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	generatorVariables := map[string]string{}
 	generator := egress_lists.NewGenerator(vei.PlatformType, generatorVariables, g.Logger)
 
-	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.Ctx, vei.EgressListYaml)
+	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.EgressListYaml)
 	if err != nil {
 		return g.Output.AddError(err)
 	}

@@ -125,7 +125,7 @@ func (a *AwsVerifier) ValidateEgress(vei verifier.ValidateEgressInput) *output.O
 	generatorVariables := map[string]string{"AWS_REGION": a.AwsClient.Region}
 	generator := egress_lists.NewGenerator(vei.PlatformType, generatorVariables, a.Logger)
 
-	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.Ctx, vei.EgressListYaml)
+	egressListStr, tlsDisabledEgressListStr, err := generator.GenerateEgressLists(vei.EgressListYaml)
 	if err != nil {
 		return a.Output.AddError(err)
 	}

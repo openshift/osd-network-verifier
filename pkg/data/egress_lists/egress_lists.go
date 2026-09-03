@@ -1,14 +1,12 @@
 package egress_lists
 
 import (
-	"context"
 	_ "embed"
 	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/google/go-github/v63/github"
 	"github.com/openshift-online/ocm-sdk-go/logging"
 	"github.com/openshift/osd-network-verifier/pkg/data/cloud"
 )
@@ -28,10 +26,6 @@ var templateAWSHCPZeroEgress string
 //go:embed aws-govcloud-classic.yaml
 var templateAWSGovCloudClassic string
 
-type githubReposClient interface {
-	GetContents(ctx context.Context, owner, repo, path string, opts *github.RepositoryContentGetOptions) (fileContent *github.RepositoryContent, directoryContent []*github.RepositoryContent, resp *github.Response, err error)
-}
-
 // Generator provides a mechanism to generate egress lists for a given platform and set of variables
 type Generator struct {
 	// PlatformType represents the cloud and type of platform we are generating egress lists for
@@ -40,47 +34,30 @@ type Generator struct {
 	// Variables is a map of string:string used to replace templated values in canned egress lists
 	Variables map[string]string
 
-	logger            logging.Logger
-	githubReposClient githubReposClient
+	logger logging.Logger
 }
 
 func NewGenerator(platformType cloud.Platform, variables map[string]string, logger logging.Logger) *Generator {
 	return &Generator{
-		PlatformType:      platformType,
-		Variables:         variables,
-		logger:            logger,
-		githubReposClient: github.NewClient(nil).Repositories,
+		PlatformType: platformType,
+		Variables:    variables,
+		logger:       logger,
 	}
 }
 
 // GenerateEgressLists takes an optional egressListYaml as input, and then attempts to return generated EgressLists
 // in the following order:
 // - If a populated egressListYaml is passed, use that
-// - Otherwise, try to get the values from GitHub, and if that fails
-// - Fallback to the local yaml embedded in this package
-func (g *Generator) GenerateEgressLists(ctx context.Context, egressListYaml string) (string, string, error) {
+// - Otherwise, use the local yaml embedded in this package
+func (g *Generator) GenerateEgressLists(egressListYaml string) (string, string, error) {
 	if egressListYaml != "" {
 		return g.EgressListToString(egressListYaml, g.Variables)
 	}
 
-	egressResponse, err := g.GetGithubEgressList(ctx)
-	if err != nil {
-		g.logger.Error(ctx, "Failed to get egress list from GitHub, falling back to local list: %v", err)
-
-		egress, err := g.GetLocalEgressList()
-		if err != nil {
-			return "", "", err
-		}
-
-		return g.EgressListToString(egress, g.Variables)
-	}
-
-	egress, err := egressResponse.GetContent()
+	egress, err := g.GetLocalEgressList()
 	if err != nil {
 		return "", "", err
 	}
-
-	g.logger.Info(ctx, "Using egress URL list from %s at SHA %s", egressResponse.GetURL(), egressResponse.GetSHA())
 
 	return g.EgressListToString(egress, g.Variables)
 }
@@ -100,27 +77,6 @@ func (g *Generator) GetLocalEgressList() (string, error) {
 	default:
 		return "", fmt.Errorf("no egress list registered for platform '%s'", g.PlatformType)
 	}
-}
-
-func (g *Generator) GetGithubEgressList(ctx context.Context) (*github.RepositoryContent, error) {
-	path := "/pkg/data/egress_lists/"
-
-	switch g.PlatformType {
-	case cloud.GCPClassic:
-		path += cloud.GCPClassic.String()
-	case cloud.AWSHCP:
-		path += cloud.AWSHCP.String()
-	case cloud.AWSClassic:
-		path += cloud.AWSClassic.String()
-	case cloud.AWSHCPZeroEgress:
-		path += cloud.AWSHCPZeroEgress.String()
-	case cloud.AWSGovCloudClassic:
-		path += cloud.AWSGovCloudClassic.String()
-	default:
-		return nil, fmt.Errorf("no egress list registered for platform '%s'", g.PlatformType)
-	}
-	fileContentResponse, _, _, err := g.githubReposClient.GetContents(ctx, "openshift", "osd-network-verifier", fmt.Sprintf("%s.yaml", path), nil)
-	return fileContentResponse, err
 }
 
 // EgressListToString returns two strings, the sum of which contains all the URLs
