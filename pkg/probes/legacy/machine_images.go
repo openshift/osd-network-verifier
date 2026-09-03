@@ -33,8 +33,6 @@ var cloudMachineImageMap = map[cloud.Platform]map[cpu.Architecture]map[string]st
 			"eu-west-1":      "ami-0913e4ee0fa91649a",
 			"eu-west-2":      "ami-0a951043c6078f378",
 			"eu-west-3":      "ami-058406cc445b09762",
-			"me-central-1":   "ami-095b8831ceb37f108",
-			"me-south-1":     "ami-00624346da9330d80",
 			"sa-east-1":      "ami-0d1958d70a8d683e2",
 			"us-east-1":      "ami-022e75a8d568b7d0b",
 			"us-east-2":      "ami-0b68b178fecfcbe51",
